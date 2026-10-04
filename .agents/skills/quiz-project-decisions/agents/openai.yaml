@@ -1,0 +1,4 @@
+interface:
+  display_name: "プロジェクト判断ケースクイズ"
+  short_description: "実際の判断を自由回答と段階的なヒントで振り返ります"
+  default_prompt: "Use $quiz-project-decisions to study an actual project decision through an evidence-backed dialogue with progressive hints."
