@@ -1,0 +1,47 @@
+name: 機能追加
+description: 新しい機能や利用者価値を提案します
+title: ""
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: なぜ必要か、どの問題を解決するかを記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: as_is
+    attributes:
+      label: As-Is
+      description: 現在の状態と問題を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: to_be
+    attributes:
+      label: To-Be
+      description: 完了後に実現している状態を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: 外部から確認できる完了条件をチェックリストで記載してください。
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: 今回扱わない事項を記載してください。
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: 制約、関連資料、検討事項を記載してください。
+

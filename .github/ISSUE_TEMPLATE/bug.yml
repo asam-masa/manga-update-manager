@@ -1,0 +1,42 @@
+name: 不具合
+description: 再現可能な問題を報告します
+title: ""
+labels:
+  - bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: 発生した問題と影響を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: 再現手順を順番に記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Result
+      description: 期待する結果を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Result
+      description: 実際の結果を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS、アプリのバージョン、発生頻度を記載してください。秘密情報は含めないでください。
+    validations:
+      required: true
+
