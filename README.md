@@ -14,8 +14,8 @@
 
 - デスクトップ基盤: Wails v2
 - バックエンド: Go
-- 画面: TypeScript / HTML / CSS
-- ローカルデータ: SQLite
+- 画面: React / TypeScript / HTML / CSS
+- ローカルデータ: SQLite（`modernc.org/sqlite`＋`database/sql`）
 - 対象OS: Windowsを優先
 
 ## 最初の実装範囲
@@ -33,7 +33,7 @@
 
 ## 開発状況
 
-設計段階です。Go＋Wails v2の採用と内部アーキテクチャをADRへ記録し、フロントエンドとSQLiteライブラリを選定した後にアプリの雛形を生成します。
+設計段階です。Go＋Wails v2、内部アーキテクチャ、React＋TypeScript、SQLiteアクセス方式をADRへ記録しました。次にWailsの雛形を生成し、Windows上の開発モードとビルドを検証します。
 
 ## 開発運用
 

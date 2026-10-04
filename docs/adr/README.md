@@ -8,4 +8,6 @@
 | --- | --- | --- | --- | --- | --- |
 | [0001](./0001-select-desktop-application-foundation.md) | デスクトップアプリケーション基盤を選定する | Accepted | Pending | 2026-10-04 | [#3](https://github.com/asam-masa/manga-update-manager/issues/3) |
 | [0002](./0002-select-application-architecture.md) | 内部アーキテクチャを選定する | Accepted | Pending | 2026-10-04 | [#7](https://github.com/asam-masa/manga-update-manager/issues/7) |
+| [0003](./0003-select-frontend-foundation.md) | フロントエンド構成を選定する | Accepted | Pending | 2026-10-04 | [#13](https://github.com/asam-masa/manga-update-manager/issues/13) |
+| [0004](./0004-select-sqlite-access.md) | SQLiteアクセス方式を選定する | Accepted | Pending | 2026-10-04 | [#13](https://github.com/asam-masa/manga-update-manager/issues/13) |
 
