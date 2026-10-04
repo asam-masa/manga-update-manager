@@ -6,7 +6,5 @@
 
 | 番号 | タイトル | Status | Validation | Date | Related |
 | --- | --- | --- | --- | --- | --- |
-| なし | まだADRはありません | - | - | - | - |
-
-最初の候補は、デスクトップアプリケーション基盤としてGo＋WailsまたはRust＋Tauriのどちらを採用するかの判断です。
+| [0001](./0001-select-desktop-application-foundation.md) | デスクトップアプリケーション基盤を選定する | Proposed | Pending | 2026-10-04 | [#3](https://github.com/asam-masa/manga-update-manager/issues/3) |
 
