@@ -1,0 +1,4 @@
+interface:
+  display_name: "設計判断を掘り下げる"
+  short_description: "重要な設計判断の前提と選択肢を確認する"
+  default_prompt: "$grilling を使って、この設計案の未決定事項と判断漏れを確認してください。"
