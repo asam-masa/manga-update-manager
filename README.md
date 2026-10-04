@@ -33,7 +33,24 @@
 
 ## 開発状況
 
-設計段階です。Go＋Wails v2、内部アーキテクチャ、React＋TypeScript、SQLiteアクセス方式をADRへ記録しました。次にWailsの雛形を生成し、Windows上の開発モードとビルドを検証します。
+Go＋Wails v2とReact＋TypeScriptのアプリ雛形を作成しました。作品管理とSQLiteへの保存は後続の開発工程で追加します。
+
+## 開発コマンド
+
+必要な環境はGo、Node.js、npm、Wails CLI v2.14.0、WebView2です。
+
+```powershell
+wails doctor
+wails dev
+```
+
+検証には次のコマンドを使用します。
+
+```powershell
+go test ./...
+npm --prefix frontend run build
+wails build
+```
 
 ## 開発運用
 

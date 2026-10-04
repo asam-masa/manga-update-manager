@@ -115,7 +115,14 @@ Rust＋Tauri v2は、新しい言語を学べる点では有力である。し�
 - Unit TestとフロントエンドビルドをGitHub Actionsで実行できる
 - 既定ブラウザーでURLを開ける
 
-雛形生成と実機確認をまだ行っていないため、Validation Statusは`Pending`とする。
+2026-10-04にWails v2.14.0の雛形で次を確認した。
+
+- Windows 11で`wails dev`を実行し、Vite、Goアプリ、WebView2環境が起動した
+- TypeScriptから`App.Status`を呼び出すバインディングを生成し、開発用と本番用の両方でコンパイルできた
+- `go test ./...`が成功した
+- `wails build -clean`でWindows向け実行ファイルを生成できた
+
+GitHub Actionsでの実行と既定ブラウザーでのURL起動は未検証である。すべての検証項目を完了していないため、Validation Statusは`Pending`を維持する。
 
 ## References
 

@@ -1,0 +1,23 @@
+:root {
+    color: #172b4d;
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: #f6f7f9;
+    margin: 0;
+    min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
