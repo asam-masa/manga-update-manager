@@ -23,6 +23,10 @@
 
 - [ADR一覧](./adr/README.md)
 
+## 学習
+
+- [学習資料](./learning/README.md)
+
 ## 検証
 
 - [公開リポジトリ監査](./verification/public-repository-audit.md)

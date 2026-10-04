@@ -30,7 +30,7 @@
 
 作業へ着手する前に、`docs/develop/workflow/issue.md`のDefinition of Readyを確認します。完了時はDefinition of Doneを確認します。
 
-設計と実装の学習に使える判断記録は、`docs/develop/quality/learning-records.md`に従って残します。
+設計と実装から得た学習内容は、`docs/learning/README.md`に従って正本の設計文書と分離して残します。
 
 ## Change Policy
 
