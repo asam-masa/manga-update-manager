@@ -19,4 +19,5 @@
 - [コードレビュー観点](./quality/code-review.md)
 - [テスト方針](./quality/testing.md)
 - [日本語執筆ガイド](./quality/japanese-writing.md)
+- [学習に使える判断記録](./quality/learning-records.md)
 
