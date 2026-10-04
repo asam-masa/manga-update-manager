@@ -1,6 +1,6 @@
 # ADR-0001: デスクトップアプリケーション基盤を選定する
 
-- Status: Proposed
+- Status: Accepted
 - Validation Status: Pending
 - Date: 2026-10-04
 - Related: [#3](https://github.com/asam-masa/manga-update-manager/issues/3)
@@ -91,39 +91,31 @@ Tauri v2は、Rustでアプリケーションロジックを実装し、Web技�
 
 ## Decision
 
-未決定。
+Go＋Wails v2を採用する。
 
-現在の推奨案はRust＋Tauri v2である。`browser-launcher`ですでにGo＋Wailsを学習しているため、本プロジェクトではRustを採用することで学習範囲を広げられる。アプリの要件は段階的に実装でき、最初は登録、一覧、リンク起動に限定すれば、Rust未経験によるリスクを抑えられる。
+本プロジェクトでは、実用アプリを完成させながらGoの理解を深めることを学習目的とする。別リポジトリの`browser-launcher`とデスクトップ基盤を共有し、Wailsの知識を再利用する。一方で、本プロジェクト固有のSQLite、日時計算、アプリ内スケジュール、バックアップ、HTTP処理を通してGoの適用範囲を広げる。
 
-ただし、MVPの早期完成と`browser-launcher`で得た知識の定着を優先する場合は、Go＋Wails v2を採用する方が適している。ユーザーが学習範囲と完成速度のどちらを優先するか選択した後にDecisionを確定する。
+Rust＋Tauri v2は、新しい言語を学べる点では有力である。しかし、RustとMicrosoft C++ Build Toolsの準備が必要であり、Rust、Tauri、TypeScriptを同時に学ぶ負担がある。本プロジェクトでは新しい言語の追加より、Goによる設計、テスト、データ管理を深く学ぶことを優先する。
 
 ## Consequences
-
-### Rust＋Tauri v2を採用する場合
-
-- Rust、Cargo、Microsoft C++ Build Tools、WebView2の開発環境を確認・準備する
-- 最初の実装範囲を、作品モデル、入力検証、一覧、URL起動に限定する
-- SQLite、スケジュール、自動取得は別Issueで段階的に追加する
-- Rustの学習事項と判断理由をPRのLearningへ記録する
-- Tauri Capabilityは必要になった権限だけを追加する
-
-### Go＋Wails v2を採用する場合
 
 - `browser-launcher`の構成を参考にするが、不要なレイヤーや抽象化を機械的に移植しない
 - SQLite、スケジュール、HTTPなど、`browser-launcher`と異なる学習対象を明確にする
 - Wails v2のバージョンを固定し、生成物とCIの扱いを文書化する
+- フロントエンドフレームワーク、SQLiteライブラリ、内部アーキテクチャは別の判断として記録する
+- Rust＋Tauriを採用しないため、本プロジェクトではRustの学習機会を得られない
 
 ## Validation
 
 採用後、次を確認する。
 
 - Windows 11で開発モードを起動できる
-- フロントエンドからバックエンドの最小CommandまたはMethodを呼び出せる
+- フロントエンドからGoのMethodを呼び出せる
 - Windows向け実行ファイルをローカルでビルドできる
 - Unit TestとフロントエンドビルドをGitHub Actionsで実行できる
 - 既定ブラウザーでURLを開ける
 
-Decisionが未確定のため、Validation Statusは`Pending`とする。
+雛形生成と実機確認をまだ行っていないため、Validation Statusは`Pending`とする。
 
 ## References
 
