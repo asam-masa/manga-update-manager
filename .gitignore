@@ -1,0 +1,32 @@
+# User data (never commit)
+/data/
+/user-data/
+/covers/
+/cache/
+*.db
+*.sqlite
+*.sqlite3
+bookmarks.html
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.key
+
+# Rust / Tauri build output
+/target/
+/src-tauri/target/
+
+# Frontend dependencies and output
+/node_modules/
+/dist/
+
+# Editors and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
