@@ -1,6 +1,7 @@
 # ADR-NNNN: タイトル
 
 - Status: Proposed
+- Validation Status: Pending
 - Date: YYYY-MM-DD
 - Related: #Issue番号または関連資料
 
@@ -38,7 +39,7 @@
 
 ## Validation
 
-<!-- 判断の検証方法、実施結果、未確認事項 -->
+<!-- 判断の検証方法、実施結果、未確認事項。結果に合わせてValidation Statusを更新する -->
 
 ## References
 

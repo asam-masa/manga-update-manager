@@ -8,9 +8,11 @@
 
 ## ワークフロー
 
+- [GitHub Issue運用](./workflow/issue.md)
 - [ブランチ戦略](./workflow/branch.md)
 - [コミット](./workflow/commit.md)
 - [PR・レビュー運用](./workflow/pull-request-review.md)
+- [生成物の管理](./workflow/generated-files.md)
 
 ## 品質
 

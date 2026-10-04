@@ -32,7 +32,8 @@ Architecture Decision Record（ADR）は、重要な設計判断の背景、候�
 
 - ADRは`docs/adr/`へ保存する
 - ファイル名は`NNNN-short-description.md`とする
-- 次の番号は既存ファイルの最大番号に1を加えた値とする
+- ADRを作成するIssueで番号を確保する
+- 番号を確保するときは、`main`にある既存ADRの最大番号と、作業中Issueで予約済みの番号を確認する
 - ADRを削除して番号を再利用しない
 - 置き換えられたADRも履歴として残す
 
@@ -45,6 +46,17 @@ Architecture Decision Record（ADR）は、重要な設計判断の背景、候�
 | Superseded | 後続ADRに置き換えられた |
 | Deprecated | 現在は推奨しないが置き換え先がない |
 | Rejected | 検討したが採用しなかった |
+
+## Validation Status
+
+Decisionの採否と実機・運用上の検証状態を分けて記録します。
+
+| Validation Status | 意味 |
+| --- | --- |
+| Pending | 検証前または検証中 |
+| Verified | 記載した検証を完了した |
+| Failed | 検証で前提または期待を満たさなかった |
+| Not Applicable | 別途検証を必要としない |
 
 ## 必須構成
 

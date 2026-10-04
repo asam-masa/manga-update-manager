@@ -1,0 +1,55 @@
+name: 技術調査（Spike）
+description: 実装前に技術的な問いを期限付きで調査します
+title: ""
+labels:
+  - spike
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: この調査で明らかにする問いを一つに絞って記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: 調査が必要になった背景と、現在分かっている事実を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: decision_drivers
+    attributes:
+      label: Decision Drivers
+      description: 候補を比較する共通の判断基準を記載してください。
+    validations:
+      required: true
+  - type: input
+    id: timebox
+    attributes:
+      label: Timebox
+      description: 調査の上限時間または期限を記載してください。
+      placeholder: 例：4時間、2026-10-10まで
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: 比較表、検証コード、ADR案など、調査の成果物を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: 今回の調査で扱わない事項を記載してください。
+  - type: textarea
+    id: next_decision
+    attributes:
+      label: Decision After Spike
+      description: 調査結果を使って何を決定するか記載してください。
+    validations:
+      required: true
+

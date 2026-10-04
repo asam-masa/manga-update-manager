@@ -11,6 +11,7 @@
 - 実務を意識する
 - 小規模な製品に見合った単純な設計を優先する
 - 重要な設計判断はADRに残す
+- 作業管理にはGitHub Issuesだけを使用する
 
 ## Coding Policy
 
@@ -26,6 +27,8 @@
 日本語の文書、Issue、PR、レビュー、UI文言を作成または変更する前に、`docs/develop/quality/japanese-writing.md`を確認します。
 
 重要な設計判断は`docs/develop/architecture/architecture-decision.md`に従って記録します。承認前の推奨案を確定済みのDecisionとして扱いません。
+
+作業へ着手する前に、`docs/develop/workflow/issue.md`のDefinition of Readyを確認します。完了時はDefinition of Doneを確認します。
 
 ## Change Policy
 
