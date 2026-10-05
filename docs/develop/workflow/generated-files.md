@@ -8,7 +8,10 @@
 
 | 生成物 | Git管理 | 再生成コマンド | レビュー方法 |
 | --- | --- | --- | --- |
-| 未決定 | 未決定 | 未決定 | 未決定 |
+| `frontend/wailsjs/` | 管理する | `wails generate module`または`wails build` | Goとのバインディング差分を確認する |
+| `frontend/dist/` | 管理しない | `npm --prefix frontend run build` | ビルド成功を確認する |
+| `frontend/.vite/` | 管理しない | `wails dev`またはViteの実行 | 再生成できることを確認する |
+| `build/bin/` | 管理しない | `wails build` | Windows向けビルド成功を確認する |
 
 ## 判断基準
 

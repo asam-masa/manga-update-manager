@@ -3,7 +3,7 @@
 - Status: Accepted
 - Validation Status: Pending
 - Date: 2026-10-04
-- Related: [#13](https://github.com/asam-masa/manga-update-manager/issues/13)
+- Related: [#13](https://github.com/asam-masa/manga-update-manager/issues/13), [#19](https://github.com/asam-masa/manga-update-manager/issues/19)
 
 ## Context
 
@@ -114,7 +114,17 @@ Wails雛形生成と最初のStorage実装で次を確認する。
 - ドライバー固有処理がStorage外から参照されていない
 - GitHub ActionsでGoのテストを実行できる
 
-実装前で検証を完了していないため、Validation Statusは`Pending`とする。
+Issue #19の実装で、次を確認した。
+
+- `CGO_ENABLED=0`でGoのテストとビルドが成功した
+- `database/sql`から一時SQLiteデータベースを作成できた
+- 新規DBと適用済みDBへ同じマイグレーションを安全に適用できた
+- 登録、IDによる取得、URL重複拒否、DB再オープン後の取得がIntegration Testで成功した
+- マイグレーションと適用記録を同じトランザクションで処理した
+- ドライバーのimportとSQLite操作が`internal/storage`内に留まっている
+- Windows上で`wails build`が成功した
+
+作品の更新と削除、およびGitHub Actionsでのテストは後続Issueの対象であり、未検証である。ADRに記載した検証項目をすべて完了していないため、Validation Statusは`Pending`を維持する。
 
 ## References
 
