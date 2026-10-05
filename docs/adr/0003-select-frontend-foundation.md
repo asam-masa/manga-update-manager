@@ -108,6 +108,8 @@ Wails雛形生成と最初の画面実装で次を確認する。
 
 表紙カードと表形式の最小表示、およびフロントエンドテストは後続Issueで検証する。すべての検証項目を完了していないため、Validation Statusは`Pending`を維持する。
 
+Issue #23で登録フォームとプレースホルダー付きの作品カードをReact標準の状態とCSSで実装した。APIを差し替えたDOMテストで登録、一覧、失敗、キーボード操作を確認した。表形式と実際の表紙表示は未実装であり、Validation Statusは`Pending`を維持する。
+
 ## References
 
 - [Wails v2: Creating a Project](https://v2.wails.io/docs/gettingstarted/firstproject/)

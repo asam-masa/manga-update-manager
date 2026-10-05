@@ -38,6 +38,7 @@
 - [Wailsアプリの画面とブラウザーの境界](./wails-runtime.md)
 - [作品モデルとSQLite保存を分離する](./sqlite-storage.md)
 - [保存基盤を作品APIへつなぐ](./work-api.md)
+- [非同期の登録と一覧を分けて考える](./work-screen.md)
 
 ## クイズでの利用
 
