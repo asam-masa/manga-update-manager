@@ -153,7 +153,7 @@ Infrastructure ---------> interface implementations
 - バックアップ形式にバージョンが含まれる
 - パッケージ間に禁止した依存がない
 
-実装前で検証を完了していないため、Validation Statusは`Pending`とする。
+Issue #21で、Wailsの入出力変換、Applicationの登録・一覧操作、利用側interface、StorageのSQL、platformのOS保存先を分離した。一時SQLiteと固定時刻のテストで各境界を確認した。ブラウザー起動とバックアップの検証は後続Issueに残るため、Validation Statusは`Pending`を維持する。
 
 ## References
 

@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	ErrDuplicateURL         = errors.New("この作品URLは登録済みです")
 	ErrURLRequired          = errors.New("作品URLを入力してください")
 	ErrURLScheme            = errors.New("作品URLはhttpまたはhttpsで入力してください")
 	ErrTitleRequired        = errors.New("タイトルを入力してください")

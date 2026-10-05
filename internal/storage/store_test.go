@@ -107,8 +107,49 @@ func TestStoreRejectsDuplicateURL(t *testing.T) {
 	if _, err := store.CreateWork(ctx, work); err != nil {
 		t.Fatalf("first CreateWork() error = %v", err)
 	}
-	if _, err := store.CreateWork(ctx, work); err == nil {
-		t.Fatal("second CreateWork() error = nil, want duplicate error")
+	if _, err := store.CreateWork(ctx, work); !errors.Is(err, manga.ErrDuplicateURL) {
+		t.Fatalf("second CreateWork() error = %v, want duplicate error", err)
+	}
+}
+
+func TestListWorksOrderEmptyAndFailures(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, filepath.Join(t.TempDir(), "test.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	list, err := store.ListWorks(ctx)
+	if err != nil || list == nil || len(list) != 0 {
+		t.Fatalf("empty list = %#v, %v", list, err)
+	}
+	for _, url := range []string{"https://example.com/z", "https://example.com/a"} {
+		work, err := manga.NewWork(manga.NewWorkInput{URL: url, Title: "作品"}, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.CreateWork(ctx, work); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err = store.ListWorks(ctx)
+	if err != nil || len(list) != 2 || list[0].ID >= list[1].ID || list[0].URL != "https://example.com/z" {
+		t.Fatalf("list = %#v, %v", list, err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := store.ListWorks(cancelled); err == nil {
+		t.Fatal("ignored cancellation")
+	}
+	if _, err := store.db.Exec("UPDATE works SET created_at = 'invalid', updated_at = 'invalid' WHERE id = ?", list[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.ListWorks(ctx); err == nil {
+		t.Fatal("accepted invalid timestamp")
+	}
+	store.Close()
+	if _, err := store.ListWorks(ctx); err == nil {
+		t.Fatal("accepted closed database")
 	}
 }
 
