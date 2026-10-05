@@ -35,6 +35,8 @@ bookmarks.html
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.vite/
+/frontend/.vitest/
+/frontend/coverage/
 
 # Wails build output
 /build/bin/

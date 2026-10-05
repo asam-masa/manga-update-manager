@@ -9,8 +9,10 @@
 | 生成物 | Git管理 | 再生成コマンド | レビュー方法 |
 | --- | --- | --- | --- |
 | `frontend/wailsjs/` | 管理する | `wails generate module`または`wails build` | Goとのバインディング差分を確認する |
+| `frontend/package.json.md5` | 管理する | `wails build` | package.json変更時のWails生成差分を確認する |
 | `frontend/dist/` | 管理しない | `npm --prefix frontend run build` | ビルド成功を確認する |
 | `frontend/.vite/` | 管理しない | `wails dev`またはViteの実行 | 再生成できることを確認する |
+| `frontend/.vitest/`, `frontend/coverage/` | 管理しない | フロントエンドテスト | ソースとテスト結果をレビューする |
 | `build/bin/` | 管理しない | `wails build` | Windows向けビルド成功を確認する |
 
 ## 判断基準

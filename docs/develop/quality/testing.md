@@ -27,5 +27,7 @@
 - バックアップと復元で利用者データが欠落しないこと
 - 自動取得失敗時に手動管理へ安全に戻れること
 
-言語とフレームワーク固有のコマンド、CI構成、テストライブラリは、技術選定ADRの確定後に追記します。
+Goのテストは`go test ./...`、静的解析は`go vet ./...`で実行します。フロントエンドは`npm --prefix frontend test`でVitest・jsdom・React Testing Library・user-eventを使用し、Wails APIを差し替えて画面操作を検証します。
+
+配布用ビルドは`npm --prefix frontend run build`と`wails build`で確認します。WebView2、実DB、日本語IMEの結合動作はDOMテストだけでは検証できません。必要な実機確認と未実施項目をPRへ記録します。CIは後続Issueで追加します。
 

@@ -33,11 +33,11 @@
 
 ## 開発状況
 
-Go＋Wails v2とReact＋TypeScriptのアプリ雛形、作品モデル、SQLite保存基盤、作品登録・一覧取得のWails APIを実装しました。DBはWindowsの`%AppData%\MangaUpdateManager\manga.sqlite`へ保存します。画面は接続確認用のままで、登録フォームと一覧表示は後続Issueで追加します。[作品API設計](./docs/work-api.md)を参照してください。
+作品モデル、SQLite保存基盤、Wails API、作品登録フォームと一覧画面を実装しました。URLとタイトルを入力して登録し、保存済みの一覧を確認できます。表紙はプレースホルダーで、画像管理、編集・削除、ブラウザー起動、更新予定は後続Issueで追加します。DBはWindowsの`%AppData%\MangaUpdateManager\manga.sqlite`へ保存します。[画面設計](./docs/work-screen.md)と[作品API設計](./docs/work-api.md)を参照してください。
 
 ## 開発コマンド
 
-必要な環境はGo、Node.js、npm、Wails CLI v2.14.0、WebView2です。
+必要な環境はGo 1.25.0設定に対応するGo環境、Node.js 24.15.0以降の24系、npm、Wails CLI v2.14.0、WebView2です。画面テストのjsdomと推移依存が要求するNode.jsバージョンを満たしてください。今回の検証ではNode.js 24.18.0を使用しました。
 
 ```powershell
 wails doctor
@@ -48,6 +48,8 @@ wails dev
 
 ```powershell
 go test ./...
+go vet ./...
+npm --prefix frontend test
 npm --prefix frontend run build
 wails build
 ```
