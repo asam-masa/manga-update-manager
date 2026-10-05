@@ -33,7 +33,7 @@
 
 ## 開発状況
 
-Go＋Wails v2とReact＋TypeScriptのアプリ雛形を作成しました。作品管理とSQLiteへの保存は後続の開発工程で追加します。
+Go＋Wails v2とReact＋TypeScriptのアプリ雛形、および作品モデルとSQLite保存基盤を実装しました。画面からの作品登録と一覧表示は後続の開発工程で追加します。
 
 ## 開発コマンド
 

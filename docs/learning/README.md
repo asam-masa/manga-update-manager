@@ -36,6 +36,7 @@
 ## 一覧
 
 - [Wailsアプリの画面とブラウザーの境界](./wails-runtime.md)
+- [作品モデルとSQLite保存を分離する](./sqlite-storage.md)
 
 ## クイズでの利用
 
