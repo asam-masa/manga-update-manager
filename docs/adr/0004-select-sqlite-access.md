@@ -126,6 +126,8 @@ Issue #19の実装で、次を確認した。
 
 作品の更新と削除、およびGitHub Actionsでのテストは後続Issueの対象であり、未検証である。ADRに記載した検証項目をすべて完了していないため、Validation Statusは`Pending`を維持する。
 
+Issue #21では、ID昇順の一覧取得、空一覧、URL重複の共通エラーへの変換、アプリ終了後の再オープンを一時SQLiteで確認した。ドライバー固有のエラーコードはStorage内だけで参照する。
+
 ## References
 
 - [`modernc.org/sqlite` package](https://pkg.go.dev/modernc.org/sqlite)

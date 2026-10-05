@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/manga"
-	_ "modernc.org/sqlite"
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 var ErrWorkNotFound = errors.New("作品が見つかりません")
@@ -70,6 +71,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		formatTime(work.UpdatedAt),
 	)
 	if err != nil {
+		var sqliteErr *sqlite.Error
+		if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE {
+			return manga.Work{}, manga.ErrDuplicateURL
+		}
 		return manga.Work{}, fmt.Errorf("insert work: %w", err)
 	}
 

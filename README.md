@@ -33,7 +33,7 @@
 
 ## 開発状況
 
-Go＋Wails v2とReact＋TypeScriptのアプリ雛形、および作品モデルとSQLite保存基盤を実装しました。画面からの作品登録と一覧表示は後続の開発工程で追加します。
+Go＋Wails v2とReact＋TypeScriptのアプリ雛形、作品モデル、SQLite保存基盤、作品登録・一覧取得のWails APIを実装しました。DBはWindowsの`%AppData%\MangaUpdateManager\manga.sqlite`へ保存します。画面は接続確認用のままで、登録フォームと一覧表示は後続Issueで追加します。[作品API設計](./docs/work-api.md)を参照してください。
 
 ## 開発コマンド
 
