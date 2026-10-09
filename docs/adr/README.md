@@ -10,4 +10,5 @@
 | [0002](./0002-select-application-architecture.md) | 内部アーキテクチャを選定する | Accepted | Pending | 2026-10-04 | [#7](https://github.com/asam-masa/manga-update-manager/issues/7) |
 | [0003](./0003-select-frontend-foundation.md) | フロントエンド構成を選定する | Accepted | Pending | 2026-10-04 | [#13](https://github.com/asam-masa/manga-update-manager/issues/13) |
 | [0004](./0004-select-sqlite-access.md) | SQLiteアクセス方式を選定する | Accepted | Pending | 2026-10-04 | [#13](https://github.com/asam-masa/manga-update-manager/issues/13) |
+| [0005](./0005-define-library-behavior.md) | 作品一覧の操作と表示状態の扱いを決める | Accepted | Pending | 2026-10-09 | [#25](https://github.com/asam-masa/manga-update-manager/issues/25)〜[#31](https://github.com/asam-masa/manga-update-manager/issues/31) |
 
