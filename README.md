@@ -33,7 +33,7 @@
 
 ## 開発状況
 
-作品モデル、SQLite保存基盤、Wails API、作品登録フォームと一覧画面を実装しました。URLとタイトルを入力して登録し、保存済みの一覧を確認できます。表紙はプレースホルダーで、画像管理、編集・削除、ブラウザー起動、更新予定は後続Issueで追加します。DBはWindowsの`%AppData%\MangaUpdateManager\manga.sqlite`へ保存します。[画面設計](./docs/work-screen.md)と[作品API設計](./docs/work-api.md)を参照してください。
+作品モデル、SQLite保存基盤、Wails API、作品登録フォームと一覧画面を実装しました。一覧のURLから既定ブラウザーで作品を開き、起動要求の成功時刻を最終アクセスとして保存できます。ページ表示・読了は確認しません。表紙はプレースホルダーで、画像管理、編集・削除、更新予定は後続Issueで追加します。DBはWindowsの`%AppData%\MangaUpdateManager\manga.sqlite`へ保存します。[画面設計](./docs/work-screen.md)と[作品API設計](./docs/work-api.md)を参照してください。
 
 ## 開発コマンド
 

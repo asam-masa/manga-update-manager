@@ -10,6 +10,10 @@ export function ListWorks() {
   return window['go']['main']['App']['ListWorks']();
 }
 
+export function OpenWork(arg1) {
+  return window['go']['main']['App']['OpenWork'](arg1);
+}
+
 export function Status() {
   return window['go']['main']['App']['Status']();
 }

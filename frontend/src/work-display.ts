@@ -1,4 +1,6 @@
-const knownCodes = new Set(['database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error']);
+import type {main} from '../wailsjs/go/models';
+export type WorkView = Omit<main.WorkDTO, 'lastAccessedAt'> & {lastAccessedAt?: string | null};
+const knownCodes = new Set(['database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error', 'browser_open_failed', 'access_save_failed', 'work_not_found', 'work_open_in_progress']);
 
 // Raw runtime errors may contain diagnostics; only the structured contract is shown.
 export function apiErrorMessage(error: unknown, fallback: string): string {

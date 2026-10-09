@@ -26,6 +26,7 @@ Applicationの`WorkRepository`は登録と一覧だけを定義する。時刻�
 | --- | --- | --- |
 | `CreateWork` | `url`, `title`, `siteName`, `thumbnailPath`, `notes` | 採番済みの作品DTO |
 | `ListWorks` | なし | ID昇順の作品DTO配列。未登録時は`[]` |
+| `OpenWork` | 作品ID | 起動要求と日時保存に成功した作品DTO |
 
 作品DTOは入力項目に加え、`id`, `createdAt`, `updatedAt`を持つ。日時は`Asia/Tokyo`のRFC 3339文字列（`+09:00`、小数秒は必要な桁数）で返す。DB保存は既存のUTC・小数秒固定9桁を維持する。IDと登録日時は利用者入力として受け取らない。サムネイルの相対パスは既存規則で検証するだけで、画像操作は行わない。
 
@@ -41,8 +42,22 @@ Applicationの`WorkRepository`は登録と一覧だけを定義する。時刻�
 
 重複判定は事前検索ではなく、SQLiteのUNIQUE制約を根拠とする。現在の登録SQLでUNIQUE対象はURLだけである。制約を追加する場合はエラー変換も見直す。
 
+## Issue #25: ページ起動と最終アクセス
+
+`WorkOpener`は利用側の`AccessRepository`、起動関数、時刻関数を受け取る。作品をIDで取得し、保存済みURLを検証し、既定ブラウザーへ渡し、成功後の時刻を保存する。同じIDは処理中だけ排他し、異なる作品を一律に止めない。終了処理は実行中APIの完了を待つ。
+
+DTOの`lastAccessedAt`は未アクセスならJSONのnull、それ以外は日本時間のRFC 3339文字列とする。Wailsの生成型は`lastAccessedAt?: string`となるため、画面側の`WorkView`でnullを含める。生成された型は手編集しない。
+
+起動失敗は`browser_open_failed`、起動成功後の保存失敗は`access_save_failed`、存在しないIDは`work_not_found`、処理中の同じIDは`work_open_in_progress`を返す。保存失敗は部分成功であり、ページは閉じず、画面は保存済み日時を維持する。内部診断情報は利用者へ返さない。
+
+Windowsでは`ShellExecuteW`のエラーを返す`windows.ShellExecute`を使用する。OSスレッドを固定してCOMをSTAで初期化し、終了時に解放する。既存依存の`golang.org/x/sys`と`github.com/go-ole/go-ole`を直接依存へ変更し、新しいモジュールは導入しない。エラーを返さないWailsの`BrowserOpenURL`は今回使用しない。対象OSはWindowsである。
+
+画面のURLはリンク風のbuttonとし、シェルへURLを渡す処理はGo側だけが担当する。Enter・Spaceで操作でき、処理中は無効になる。URLの全文はtitle属性、表示は1行省略とする。タイトルは通常の文字列のまま残す。一覧取得中に保存が完了しても古い応答が日時を戻さないよう、読取開始後の保存結果を反映する。
+
+一次情報: [ShellExecuteW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew)、[CoInitializeEx](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex)。要求の成功はページ表示や読了の保証ではない。
+
 ## 検証と制約
 
 一時保存先でOS保存先の解決、初期化失敗、空一覧、登録、重複、ID順、日時、再オープン後の保持、終了後のAPI拒否をテストする。実利用者のDBはテストに使わない。
 
-Issue #21では登録フォームと一覧画面を対象外とした。両画面はIssue #23で追加する。画像管理、編集・削除、ブラウザー起動、最終アクセス、更新予定、バックアップ、GitHub Actionsは後続Issueの対象である。ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
+Issue #21では登録フォームと一覧画面を対象外とし、Issue #23で追加した。ブラウザー起動と最終アクセスはIssue #25で追加した。画像管理、編集・削除、更新予定、バックアップ、GitHub Actionsは後続Issueの対象である。ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
