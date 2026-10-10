@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {StrictMode} from 'react';
 import App from './App';
-import {CreateWork, ListWorks} from '../wailsjs/go/main/App';
+import {CreateWork, ListWorks, LoadDisplaySettings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn()}));
 const list = vi.mocked(ListWorks);
 const create = vi.mocked(CreateWork);
 const work: main.WorkDTO = {
@@ -30,6 +30,7 @@ async function fillRequired() {
 
 beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(LoadDisplaySettings).mockResolvedValue({registrationFormVisible: true});
     list.mockResolvedValue([]);
     create.mockResolvedValue(work);
 });
