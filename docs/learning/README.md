@@ -45,6 +45,7 @@
 - [E2Eツールより先に接続の前提を確かめる](./webview2-e2e.md)
 - [表示の成功と設定保存の成功を分ける](./display-settings.md)
 - [レビュー対象と独立性を分けて考える](./change-reviews.md)
+- [画像を保存する前に境界を分ける](./cover-image-boundaries.md)
 
 ## クイズでの利用
 
