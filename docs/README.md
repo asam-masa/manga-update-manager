@@ -33,4 +33,5 @@
 ## 検証
 
 - [公開リポジトリ監査](./verification/public-repository-audit.md)
+- [実WailsアプリへのPlaywright接続調査](./verification/webview2-playwright-spike.md)
 
