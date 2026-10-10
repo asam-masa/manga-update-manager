@@ -1,7 +1,7 @@
 # ADR-0006: 表示設定をSQLiteへ保存する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-10
 - Related: [#27](https://github.com/asam-masa/manga-update-manager/issues/27)
 
@@ -55,7 +55,9 @@ Issue #27のgrillingで、SQLite方式、操作ごとの保存、失敗時の継
 
 一時SQLiteで未登録、保存・再オープン、未知値を勝手に修復しないこと、書き込み失敗で以前の値と作品が変わらないこと、既存スキーマからの移行を確認した。ApplicationとWails境界で操作と安全なエラー変換を確認した。
 
-DOMテストで復元・自動保存なし・初回フォーカス、読み書き失敗、連続操作の順序、StrictModeの古い応答の無視、検索・途中入力の非保存を確認した。実WebView2の終了・再起動後の復元は未確認であり、Validation StatusはPendingを維持する。
+DOMテストで復元・自動保存なし・初回フォーカス、読み書き失敗、連続操作の順序、StrictModeの古い応答の無視、検索・途中入力の非保存を確認した。
+
+2026-10-10に利用者が、専用APPDATAの実WebView2で非表示・表示それぞれの終了と再起動後の復元、検索文字と途中入力の解除、警告が出ないことを確認した。保存中表示は保存がすぐ終わるため一瞬で、異常はなかった。今回のフォーム開閉設定に必要な自動・実機検証を完了し、Validation StatusをVerifiedとする。未実装の設定項目やOS障害・複数アプリ間の競合を検証済みとは扱わない。
 
 ## References
 
