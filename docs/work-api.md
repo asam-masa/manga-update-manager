@@ -56,6 +56,17 @@ Windowsでは`ShellExecuteW`のエラーを返す`windows.ShellExecute`を使用
 
 一次情報: [ShellExecuteW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew)、[CoInitializeEx](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex)。要求の成功はページ表示や読了の保証ではない。
 
+## Issue #27: 表示設定API
+
+Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独立した操作であり、設定エラーは作品用コードへ混在させない。
+
+| API | 入力 | 正常結果 |
+| --- | --- | --- |
+| `LoadDisplaySettings` | なし | `registrationFormVisible: boolean`のDTO。未登録ならtrue |
+| `SetRegistrationFormVisible` | boolean | 成功時はvoid |
+
+設定の未登録は正常扱いとし、読み取りだけでは書き込まない。読み取り失敗・未知値・DB利用不能は`settings_read_failed`、保存失敗・DB利用不能は`settings_save_failed`の安全な文言でrejectする。画面は読み取り失敗を表示の初期値で補い、保存失敗でも操作を継続する。明示操作の保存だけを行い、作品データや診断情報を返さない。新しいライブラリは追加しない。
+
 ## 検証と制約
 
 一時保存先でOS保存先の解決、初期化失敗、空一覧、登録、重複、ID順、日時、再オープン後の保持、終了後のAPI拒否をテストする。実利用者のDBはテストに使わない。

@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
-import {CreateWork, ListWorks, OpenWork} from '../wailsjs/go/main/App';
+import {CreateWork, ListWorks, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible} from '../wailsjs/go/main/App';
 import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage} from './work-display';
@@ -18,6 +18,13 @@ function App() {
     const [saveError, setSaveError] = useState('');
     const [registeredTitle, setRegisteredTitle] = useState<string | null>(null);
     const [formVisible, setFormVisible] = useState(true);
+    const [settingsReady, setSettingsReady] = useState(false);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [settingsWarning, setSettingsWarning] = useState('');
+    const visibleRef = useRef(true);
+    const settingsRequest = useRef(0);
+    const settingsRevision = useRef(0);
+    const settingsQueue = useRef<Promise<void>>(Promise.resolve());
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const composingSearch = useRef(false);
@@ -56,6 +63,26 @@ function App() {
     }, [loadWorks]);
 
     useEffect(() => {
+        const current = ++settingsRequest.current;
+        void (async () => {
+            try {
+                const value = await LoadDisplaySettings();
+                if (current !== settingsRequest.current) return;
+                visibleRef.current = value.registrationFormVisible;
+                setFormVisible(value.registrationFormVisible);
+            } catch (error: unknown) {
+                if (current !== settingsRequest.current) return;
+                visibleRef.current = true;
+                setFormVisible(true);
+                setSettingsWarning(apiErrorMessage(error, '表示設定を読み込めませんでした。登録フォームを表示して続行します。'));
+            } finally {
+                if (current === settingsRequest.current) setSettingsReady(true);
+            }
+        })();
+        return () => { ++settingsRequest.current; };
+    }, []);
+
+    useEffect(() => {
         if (!focusAfterToggle.current) return;
         focusAfterToggle.current = false;
         if (formVisible) urlInput.current?.focus();
@@ -63,15 +90,33 @@ function App() {
     }, [formVisible]);
 
     function toggleForm() {
-        if (submitting.current) return;
+        if (submitting.current || !settingsReady) return;
+        const visible = !visibleRef.current;
+        visibleRef.current = visible;
         focusAfterToggle.current = true;
-        setFormVisible((visible) => !visible);
+        setFormVisible(visible);
+        setSettingsSaving(true);
+        const current = settingsRequest.current;
+        const revision = ++settingsRevision.current;
+        // Serialize explicit actions; never save defaults just because the component mounted.
+        settingsQueue.current = settingsQueue.current.then(async () => {
+            try {
+                await SetRegistrationFormVisible(visible);
+                if (current === settingsRequest.current && revision === settingsRevision.current) setSettingsWarning('');
+            } catch (error: unknown) {
+                if (current === settingsRequest.current && revision === settingsRevision.current) {
+                    setSettingsWarning(apiErrorMessage(error, '表示設定を保存できませんでした。再起動すると以前の状態に戻る場合があります。'));
+                }
+            } finally {
+                if (current === settingsRequest.current && revision === settingsRevision.current) setSettingsSaving(false);
+            }
+        });
     }
 
     async function register(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         // Close the gap before React renders the disabled submit button.
-        if (submitting.current || !formVisible) return;
+        if (submitting.current || !settingsReady || !formVisible) return;
         submitting.current = true;
         setSaving(true);
         setSaveError('');
@@ -110,14 +155,17 @@ function App() {
                 </div>
                 <div className="header-actions">
                     <span className="local-badge">端末内に保存</span>
-                    <button ref={toggleButton} type="button" className="secondary-button" disabled={saving}
-                        aria-expanded={formVisible} aria-controls="registration-panel" onClick={toggleForm}>
-                        {formVisible ? '登録フォームを閉じる' : '作品を登録'}
+                    <button ref={toggleButton} type="button" className="secondary-button" disabled={saving || !settingsReady}
+                        aria-expanded={settingsReady && formVisible} aria-controls="registration-panel" onClick={toggleForm}>
+                        {!settingsReady ? '表示設定を読み込み中…' : formVisible ? '登録フォームを閉じる' : '作品を登録'}
                     </button>
                 </div>
             </header>
-            <div className={`workspace${formVisible ? '' : ' registration-hidden'}`}>
-                <section id="registration-panel" className="registration-panel" hidden={!formVisible} aria-labelledby="registration-heading">
+            {!settingsReady && <p role="status">表示設定を読み込んでいます…</p>}
+            {settingsSaving && <p role="status">表示設定を保存しています…</p>}
+            {settingsWarning && <p className="message error-message" role="alert">{settingsWarning}</p>}
+            <div className={`workspace${settingsReady && formVisible ? '' : ' registration-hidden'}`}>
+                <section id="registration-panel" className="registration-panel" hidden={!settingsReady || !formVisible} aria-labelledby="registration-heading">
                     <h2 id="registration-heading">作品を登録</h2>
                     <p className="section-description">URLとタイトルは必須です。</p>
                     <form onSubmit={register} aria-busy={saving} onKeyDown={(event) => {

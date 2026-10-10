@@ -5,7 +5,7 @@ import App from './App';
 import {ListWorks, OpenWork} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn()}));
 
 it('一覧の古い応答でもアクセス日時を戻さず、追加作品は表示する', async () => {
     const work: main.WorkDTO = {id: 1, title: '作品', url: 'https://example.com', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-01T00:00:00+09:00', updatedAt: '2026-10-01T00:00:00+09:00'};

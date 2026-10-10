@@ -6,6 +6,10 @@ export function CreateWork(arg1:main.CreateWorkInput):Promise<main.WorkDTO>;
 
 export function ListWorks():Promise<Array<main.WorkDTO>>;
 
+export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
+
 export function OpenWork(arg1:number):Promise<main.WorkDTO>;
+
+export function SetRegistrationFormVisible(arg1:boolean):Promise<void>;
 
 export function Status():Promise<string>;

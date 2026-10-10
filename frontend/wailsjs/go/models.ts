@@ -20,6 +20,18 @@ export namespace main {
 	        this.notes = source["notes"];
 	    }
 	}
+	export class DisplaySettingsDTO {
+	    registrationFormVisible: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new DisplaySettingsDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.registrationFormVisible = source["registrationFormVisible"];
+	    }
+	}
 	export class WorkDTO {
 	    id: number;
 	    url: string;

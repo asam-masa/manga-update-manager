@@ -10,8 +10,16 @@ export function ListWorks() {
   return window['go']['main']['App']['ListWorks']();
 }
 
+export function LoadDisplaySettings() {
+  return window['go']['main']['App']['LoadDisplaySettings']();
+}
+
 export function OpenWork(arg1) {
   return window['go']['main']['App']['OpenWork'](arg1);
+}
+
+export function SetRegistrationFormVisible(arg1) {
+  return window['go']['main']['App']['SetRegistrationFormVisible'](arg1);
 }
 
 export function Status() {

@@ -19,6 +19,7 @@ type App struct {
 	mu            sync.RWMutex
 	ctx           context.Context
 	works         *application.Works
+	display       *application.DisplaySettings
 	opener        *application.WorkOpener
 	openURL       func(string) error
 	store         *storage.Store
@@ -54,6 +55,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.store = store
 	a.works = application.NewWorks(store, time.Now)
+	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 }
 
@@ -61,6 +63,7 @@ func (a *App) shutdown(_ context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.works = nil
+	a.display = nil
 	a.opener = nil
 	if a.store != nil {
 		if err := a.store.Close(); err != nil {

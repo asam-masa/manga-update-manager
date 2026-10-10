@@ -2,13 +2,13 @@ import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {beforeEach, expect, it, vi} from 'vitest';
 import App from './App';
-import {CreateWork, ListWorks} from '../wailsjs/go/main/App';
+import {CreateWork, ListWorks, LoadDisplaySettings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn()}));
 const first: main.WorkDTO = {id: 1, title: 'ＡＢＣ物語', url: 'https://example.com/1', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-10T00:00:00+09:00', updatedAt: '2026-10-10T00:00:00+09:00'};
 const second = {...first, id: 2, title: 'マンガ物語', url: 'https://example.com/2'};
-beforeEach(() => { vi.resetAllMocks(); vi.mocked(ListWorks).mockResolvedValue([first, second]); vi.mocked(CreateWork).mockResolvedValue(second); });
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(ListWorks).mockResolvedValue([first, second]); vi.mocked(CreateWork).mockResolvedValue(second); vi.mocked(LoadDisplaySettings).mockResolvedValue({registrationFormVisible: true}); });
 
 it('フォーム開閉で入力を保持し、フォーカスを移動する', async () => {
     render(<App />);

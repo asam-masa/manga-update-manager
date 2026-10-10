@@ -43,6 +43,7 @@
 - [外部操作の部分成功を扱う](./work-access.md)
 - [入力表示と検索条件を分ける](./form-search.md)
 - [E2Eツールより先に接続の前提を確かめる](./webview2-e2e.md)
+- [表示の成功と設定保存の成功を分ける](./display-settings.md)
 
 ## クイズでの利用
 
