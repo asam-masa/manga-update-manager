@@ -145,6 +145,8 @@ describe('作品管理画面', () => {
         await screen.findByText('まだ作品が登録されていません');
         const user = userEvent.setup();
         await user.tab();
+        expect(document.activeElement).toBe(screen.getByRole('button', {name: '登録フォームを閉じる'}));
+        await user.tab();
         expect(document.activeElement).toBe(screen.getByLabelText(/作品URL/));
         await user.type(document.activeElement as HTMLElement, work.url);
         await user.tab();
