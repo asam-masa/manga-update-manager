@@ -19,13 +19,15 @@ type App struct {
 	mu            sync.RWMutex
 	ctx           context.Context
 	works         *application.Works
+	opener        *application.WorkOpener
+	openURL       func(string) error
 	store         *storage.Store
 	dataDirectory func() (string, error)
 }
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -52,12 +54,14 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.store = store
 	a.works = application.NewWorks(store, time.Now)
+	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 }
 
 func (a *App) shutdown(_ context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.works = nil
+	a.opener = nil
 	if a.store != nil {
 		if err := a.store.Close(); err != nil {
 			log.Print("作品データベースを閉じられませんでした")
@@ -83,6 +87,19 @@ func formatAPIError(err error) any {
 }
 
 func workAPIError(err error) error {
+	for _, entry := range []struct {
+		err           error
+		code, message string
+	}{
+		{manga.ErrWorkNotFound, "work_not_found", "作品が見つかりません。一覧を再読み込みしてください。"},
+		{application.ErrBrowserOpen, "browser_open_failed", "ページを開けませんでした。既定ブラウザーの設定を確認して再度お試しください。"},
+		{application.ErrAccessSave, "access_save_failed", "ページを開きましたが、最終アクセス日時を保存できませんでした。保存先を確認してください。"},
+		{application.ErrOpenInProgress, "work_open_in_progress", "この作品を開いています。処理が終わるまでお待ちください。"},
+	} {
+		if errors.Is(err, entry.err) {
+			return &APIError{Code: entry.code, Message: entry.message}
+		}
+	}
 	if errors.Is(err, manga.ErrDuplicateURL) {
 		return &APIError{Code: "duplicate_url", Message: manga.ErrDuplicateURL.Error()}
 	}
@@ -107,23 +124,43 @@ type CreateWorkInput struct {
 }
 
 type WorkDTO struct {
-	ID            int64  `json:"id"`
-	URL           string `json:"url"`
-	Title         string `json:"title"`
-	SiteName      string `json:"siteName"`
-	ThumbnailPath string `json:"thumbnailPath"`
-	Notes         string `json:"notes"`
-	CreatedAt     string `json:"createdAt"`
-	UpdatedAt     string `json:"updatedAt"`
+	ID             int64   `json:"id"`
+	URL            string  `json:"url"`
+	Title          string  `json:"title"`
+	SiteName       string  `json:"siteName"`
+	ThumbnailPath  string  `json:"thumbnailPath"`
+	Notes          string  `json:"notes"`
+	CreatedAt      string  `json:"createdAt"`
+	UpdatedAt      string  `json:"updatedAt"`
+	LastAccessedAt *string `json:"lastAccessedAt"`
 }
 
 func workDTO(work manga.Work) WorkDTO {
+	var accessed *string
+	if work.LastAccessedAt != nil {
+		value := platform.InJapan(*work.LastAccessedAt).Format(time.RFC3339Nano)
+		accessed = &value
+	}
 	return WorkDTO{
 		ID: work.ID, URL: work.URL, Title: work.Title, SiteName: work.SiteName,
 		ThumbnailPath: work.ThumbnailPath, Notes: work.Notes,
-		CreatedAt: platform.InJapan(work.CreatedAt).Format(time.RFC3339Nano),
-		UpdatedAt: platform.InJapan(work.UpdatedAt).Format(time.RFC3339Nano),
+		CreatedAt:      platform.InJapan(work.CreatedAt).Format(time.RFC3339Nano),
+		UpdatedAt:      platform.InJapan(work.UpdatedAt).Format(time.RFC3339Nano),
+		LastAccessedAt: accessed,
 	}
+}
+
+func (a *App) OpenWork(id int64) (WorkDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.opener == nil {
+		return WorkDTO{}, unavailableError()
+	}
+	work, err := a.opener.OpenWork(a.ctx, id)
+	if err != nil {
+		return WorkDTO{}, workAPIError(err)
+	}
+	return workDTO(work), nil
 }
 
 func (a *App) CreateWork(input CreateWorkInput) (WorkDTO, error) {

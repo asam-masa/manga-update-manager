@@ -13,7 +13,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-var ErrWorkNotFound = errors.New("作品が見つかりません")
+var ErrWorkNotFound = manga.ErrWorkNotFound
 
 const storageTimeFormat = "2006-01-02T15:04:05.000000000Z07:00"
 
@@ -55,6 +55,9 @@ func (s *Store) CreateWork(ctx context.Context, work manga.Work) (manga.Work, er
 	if work.ID != 0 {
 		return manga.Work{}, errors.New("登録前の作品にIDを指定できません")
 	}
+	if work.LastAccessedAt != nil {
+		return manga.Work{}, errors.New("登録前の作品に最終アクセス日時を指定できません")
+	}
 	if err := work.Validate(); err != nil {
 		return manga.Work{}, err
 	}
@@ -91,9 +94,10 @@ func (s *Store) WorkByID(ctx context.Context, id int64) (manga.Work, error) {
 	var work manga.Work
 	var createdAt string
 	var updatedAt string
+	var accessed sql.NullString
 
 	err := s.db.QueryRowContext(ctx, `
-SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at
+SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at
 FROM works
 WHERE id = ?`, id).Scan(
 		&work.ID,
@@ -104,6 +108,7 @@ WHERE id = ?`, id).Scan(
 		&work.Notes,
 		&createdAt,
 		&updatedAt,
+		&accessed,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return manga.Work{}, ErrWorkNotFound
@@ -120,11 +125,45 @@ WHERE id = ?`, id).Scan(
 	if err != nil {
 		return manga.Work{}, fmt.Errorf("parse updated_at: %w", err)
 	}
+	work.LastAccessedAt, err = parseAccessTime(accessed)
+	if err != nil {
+		return manga.Work{}, err
+	}
 	return work, nil
 }
 
 func formatTime(value time.Time) string {
 	return value.Round(0).UTC().Format(storageTimeFormat)
+}
+
+func parseAccessTime(value sql.NullString) (*time.Time, error) {
+	if !value.Valid {
+		return nil, nil
+	}
+	parsed, err := parseTime(value.String)
+	if err != nil {
+		return nil, fmt.Errorf("parse last_accessed_at: %w", err)
+	}
+	return &parsed, nil
+}
+
+// RecordLastAccess changes access metadata, not the work's content modification date.
+func (s *Store) RecordLastAccess(ctx context.Context, id int64, at time.Time) error {
+	if at.IsZero() {
+		return manga.ErrTimestampInvalid
+	}
+	result, err := s.db.ExecContext(ctx, "UPDATE works SET last_accessed_at = ? WHERE id = ?", formatTime(at), id)
+	if err != nil {
+		return fmt.Errorf("record last access: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrWorkNotFound
+	}
+	return nil
 }
 
 func parseTime(value string) (time.Time, error) {

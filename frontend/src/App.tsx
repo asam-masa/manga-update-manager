@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
-import {CreateWork, ListWorks} from '../wailsjs/go/main/App';
-import type {main} from '../wailsjs/go/models';
+import {CreateWork, ListWorks, OpenWork} from '../wailsjs/go/main/App';
+import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage} from './work-display';
 import './App.css';
@@ -10,7 +10,7 @@ const emptyForm = {url: '', title: '', siteName: '', notes: ''};
 
 function App() {
     const [form, setForm] = useState(emptyForm);
-    const [works, setWorks] = useState<main.WorkDTO[] | null>(null);
+    const [works, setWorks] = useState<WorkView[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [listError, setListError] = useState('');
     const [saving, setSaving] = useState(false);
@@ -18,14 +18,20 @@ function App() {
     const [success, setSuccess] = useState('');
     const submitting = useRef(false);
     const request = useRef(0);
+    const accessRevision = useRef(0);
+    const savedAccess = useRef(new Map<number, {revision: number; value: WorkView['lastAccessedAt']}>());
 
     const loadWorks = useCallback(async () => {
         const current = ++request.current;
+        const revision = accessRevision.current;
         setLoading(true);
         setListError('');
         try {
             const result = await ListWorks();
-            if (current === request.current) setWorks(result);
+            if (current === request.current) setWorks(result.map((work) => {
+                const saved = savedAccess.current.get(work.id);
+                return saved && saved.revision > revision ? {...work, lastAccessedAt: saved.value} : work;
+            }));
         } catch (error: unknown) {
             if (current === request.current) {
                 setListError(apiErrorMessage(error, '作品一覧を取得できません。再読み込みをお試しください。'));
@@ -61,6 +67,12 @@ function App() {
             submitting.current = false;
             setSaving(false);
         }
+    }
+
+    async function openWork(id: number) {
+        const updated = await OpenWork(id);
+        savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt});
+        setWorks((current) => current?.map((work) => work.id === id ? updated : work) ?? null);
     }
 
     return (
@@ -113,7 +125,7 @@ function App() {
                         <p>一覧を再読み込みしてください。登録した作品は再登録する必要はありません。</p>
                     </div>}
                     <div aria-busy={loading}>
-                        {works !== null && <WorkList works={works} showEmpty={!loading && !listError} />}
+                        {works !== null && <WorkList works={works} showEmpty={!loading && !listError} onOpen={openWork} />}
                     </div>
                 </section>
             </div>

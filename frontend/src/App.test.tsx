@@ -6,7 +6,7 @@ import App from './App';
 import {CreateWork, ListWorks} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn()}));
 const list = vi.mocked(ListWorks);
 const create = vi.mocked(CreateWork);
 const work: main.WorkDTO = {

@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	ErrWorkNotFound         = errors.New("作品が見つかりません")
 	ErrDuplicateURL         = errors.New("この作品URLは登録済みです")
 	ErrURLRequired          = errors.New("作品URLを入力してください")
 	ErrURLScheme            = errors.New("作品URLはhttpまたはhttpsで入力してください")
@@ -19,14 +20,15 @@ var (
 
 // Work is a manga title managed by the application.
 type Work struct {
-	ID            int64
-	URL           string
-	Title         string
-	SiteName      string
-	ThumbnailPath string
-	Notes         string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID             int64
+	URL            string
+	Title          string
+	SiteName       string
+	ThumbnailPath  string
+	Notes          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	LastAccessedAt *time.Time
 }
 
 // NewWorkInput contains values entered when a work is registered.
@@ -73,7 +75,7 @@ func (w Work) Validate() error {
 	if w.ThumbnailPath != "" && !validThumbnailPath(w.ThumbnailPath) {
 		return ErrThumbnailPathInvalid
 	}
-	if w.CreatedAt.IsZero() || w.UpdatedAt.IsZero() || w.UpdatedAt.Before(w.CreatedAt) {
+	if w.CreatedAt.IsZero() || w.UpdatedAt.IsZero() || w.UpdatedAt.Before(w.CreatedAt) || (w.LastAccessedAt != nil && w.LastAccessedAt.IsZero()) {
 		return ErrTimestampInvalid
 	}
 	return nil

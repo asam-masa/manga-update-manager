@@ -6,4 +6,6 @@ export function CreateWork(arg1:main.CreateWorkInput):Promise<main.WorkDTO>;
 
 export function ListWorks():Promise<Array<main.WorkDTO>>;
 
+export function OpenWork(arg1:number):Promise<main.WorkDTO>;
+
 export function Status():Promise<string>;

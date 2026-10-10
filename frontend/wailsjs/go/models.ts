@@ -29,6 +29,7 @@ export namespace main {
 	    notes: string;
 	    createdAt: string;
 	    updatedAt: string;
+	    lastAccessedAt?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new WorkDTO(source);
@@ -44,6 +45,7 @@ export namespace main {
 	        this.notes = source["notes"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	        this.lastAccessedAt = source["lastAccessedAt"];
 	    }
 	}
 

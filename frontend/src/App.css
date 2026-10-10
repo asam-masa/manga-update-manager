@@ -59,12 +59,12 @@ button:disabled, fieldset:disabled input, fieldset:disabled textarea { cursor: w
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #418bac; outline-offset: 3px; }
 .list-panel { min-width: 0; }
 .work-count { background: #edf2f6; border-radius: 6px; color: #52606d; display: inline-block; font-size: 0.75rem; font-weight: 400; margin-left: 10px; padding: 4px 8px; }
-.work-list { display: grid; gap: 12px; list-style: none; margin: 24px 0 0; padding: 0; }
+.work-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; list-style: none; margin: 24px 0 0; padding: 0; }
 .work-card { align-items: start; border: 1px solid #dfe3e8; border-radius: 8px; display: flex; gap: 16px; padding: 16px; }
 .cover-placeholder { align-items: center; background: #edf2f6; border-radius: 6px; color: #718096; display: flex; flex: 0 0 56px; font-family: serif; font-size: 1.5rem; height: 76px; justify-content: center; }
-.work-details { min-width: 0; }
+.work-details { min-width: 0; flex: 1; }
 .site-name { color: #334e68; font-size: 0.8rem; margin: 6px 0 0; overflow-wrap: anywhere; }
-.work-url { color: #52606d; font-size: 0.8rem; margin: 6px 0 0; overflow-wrap: anywhere; }
+.work-url { display: block; width: 100%; background: none; border: 0; padding: 0; color: #235b77; font-size: 0.8rem; font-weight: normal; margin: 6px 0 0; text-align: left; text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .work-notes { font-size: 0.875rem; line-height: 1.7; margin: 12px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .registered-at { color: #52606d; font-size: 0.75rem; line-height: 1.7; margin: 12px 0 0; }
 .empty-state { color: #52606d; line-height: 1.8; padding: 48px 12px; text-align: center; }
