@@ -29,5 +29,5 @@
 
 Goのテストは`go test ./...`、静的解析は`go vet ./...`で実行します。フロントエンドは`npm --prefix frontend test`でVitest・jsdom・React Testing Library・user-eventを使用し、Wails APIを差し替えて画面操作を検証します。
 
-配布用ビルドは`npm --prefix frontend run build`と`wails build`で確認します。WebView2、実DB、日本語IMEの結合動作はDOMテストだけでは検証できません。必要な実機確認と未実施項目をPRへ記録します。CIは後続Issueで追加します。
+配布用ビルドは`npm --prefix frontend run build`と`wails build`で確認します。WebView2、実DB、日本語IMEの結合動作はDOMテストだけでは検証できません。必要な実機確認と未実施項目をPRへ記録します。[Windows CI](../workflow/continuous-integration.md)ではクリーンな環境で自動検証します。Goは画面の成果物を埋め込むため、CIではフロントエンドのビルドをGoテストより先に実行します。
 

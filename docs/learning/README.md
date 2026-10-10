@@ -46,6 +46,7 @@
 - [表示の成功と設定保存の成功を分ける](./display-settings.md)
 - [レビュー対象と独立性を分けて考える](./change-reviews.md)
 - [画像を保存する前に境界を分ける](./cover-image-boundaries.md)
+- [CIでクリーンな環境を確認する](./windows-ci.md)
 
 ## クイズでの利用
 

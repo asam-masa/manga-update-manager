@@ -13,6 +13,7 @@
 - [コミット](./workflow/commit.md)
 - [PR・レビュー運用](./workflow/pull-request-review.md)
 - [生成物の管理](./workflow/generated-files.md)
+- [Windows CI](./workflow/continuous-integration.md)
 
 ## 品質
 
