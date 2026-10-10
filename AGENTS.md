@@ -22,6 +22,16 @@
 - 自動取得機能は、利用規約と公開仕様を確認したサイトに限定する
 - 技術スタック固有の規則は、採用技術のADR確定後に追加する
 
+## Review Policy
+
+- Codexはコミット前に`.agents/skills/review-code-changes/SKILL.md`を使用し、ステージ済み差分をレビューする
+- PR作成・更新前にも、固定したベースとheadの差分をレビューする
+- `docs/develop/quality/code-review.md`の重要変更では、通常レビューに加えて`.agents/skills/run-adversarial-review/SKILL.md`を使用する
+- 独立レビューに限り、読み取り専用のサブエージェントの利用を許可する。原則1名、重大な指摘で判断が割れた場合だけ追加1名、修正後の再確認は1回までとする。再委譲はしない
+- レビュー対象の版と確認結果を記録する。変更後は変更部分と関連する前提を再確認する
+- 未解決の`[must]`がある場合、または必要な独立レビューを実行できない場合は、コミットを止めてユーザーへ相談する
+- Git hookは導入しない。この規則はCodexの作業手順であり、手動のGit操作を機械的に制限するものではない
+
 ## Documentation Policy
 
 日本語の文書、Issue、PR、レビュー、UI文言を作成または変更する前に、`docs/develop/quality/japanese-writing.md`を確認します。
