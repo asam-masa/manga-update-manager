@@ -42,6 +42,9 @@ h3 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
 .section-description { color: #52606d; font-size: 0.875rem; line-height: 1.7; margin: 8px 0 0; }
 .local-badge { background: #e6f2ee; border-radius: 20px; color: #22664e; font-size: 0.75rem; padding: 8px 12px; white-space: nowrap; }
 .workspace { align-items: start; display: grid; gap: 24px; grid-template-columns: 300px minmax(0, 1fr); }
+.workspace.registration-hidden { grid-template-columns: minmax(0, 1fr); }
+.header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.search-controls { margin-top: 20px; }
 .registration-panel form { margin-top: 24px; }
 fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }

@@ -4,6 +4,7 @@ import {CreateWork, ListWorks, OpenWork} from '../wailsjs/go/main/App';
 import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage} from './work-display';
+import {titleMatches} from './work-search';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -15,7 +16,14 @@ function App() {
     const [listError, setListError] = useState('');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [registeredTitle, setRegisteredTitle] = useState<string | null>(null);
+    const [formVisible, setFormVisible] = useState(true);
+    const [searchInput, setSearchInput] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const composingSearch = useRef(false);
+    const focusAfterToggle = useRef(false);
+    const urlInput = useRef<HTMLInputElement>(null);
+    const toggleButton = useRef<HTMLButtonElement>(null);
     const submitting = useRef(false);
     const request = useRef(0);
     const accessRevision = useRef(0);
@@ -47,18 +55,31 @@ function App() {
         return () => { ++request.current; };
     }, [loadWorks]);
 
+    useEffect(() => {
+        if (!focusAfterToggle.current) return;
+        focusAfterToggle.current = false;
+        if (formVisible) urlInput.current?.focus();
+        else toggleButton.current?.focus();
+    }, [formVisible]);
+
+    function toggleForm() {
+        if (submitting.current) return;
+        focusAfterToggle.current = true;
+        setFormVisible((visible) => !visible);
+    }
+
     async function register(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         // Close the gap before React renders the disabled submit button.
-        if (submitting.current) return;
+        if (submitting.current || !formVisible) return;
         submitting.current = true;
         setSaving(true);
         setSaveError('');
-        setSuccess('');
+        setRegisteredTitle(null);
         try {
-            await CreateWork({...form, thumbnailPath: ''});
+            const created = await CreateWork({...form, thumbnailPath: ''});
             setForm(emptyForm);
-            setSuccess('作品を登録しました。');
+            setRegisteredTitle(created.title);
             // A list failure must not invite a second insert after a successful save.
             await loadWorks();
         } catch (error: unknown) {
@@ -75,6 +96,10 @@ function App() {
         setWorks((current) => current?.map((work) => work.id === id ? updated : work) ?? null);
     }
 
+    const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
+    const success = registeredTitle === null ? '' : titleMatches(registeredTitle, searchQuery)
+        ? '作品を登録しました。' : '作品を登録しました。検索条件に一致しないため非表示です。';
+
     return (
         <main className="app-shell">
             <header className="app-header">
@@ -83,16 +108,24 @@ function App() {
                     <h1>作品を管理</h1>
                     <p className="description">漫画を登録して、自分の一覧にまとめましょう。</p>
                 </div>
-                <span className="local-badge">端末内に保存</span>
+                <div className="header-actions">
+                    <span className="local-badge">端末内に保存</span>
+                    <button ref={toggleButton} type="button" className="secondary-button" disabled={saving}
+                        aria-expanded={formVisible} aria-controls="registration-panel" onClick={toggleForm}>
+                        {formVisible ? '登録フォームを閉じる' : '作品を登録'}
+                    </button>
+                </div>
             </header>
-            <div className="workspace">
-                <section className="registration-panel" aria-labelledby="registration-heading">
+            <div className={`workspace${formVisible ? '' : ' registration-hidden'}`}>
+                <section id="registration-panel" className="registration-panel" hidden={!formVisible} aria-labelledby="registration-heading">
                     <h2 id="registration-heading">作品を登録</h2>
                     <p className="section-description">URLとタイトルは必須です。</p>
-                    <form onSubmit={register} aria-busy={saving}>
+                    <form onSubmit={register} aria-busy={saving} onKeyDown={(event) => {
+                        if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault();
+                    }}>
                         <fieldset disabled={saving}>
                             <label htmlFor="work-url">作品URL <span className="required">必須</span></label>
-                            <input id="work-url" type="url" required value={form.url}
+                            <input ref={urlInput} id="work-url" type="url" required value={form.url}
                                 placeholder="https://example.com/manga/1"
                                 onChange={(event) => setForm({...form, url: event.target.value})} />
                             <label htmlFor="work-title">タイトル <span className="required">必須</span></label>
@@ -113,11 +146,25 @@ function App() {
                 <section className="list-panel" aria-labelledby="list-heading">
                     <div className="list-heading">
                         <div>
-                            <h2 id="list-heading">登録した作品{works !== null && <span className="work-count">{works.length}件</span>}</h2>
+                            <h2 id="list-heading">登録した作品{works !== null && <span className="work-count">{visibleWorks?.length}件 / 全{works.length}件</span>}</h2>
                             <p className="section-description">登録順に表示しています。</p>
                         </div>
                         <button className="secondary-button" disabled={loading || saving}
                             onClick={() => { void loadWorks(); }}>再読み込み</button>
+                    </div>
+                    <div className="search-controls">
+                        <label htmlFor="title-search">漫画名で検索</label>
+                        <input id="title-search" type="search" value={searchInput}
+                            onCompositionStart={() => { composingSearch.current = true; }}
+                            onCompositionEnd={(event) => {
+                                composingSearch.current = false;
+                                setSearchInput(event.currentTarget.value);
+                                setSearchQuery(event.currentTarget.value);
+                            }}
+                            onChange={(event) => {
+                                setSearchInput(event.target.value);
+                                if (!composingSearch.current) setSearchQuery(event.target.value);
+                            }} />
                     </div>
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
                     {listError && <div className="message error-message" role="alert">
@@ -125,7 +172,14 @@ function App() {
                         <p>一覧を再読み込みしてください。登録した作品は再登録する必要はありません。</p>
                     </div>}
                     <div aria-busy={loading}>
-                        {works !== null && <WorkList works={works} showEmpty={!loading && !listError} onOpen={openWork} />}
+                        {works !== null && visibleWorks !== undefined && <>
+                            {works.length > 0 && visibleWorks.length === 0 && !loading && !listError &&
+                                <div className="empty-state" role="status">
+                                    <h3>検索条件に一致する作品がありません</h3>
+                                    <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
+                                </div>}
+                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} />
+                        </>}
                     </div>
                 </section>
             </div>
