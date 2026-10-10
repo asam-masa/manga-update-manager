@@ -13,4 +13,5 @@
 | [0005](./0005-define-library-behavior.md) | 作品一覧の操作と表示状態の扱いを決める | Accepted | Pending | 2026-10-09 | [#25](https://github.com/asam-masa/manga-update-manager/issues/25)〜[#31](https://github.com/asam-masa/manga-update-manager/issues/31) |
 | [0006](./0006-persist-display-settings.md) | 表示設定をSQLiteへ保存する | Accepted | Verified | 2026-10-10 | [#27](https://github.com/asam-masa/manga-update-manager/issues/27) |
 | [0007](./0007-require-change-reviews.md) | 差分レビューと重要変更の独立レビューを必須にする | Accepted | Pending | 2026-10-10 | [#38](https://github.com/asam-masa/manga-update-manager/issues/38) |
+| [0008](./0008-manage-imported-cover-images.md) | 利用者の画像を一覧用に取り込んで管理する | Accepted | Pending | 2026-10-10 | [#28](https://github.com/asam-masa/manga-update-manager/issues/28)、[#40](https://github.com/asam-masa/manga-update-manager/issues/40) |
 
