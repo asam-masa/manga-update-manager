@@ -1,12 +1,12 @@
 module github.com/asam-masa/manga-update-manager
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/go-ole/go-ole v1.3.0
 	github.com/wailsapp/wails/v2 v2.14.0
 	golang.org/x/image v0.45.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.49.0
 	modernc.org/sqlite v1.58.0
 )
 
