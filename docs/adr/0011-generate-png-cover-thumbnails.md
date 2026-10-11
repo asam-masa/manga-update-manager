@@ -1,7 +1,7 @@
 # ADR-0011: 静止画像を検証してPNGサムネイルを生成する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-11
 - Related: [#41](https://github.com/asam-masa/manga-update-manager/issues/41)、[ADR-0008](./0008-manage-imported-cover-images.md)
 
@@ -55,7 +55,11 @@ PNGはCRCとチャンク境界、WebPはRIFF長とチャンク境界を確認し
 
 ## Validation
 
-合成画像によるテストで、3形式、透過、縮小、8方向、上下限、読み取り失敗、破損、アニメーション拒否を確認する。Go 1.25.0・CGO無効のWindows CI、全体テスト、静的解析、ビルドと独立レビューの結果をPRへ記録する。検証が完了するまでPendingとする。実際の利用者画像、ファイル保存、DB、WebView2での表示は対象外である。
+2026-10-11、合成画像によるテストで、3形式、透過、縮小、8方向、20 MiB・2,000万画素の上限ちょうどと超過、読み取り失敗、破損、アニメーション拒否を確認した。Go 1.25.0・CGO無効で全Goテスト・vet・Wailsビルドが成功した。画面44テストとビルド、Renovate設定3テストも成功した。
+
+Go 1.26.5・CGO無効で20秒の変異入力テストが1,588,541回成功した。単体テストのstatement coverageは90.1%だった。通常レビューと読み取り専用1名の独立レビューに未解決指摘はない。[PR #51](https://github.com/asam-masa/manga-update-manager/pull/51)の実装コミット`687e3f3cd78987b3851dd628f85acd8ef78fb626`に対する[Windows CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38121889028)も全ステップ成功した。
+
+Verifiedはこの生成処理と合成データによる検証範囲を意味する。実際の利用者画像、ファイル保存、DB、WebView2での表示は対象外であり、画像管理全体のADR-0008はPendingを維持する。
 
 ## References
 
