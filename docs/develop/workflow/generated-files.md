@@ -17,7 +17,7 @@
 
 ## 判断基準
 
-Wails v2.14.0が生成する`frontend/wailsjs/go/models.ts`には、空行のタブと末尾の余分な空行が含まれる場合がある。再生成後は末尾空白と末尾の余分な空行だけを除去し、`git diff --check`で確認する。型と変換処理は手編集しない。
+Wails v2.14.0とv2.16.0で生成した`frontend/wailsjs/go/models.ts`には、空行のタブと末尾の余分な空行が含まれた。v2.16.0での確認結果は[PR #61](https://github.com/asam-masa/manga-update-manager/pull/61)に記録した。再生成後は末尾空白と末尾の余分な空行だけを除去し、`git diff --check`で確認する。型と変換処理は手編集しない。
 
 - クリーンな環境で再生成できるか
 - 生成ツールのバージョンを固定できるか

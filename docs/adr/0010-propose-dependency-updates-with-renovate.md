@@ -55,7 +55,14 @@ Go依存の更新処理で必要なGo版や間接依存が変わる場合があ�
 
 2026-10-11、ユーザーがこのリポジトリだけを対象としてAppの導入とオンボーディングを完了した。ユーザー提示画面ではRenovateがEnabled・onboarded、Interactive、Community (Free)であることを確認した。
 
-同日の反映確認で、[Dependency Dashboard #50](https://github.com/asam-masa/manga-update-manager/issues/50)にGo直接依存、npm依存、GitHub Actions、Wails CLIの検出と、Wails本体・CLIの同一更新候補が掲載されていることを確認した。警告欄はなく、更新候補はAwaiting Scheduleにある。現時点の公開中PRに更新PRはなく、更新PRの作成・CI、通常の継続運用と脆弱性修正の実動は未検証なのでValidation Statusは`Pending`を維持する。設定上の制御を実動で検証済みとは扱わない。
+同日の反映確認で、[Dependency Dashboard #50](https://github.com/asam-masa/manga-update-manager/issues/50)にGo直接依存、npm依存、GitHub Actions、Wails CLIの検出と、Wails本体・CLIの同一更新候補が掲載されていることを確認した。警告欄はなく、更新候補はAwaiting Scheduleにあった。この時点では公開中の更新PRはなく、更新PRの作成・CI、通常の継続運用と脆弱性修正の実動は未検証だった。
+
+2026-10-12、次の更新PRの作成、レビュー、Windows CI成功、ユーザーの明示的な許可によるSquash mergeを確認した。
+
+- [PR #60](https://github.com/asam-masa/manga-update-manager/pull/60): Vite 7.3.6から7.3.7へ更新した。通常・独立レビューは指摘なし。画面44テスト、フロントエンドビルド、Renovate設定3テストと、実WebView2開発モードでの画像配信9項目が成功した。[PR CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38150204208)の対象headは`9995a3527530ba31a6a196d1612ad75e928083f4`、マージコミットは`ccf416a89ef59fa35bd52d64c06a8a4bacb618c8`。
+- [PR #61](https://github.com/asam-masa/manga-update-manager/pull/61): Wails本体とCIのCLIを同一PRで2.14.0から2.16.0へ更新した。通常レビューは指摘なし。配布モジュールの比較でWindows実装・AssetServer・生成処理に変更がないことを確認した。Go 1.25.0・CGO_ENABLED=0でGoテスト・vet、画面44テスト、フロントエンドビルド、Renovate設定3テスト、Wailsビルドと、専用保存先の実WebView2での起動・終了6項目が成功した。[文書修正後のPR CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38151716249)の対象headは`abf05fc6ed1a73926061428b61a6e211d019bf3f`、マージコミットは`af70eb94c2d9141fdb314c3667ad28e19056615d`。
+
+同日のマージ後確認対象は`af70eb94c2d9141fdb314c3667ad28e19056615d`。検証に利用者DB・画像を使わず、画面全体の手動操作は未確認としてPRへ記録した。[PR #62](https://github.com/asam-masa/manga-update-manager/pull/62)はGo設定の変更を含むため、この採用実績には含めない。更新提案から採用までの初回実績は確認できたが、通常の継続運用と脆弱性修正の実動は未検証なのでValidation Statusは`Pending`を維持する。設定上の制御を一律に実動で検証済みとは扱わない。
 
 ## References
 
