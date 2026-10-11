@@ -1,0 +1,11 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "image-delivery-spike",
+  "outputfilename": "image-delivery-spike",
+  "build:dir": "../../../build/bin/image-delivery-build",
+  "wailsjsdir": "../../../build/bin/image-delivery-bindings",
+  "frontend:install": "node --version",
+  "frontend:build": "node --version",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://127.0.0.1:34116"
+}

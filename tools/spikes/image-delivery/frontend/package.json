@@ -1,0 +1,8 @@
+{
+  "name": "image-delivery-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../../../frontend/node_modules/vite/bin/vite.js --host 127.0.0.1 --port 34116 --strictPort"
+  }
+}

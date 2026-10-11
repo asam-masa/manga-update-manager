@@ -49,6 +49,8 @@ go test ./tools/spikes/image-boundaries -v
 
 ## 一次資料
 
+2026-10-11の後続調査は[画像配信Spike](./image-delivery-spike.md)へ記録した。開発・exeの実WebView2で候補の配信経路を確認したが、本番の配信方式と保存・削除の実装は未採用・未実装である。承認済みの後処理の振る舞いは[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)を参照する。
+
 - [Go image](https://pkg.go.dev/image#DecodeConfig)
 - [WebPデコーダー](https://pkg.go.dev/golang.org/x/image/webp)
 - [縮小処理の候補](https://pkg.go.dev/golang.org/x/image/draw)
