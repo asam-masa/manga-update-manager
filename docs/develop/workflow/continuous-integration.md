@@ -6,14 +6,14 @@
 
 Windows 2025のGitHub-hosted runnerで、次の順に実行します。
 
-1. `go.mod`のGo設定とNode.js 24を準備する
+1. Go 1.26系の最新修正版とNode.js 24を準備する
    - `node --test tools/verification/renovate-config.test.mjs`で依存更新設定とWails本体・CLI版の一致を確認する
 2. `npm --prefix frontend ci`でlockfileに従って依存を導入する
 3. `npm --prefix frontend test`と`npm --prefix frontend run build`を実行する
 4. `go test ./...`と`go vet ./...`を実行する
 5. Wails CLI v2.16.0を導入し、`wails build -s -m -nosyncgomod`を実行する
 
-Goは現在1.25.0です。`GOTOOLCHAIN=local`で依存による暗黙のGo更新を防ぎ、`CGO_ENABLED=0`で検証します。`frontend/dist`はGoの埋め込み対象なので、クリーンな環境ではフロントエンドを先にビルドします。
+`go.mod`の最低Go版は1.26.0です。CIでは`go-version: '1.26.x'`と`check-latest: true`で1.26系の最新修正版を選びます。実際の版はSet up Goのログで確認します。`GOTOOLCHAIN=local`で依存による暗黙のGo更新を防ぎ、`CGO_ENABLED=0`で検証します。最低版と検証版の分離は[ADR-0015](../../adr/0015-separate-go-minimum-and-validation-version.md)を参照してください。`frontend/dist`はGoの埋め込み対象なので、クリーンな環境ではフロントエンドを先にビルドします。
 
 Wailsの`-s`はフロントエンドの再ビルドを省略します。`-m`と`-nosyncgomod`はビルド時のモジュール調整を省略します。これにより、CI中に`npm install`や依存版の変更を行いません。Wailsの依存版を更新するときは、ワークフローのCLI版も合わせます。
 
