@@ -8,6 +8,7 @@
 - [作品APIと起動・終了処理](./work-api.md)
 - [作品登録と一覧画面](./work-screen.md)
 - [作品一覧の拡張設計（合意済み・未実装）](./library-design.md)
+- [一覧用画像の生成](./thumbnail-processing.md)
 
 ## 開発
 

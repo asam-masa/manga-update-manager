@@ -42,7 +42,7 @@ Issue #28のgrillingで次を合意した。画像管理の実装前の契約で
 - 登録後の一覧から画像を設定・変更・解除する。登録フォームへの画像選択は初回対象外とする。
 - 変更・解除の失敗時は現在の画像を維持する。画像なしは仮表示にする。
 
-判断理由は[ADR-0008](./adr/0008-manage-imported-cover-images.md)、技術候補と未検証は[技術確認](./verification/image-management-investigation.md)を参照する。保存形式・ライブラリ・配信・後処理の契約は未採用として残す。画面寸法とタイトル全文の確認は表示切り替えの着手前に検討する。
+判断理由は[ADR-0008](./adr/0008-manage-imported-cover-images.md)、生成形式・依存・方向補正は[ADR-0011](./adr/0011-generate-png-cover-thumbnails.md)と[生成処理](./thumbnail-processing.md)を参照する。PNG保存・透過保持・縮小前のEXIF方向補正を採用した。配信・ファイル保存と後処理の契約は未採用として残す。画面寸法とタイトル全文の確認は表示切り替えの着手前に検討する。
 
 ## 登録フォームと検索
 

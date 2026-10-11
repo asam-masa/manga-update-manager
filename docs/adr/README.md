@@ -16,4 +16,5 @@
 | [0008](./0008-manage-imported-cover-images.md) | 利用者の画像を一覧用に取り込んで管理する | Accepted | Pending | 2026-10-10 | [#28](https://github.com/asam-masa/manga-update-manager/issues/28)、[#40](https://github.com/asam-masa/manga-update-manager/issues/40) |
 | [0009](./0009-verify-windows-build-in-ci.md) | Windows CIでテストと配布用ビルドを検証する | Accepted | Pending | 2026-10-11 | [#46](https://github.com/asam-masa/manga-update-manager/issues/46) |
 | [0010](./0010-propose-dependency-updates-with-renovate.md) | Renovateで依存更新を提案し手動レビューする | Accepted | Pending | 2026-10-11 | [#48](https://github.com/asam-masa/manga-update-manager/issues/48) |
+| [0011](./0011-generate-png-cover-thumbnails.md) | 静止画像を検証してPNGサムネイルを生成する | Accepted | Pending | 2026-10-11 | [#41](https://github.com/asam-masa/manga-update-manager/issues/41) |
 

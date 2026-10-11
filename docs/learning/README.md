@@ -48,6 +48,7 @@
 - [画像を保存する前に境界を分ける](./cover-image-boundaries.md)
 - [CIでクリーンな環境を確認する](./windows-ci.md)
 - [更新提案と採用判断を分ける](./dependency-update-proposals.md)
+- [画像を展開する前に検査する](./thumbnail-validation.md)
 
 ## クイズでの利用
 
