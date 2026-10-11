@@ -14,6 +14,7 @@
 - [PR・レビュー運用](./workflow/pull-request-review.md)
 - [生成物の管理](./workflow/generated-files.md)
 - [Windows CI](./workflow/continuous-integration.md)
+- [依存更新](./workflow/dependency-updates.md)
 
 ## 品質
 
