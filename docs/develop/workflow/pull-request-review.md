@@ -35,6 +35,16 @@ PRのReview欄には、ベース・head・merge-baseのコミットID、確認�
 - 個人データと秘密情報が含まれていない
 - 未対応事項がIssueまたはPRへ記録されている
 
+## マージ後・外部設定後の文書確認
+
+マージ後の開発再開時と、Renovate Appの導入など外部設定の完了後に、[check-documentation-consistency](../../../.agents/skills/check-documentation-consistency/SKILL.md)で関連文書をまとめて照合します。実装状況だけでなく、CI・実機確認・外部設定により以前の「未検証」「未導入」の記述が古くなっていないか確認します。
+
+対象の版と確認範囲、根拠、未確認を記録します。ADRのPendingを一律にVerifiedへ変更せず、残る検証条件を確認します。履歴としてのContextと現在の状態を区別します。
+
+反映漏れは別の小さなIssue・PRで修正し、mainへ直接書き込みません。この確認は、上記のマージ条件やIssueのDefinition of Doneを緩めません。今回の変更に必要な仕様・判断の記録は、コミット前・PR前に確認します。Git hookや自動修正は導入しません。
+
+理由と検証方法は[ADR-0012](../../adr/0012-check-documentation-after-merge.md)を参照してください。
+
 ## PRの分割例
 
 一つの機能が複数の境界へまたがる場合は、動作を独立して検証できる単位へ分割します。例えば作品登録は、モデルと入力検証、永続化、アプリケーション境界、画面、統合確認に分けられます。
