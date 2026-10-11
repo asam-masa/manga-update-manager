@@ -49,6 +49,7 @@
 - [CIでクリーンな環境を確認する](./windows-ci.md)
 - [更新提案と採用判断を分ける](./dependency-update-proposals.md)
 - [画像を展開する前に検査する](./thumbnail-validation.md)
+- [仕様の記録と検証状態の更新を分ける](./documentation-checks.md)
 
 ## クイズでの利用
 

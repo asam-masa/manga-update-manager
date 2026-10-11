@@ -42,6 +42,8 @@
 
 設計と実装から得た学習内容は、`docs/learning/README.md`に従って正本の設計文書と分離して残します。
 
+コミット前・PR前は、今回の変更に必要な文書を差分レビューで確認します。マージ後の再開時と外部設定完了後は、`.agents/skills/check-documentation-consistency/SKILL.md`で関連文書をまとめて照合します。確認は読み取り専用で行い、見つかった反映漏れは別の小さなIssue・PRで修正します。詳細は`docs/develop/workflow/pull-request-review.md`に従います。
+
 ## Change Policy
 
 - 調査や設計確認を目的とした読み取り専用操作は実行してよい
