@@ -1,7 +1,7 @@
 # ADR-0015: Goの最低版と検証版を分ける
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-12
 - Related: [#67](https://github.com/asam-masa/manga-update-manager/issues/67)、[PR #62](https://github.com/asam-masa/manga-update-manager/pull/62)
 
@@ -41,7 +41,9 @@ Go 1.25での開発は対象外になる。最低版は利用可能な下限で�
 
 2026-10-12、Go 1.26.9・CGO_ENABLED=0・Wails 2.16.0・Vite 7.3.7で、全Goテスト・vet、画面44テスト、設定4テスト、フロントエンドとWindowsのビルドが成功した。利用者データを使わない実WebView2で、起動・終了6項目と画像配信の開発・本番各9項目が成功した。開発モードの初回は検証スクリプトが新旧CLIを同時に拾って起動に失敗した。検証プロセス内だけのPATHで2.16.0へ限定して再実行した。システム環境は変更していない。
 
-通常・独立レビューは指摘なし。画面全体の手動操作と最低版1.26.0での実行は未確認。結果と固定版はPRへ記録する。更新後CIが未完了のためPendingを維持する。
+通常・独立レビューは指摘なし。画面全体の手動操作と最低版1.26.0での実行は未確認。結果と固定版はPRへ記録した。
+
+2026-10-12、[PR CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38152819436)のhead `f1cbbd179649358bf66c0875b453006cae47179d`と、マージ後の[main CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38153065525)のSHA `d18616443533ed69d367bf20b521f8b709d2e0e6`で全検証が成功した。両CIのSet up GoログでGo 1.26.9を確認した。今回の設定・依存版について、最新修正版の選択とテスト・ビルド、ローカルの実WebView2検証を完了したためVerifiedとする。最低版単独、画面全体の手動操作、将来の修正版やGo 1.27の成立を保証しない。
 
 ## References
 
