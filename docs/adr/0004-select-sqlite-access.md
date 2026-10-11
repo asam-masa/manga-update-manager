@@ -124,7 +124,7 @@ Issue #19の実装で、次を確認した。
 - ドライバーのimportとSQLite操作が`internal/storage`内に留まっている
 - Windows上で`wails build`が成功した
 
-作品の更新と削除、およびGitHub Actionsでのテストは後続Issueの対象であり、未検証である。ADRに記載した検証項目をすべて完了していないため、Validation Statusは`Pending`を維持する。
+2026-10-11の反映確認で、[CI導入PRの実行](https://github.com/asam-masa/manga-update-manager/actions/runs/38063106341)と[mainへのpushの実行](https://github.com/asam-masa/manga-update-manager/actions/runs/38063371691)で、Go 1.25.0・`CGO_ENABLED=0`のGoテスト・vet・Windowsビルドが成功したことを確認した。作品内容の更新と作品削除を含むCRUD全体は未実装・未検証である。最終アクセスの更新だけでCRUD全体を検証済みとは扱わず、Validation Statusは`Pending`を維持する。
 
 Issue #21では、ID昇順の一覧取得、空一覧、URL重複の共通エラーへの変換、アプリ終了後の再オープンを一時SQLiteで確認した。ドライバー固有のエラーコードはStorage内だけで参照する。
 

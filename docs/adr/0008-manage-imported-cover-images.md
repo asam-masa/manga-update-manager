@@ -55,7 +55,9 @@
 
 一次資料と採用済みWails v2.14.0のソースを確認した。[小さな検証](../../tools/spikes/image-boundaries/image_boundaries_test.go)の4テストは成功した。利用者画像・実DBを使っていない。
 
-確認できた範囲はJPEG・PNGの合成画像の読み取り、ヘッダー検査と完全デコードの差、アニメーション制御チャンクを含む合成PNGの受理、WailsのGo側Handler・Middlewareである。完全なAPNG適合性、WebP、縮小、ファイル・DBの障害、実WebView2・Viteでの配信は未検証のためPendingを維持する。
+2026-10-10の調査で確認できた範囲はJPEG・PNGの合成画像の読み取り、ヘッダー検査と完全デコードの差、アニメーション制御チャンクを含む合成PNGの受理、WailsのGo側Handler・Middlewareである。この時点では完全なAPNG適合性、WebP、縮小、ファイル・DBの障害、実WebView2・Viteでの配信は未検証だった。
+
+2026-10-11、Issue #41／[PR #51](https://github.com/asam-masa/manga-update-manager/pull/51)でJPEG・PNG・WebPの静止画検証、縮小、透過、EXIF方向補正、PNG生成を実装・検証した。保存形式・依存・方向補正の後続判断と確認範囲は[ADR-0011](./0011-generate-png-cover-thumbnails.md)を参照する。本ADRの当時のDecisionを置き換えず、後続判断への参照を追加する。ファイル保存・DB整合性・配信・画面操作は未検証であり、画像管理全体のValidation Statusは`Pending`を維持する。
 
 ## References
 
