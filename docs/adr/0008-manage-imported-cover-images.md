@@ -61,6 +61,8 @@
 
 ## References
 
+後続の成功境界・整理・競合・キャンセル・解除・欠損時の判断は[ADR-0013](./0013-define-cover-operation-boundaries.md)、配信候補の実測は[画像配信Spike](../verification/image-delivery-spike.md)を参照する。画像管理全体は引き続きPendingである。
+
 - [画像管理の技術確認](../verification/image-management-investigation.md)
 - [Go image](https://pkg.go.dev/image#DecodeConfig)
 - [Go x/image/webp](https://pkg.go.dev/golang.org/x/image/webp)
