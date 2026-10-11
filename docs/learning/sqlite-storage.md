@@ -38,7 +38,11 @@ Go標準ライブラリの`time/tzdata`を実行ファイルへ含めること�
 
 ## SQLiteドライバー
 
-ADR-0004に従い、CGo不要の`modernc.org/sqlite`とGo標準の`database/sql`を使用します。プロジェクトのGo 1.25設定を維持するため、Go 1.25を要求するv1.58.0を固定します。v1.60.1はGo 1.26を要求するため、今回の更新対象にしません。
+ADR-0004に従い、CGo不要の`modernc.org/sqlite`とGo標準の`database/sql`を使用します。Issue #19ではGo 1.25設定を維持するため、Go 1.25を要求するv1.58.0を固定しました。当時はGo 1.26を要求するv1.60.1を対象外にしました。
+
+[ADR-0015](../adr/0015-separate-go-minimum-and-validation-version.md)でGo設定を1.26へ更新した後、[PR #65](https://github.com/asam-masa/manga-update-manager/pull/65)でv1.60.1への更新を検証しました。ドライバーだけでなく、上流が指定する`modernc.org/libc` v1.77.1との一致も確認します。
+
+同じドライバーでDBを再オープンするテストだけでは、更新前後の互換性を直接確認できません。今回は旧版で合成DBを作り、新版で作品・最終アクセス・表示設定を読み書きして再オープンし、旧版でも読み直しました。日時の小数秒、URL重複のエラー変換、適用済みマイグレーション数、`PRAGMA integrity_check`も確認しました。利用者のDBには触れていません。この結果は検証した合成DBに限り、任意の既存DBや将来の更新の互換性を保証しません。
 
 `database/sql`は接続プールを管理します。初期版ではローカルの単一SQLiteファイルを単純に扱うため、同時に開く接続数を1へ制限します。並行処理が必要になった場合は、計測とロック動作を確認して見直します。
 
@@ -50,3 +54,5 @@ ADR-0004に従い、CGo不要の`modernc.org/sqlite`とGo標準の`database/sql`
 - [Issue #19: 作品モデルとSQLite保存基盤を実装する](https://github.com/asam-masa/manga-update-manager/issues/19)
 - [`modernc.org/sqlite` package](https://pkg.go.dev/modernc.org/sqlite)
 - [`modernc.org/sqlite` v1.58.0 `go.mod`](https://gitlab.com/cznic/sqlite/-/raw/v1.58.0/go.mod)
+- [`modernc.org/sqlite` v1.60.1 `go.mod`](https://github.com/modernc-org/sqlite/blob/v1.60.1/go.mod)
+- [`modernc.org/sqlite` v1.60.1変更履歴](https://github.com/modernc-org/sqlite/blob/v1.60.1/CHANGELOG.md)
