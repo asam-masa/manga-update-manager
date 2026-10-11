@@ -19,4 +19,5 @@
 | [0011](./0011-generate-png-cover-thumbnails.md) | 静止画像を検証してPNGサムネイルを生成する | Accepted | Verified | 2026-10-11 | [#41](https://github.com/asam-masa/manga-update-manager/issues/41) |
 | [0012](./0012-check-documentation-after-merge.md) | 文書確認を差分レビューとマージ後の照合に分ける | Accepted | Pending | 2026-10-11 | [#52](https://github.com/asam-masa/manga-update-manager/issues/52) |
 | [0013](./0013-define-cover-operation-boundaries.md) | 画像操作と不要ファイル削除の成功境界を分ける | Accepted | Pending | 2026-10-11 | [#42](https://github.com/asam-masa/manga-update-manager/issues/42)、[#56](https://github.com/asam-masa/manga-update-manager/issues/56) |
+| [0014](./0014-lock-storage-before-startup.md) | DB接続より先に保存先の排他を確保する | Accepted | Verified | 2026-10-11 | [#58](https://github.com/asam-masa/manga-update-manager/issues/58) |
 

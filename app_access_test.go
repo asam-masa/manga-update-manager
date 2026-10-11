@@ -44,7 +44,9 @@ func TestAccessAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	app.shutdown(context.Background())
-	app.startup(context.Background())
+	// A restart creates a fresh App; a stopped App cannot reopen its database.
+	app = testApp(t, directory)
+	app.openURL = func(string) error { return nil }
 	list, err = app.ListWorks()
 	if err != nil || *list[0].LastAccessedAt != *opened.LastAccessedAt {
 		t.Fatal(list, err)
