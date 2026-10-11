@@ -43,7 +43,7 @@
 
 JPEG・PNG・WebPの静止画像を検証し、PNGサムネイルを生成するGo内部処理も追加しました。[画像生成の契約](./docs/thumbnail-processing.md)を参照してください。まだ画面や保存処理へ接続していません。配布時は[依存ライブラリの通知](./THIRD_PARTY_NOTICES.md)を同梱してください。
 
-必要な環境はGo 1.25.0設定に対応するGo環境、Node.js 24.15.0以降の24系、npm、Wails CLI v2.16.0、WebView2です。画面テストのjsdomと推移依存が要求するNode.jsバージョンを満たしてください。今回の検証ではNode.js 24.18.0を使用しました。
+最低Go版は1.26.0です。テスト・ビルドには1.26系の最新修正版を使用します。その他の必要な環境はNode.js 24.15.0以降の24系、npm、Wails CLI v2.16.0、WebView2です。画面テストのjsdomと推移依存が要求するNode.jsバージョンを満たしてください。今回の検証ではNode.js 24.18.0を使用しました。
 
 ```powershell
 wails doctor

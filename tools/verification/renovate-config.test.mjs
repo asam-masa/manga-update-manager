@@ -7,6 +7,17 @@ const config = JSON.parse(readFileSync(new URL('.github/renovate.json', root), '
 const workflow = readFileSync(new URL('.github/workflows/ci.yml', root), 'utf8');
 const goMod = readFileSync(new URL('go.mod', root), 'utf8');
 
+test('CI validates the approved Go series at its latest patch without implicit upgrades', () => {
+  assert.match(goMod, /^go 1\.26\.0$/m);
+  const setupGo = workflow.match(/- name: Set up Go\r?\n([\s\S]*?)(?=      - name:)/)?.[1];
+  assert.ok(setupGo);
+  assert.match(setupGo, /go-version: '1\.26\.x'/);
+  assert.match(setupGo, /check-latest: true/);
+  assert.doesNotMatch(setupGo, /go-version-file:/);
+  assert.match(workflow, /GOTOOLCHAIN: local/);
+  assert.match(workflow, /CGO_ENABLED: '0'/);
+});
+
 test('regular updates have a weekly Tokyo window, a small budget and no automerge', () => {
   assert.equal(config.timezone, 'Asia/Tokyo');
   assert.deepEqual(config.schedule, ['* 0-5 * * 1']);
