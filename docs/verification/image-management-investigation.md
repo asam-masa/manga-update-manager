@@ -41,6 +41,8 @@ go test ./tools/spikes/image-boundaries -v
 
 ## 次の着手条件
 
+2026-10-11、Issue #41で生成処理の判断を[ADR-0011](../adr/0011-generate-png-cover-thumbnails.md)へ記録した。以下の未決定事項は調査時点の記録であり、生成形式・依存・方向補正の現在の契約はADR-0011を参照する。保存・配信・画面の未決定事項は引き続き各Issueで確認する。
+
 画像処理を[#41](https://github.com/asam-masa/manga-update-manager/issues/41)、保存・配信を[#42](https://github.com/asam-masa/manga-update-manager/issues/42)、設定UIを[#43](https://github.com/asam-masa/manga-update-manager/issues/43)、表示切り替えを[#44](https://github.com/asam-masa/manga-update-manager/issues/44)へ分割した。親Issue #28に関連付けて追跡する。
 
 依存ライブラリ・保存形式・方向補正、保存と後処理の成功境界、配信の実機確認、画面寸法は未決定として明記し、推奨候補を採用済みと扱わない。各Issueの受け入れ条件とDoRを確認してから実装する。
