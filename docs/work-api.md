@@ -71,4 +71,6 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 一時保存先でOS保存先の解決、初期化失敗、空一覧、登録、重複、ID順、日時、再オープン後の保持、終了後のAPI拒否をテストする。実利用者のDBはテストに使わない。
 
-Issue #21では登録フォームと一覧画面を対象外とし、Issue #23で追加した。ブラウザー起動と最終アクセスはIssue #25で追加した。画像管理、編集・削除、更新予定、バックアップ、GitHub Actionsは後続Issueの対象である。ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
+Issue #21では登録フォームと一覧画面を対象外とし、Issue #23で追加した。ブラウザー起動と最終アクセスはIssue #25、フォーム開閉と検索はIssue #26、フォーム開閉設定の保存はIssue #27で追加した。Windows CIはIssue #46／[PR #47](https://github.com/asam-masa/manga-update-manager/pull/47)で導入し、PRとmainへのpushで成功を確認した。
+
+画像の生成処理はIssue #41で実装済みだが、保存・配信・設定UIは後続Issueの対象である。作品内容の編集・削除、更新予定、バックアップも未実装である。残る検証条件があるため、ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。

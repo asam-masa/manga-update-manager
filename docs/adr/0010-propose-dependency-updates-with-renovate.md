@@ -53,7 +53,9 @@ Go依存の更新処理で必要なGo版や間接依存が変わる場合があ�
 
 公式validator、Wails検出ルールと本体・CLI版の一致テスト、導入PRのWindows CIで設定準備を確認する。結果はPRへ記録する。
 
-App導入後に、実際の検出対象・グループ・警告・更新PR・CIを確認する。現時点ではApp未導入であり、通常の運用と脆弱性修正の実動は未検証なのでPendingとする。
+2026-10-11、ユーザーがこのリポジトリだけを対象としてAppの導入とオンボーディングを完了した。ユーザー提示画面ではRenovateがEnabled・onboarded、Interactive、Community (Free)であることを確認した。
+
+同日の反映確認で、[Dependency Dashboard #50](https://github.com/asam-masa/manga-update-manager/issues/50)にGo直接依存、npm依存、GitHub Actions、Wails CLIの検出と、Wails本体・CLIの同一更新候補が掲載されていることを確認した。警告欄はなく、更新候補はAwaiting Scheduleにある。現時点の公開中PRに更新PRはなく、更新PRの作成・CI、通常の継続運用と脆弱性修正の実動は未検証なのでValidation Statusは`Pending`を維持する。設定上の制御を実動で検証済みとは扱わない。
 
 ## References
 

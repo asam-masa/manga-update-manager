@@ -42,7 +42,9 @@ Actionsは完全なSHAに固定し、トークンは読み取り権限だけに�
 
 ## Validation
 
-導入PRの実際のGitHub Actionsで、全検証ステップの完了を確認する。結果はPRへ記録する。現時点では未実行なのでPendingとする。mainへのpushの発火と手動実行はマージ後に確認する。
+2026-10-11、[導入PR #47のCI](https://github.com/asam-masa/manga-update-manager/actions/runs/38063106341)と[マージ後のmainへのpushのCI](https://github.com/asam-masa/manga-update-manager/actions/runs/38063371691)で全検証ステップの成功を確認した。Go 1.25.0・CGO無効でGoテスト・vet、フロントエンドのテスト・ビルド、WailsのWindowsビルドが成功した。
+
+文書反映確認時点のmainコミット`e5dde6e3166becb0f073c2a6d9b263a3211804a1`に対する[CI](https://github.com/asam-masa/manga-update-manager/actions/runs/38125762131)も成功した。`workflow_dispatch`の実行履歴は確認できず、手動実行は未検証なのでValidation Statusは`Pending`を維持する。GUIの実機確認はCIの対象外である。
 
 ## References
 

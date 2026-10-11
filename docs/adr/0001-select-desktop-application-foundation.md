@@ -1,7 +1,7 @@
 # ADR-0001: デスクトップアプリケーション基盤を選定する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-04
 - Related: [#3](https://github.com/asam-masa/manga-update-manager/issues/3)
 
@@ -122,7 +122,9 @@ Rust＋Tauri v2は、新しい言語を学べる点では有力である。し�
 - `go test ./...`が成功した
 - `wails build -clean`でWindows向け実行ファイルを生成できた
 
-GitHub Actionsでの実行と既定ブラウザーでのURL起動は未検証である。すべての検証項目を完了していないため、Validation Statusは`Pending`を維持する。
+2026-10-11の反映確認で、[PR #33](https://github.com/asam-masa/manga-update-manager/pull/33)に記録された2026-10-10のユーザー確認と、[CI導入PRの実行](https://github.com/asam-masa/manga-update-manager/actions/runs/38063106341)の成功を照合した。実WebView2の作品操作からGo APIを呼び出し、登録URLを既定ブラウザーで開けた。CIではGoテストとフロントエンドのテスト・ビルド、WailsのWindowsビルドが成功した。
+
+上記の基盤選定に関する検証項目をすべて確認したため、Validation Statusを`Verified`とする。アプリ全体の完成、ページ表示・読了、バックアップや後続機能の検証を意味しない。
 
 ## References
 

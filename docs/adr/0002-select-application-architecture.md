@@ -153,7 +153,9 @@ Infrastructure ---------> interface implementations
 - バックアップ形式にバージョンが含まれる
 - パッケージ間に禁止した依存がない
 
-Issue #21で、Wailsの入出力変換、Applicationの登録・一覧操作、利用側interface、StorageのSQL、platformのOS保存先を分離した。一時SQLiteと固定時刻のテストで各境界を確認した。ブラウザー起動とバックアップの検証は後続Issueに残るため、Validation Statusは`Pending`を維持する。
+Issue #21で、Wailsの入出力変換、Applicationの登録・一覧操作、利用側interface、StorageのSQL、platformのOS保存先を分離した。一時SQLiteと固定時刻のテストで各境界を確認した。
+
+2026-10-11の反映確認で、Issue #25／[PR #33](https://github.com/asam-masa/manga-update-manager/pull/33)のブラウザー起動と最終アクセス記録を照合した。`internal/application/work_opener_test.go`で起動失敗時に日時を保存しないことと、起動成功後の保存失敗を確認している。バックアップ形式と後続の状態判定・予定計算は未検証なので、Validation Statusは`Pending`を維持する。
 
 ## References
 
