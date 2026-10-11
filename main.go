@@ -2,6 +2,9 @@ package main
 
 import (
 	"embed"
+	"os"
+
+	"github.com/asam-masa/manga-update-manager/internal/platform"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -12,9 +15,18 @@ import (
 var assets embed.FS
 
 func main() {
-	app := NewApp()
+	if err := runApplication(NewApp(), platform.AcquireStorageLock, runDesktop); err != nil {
+		message := startupErrorMessage(err)
+		if noticeErr := platform.ShowStartupError(message); noticeErr != nil {
+			// Do not expose paths or raw OS diagnostics, even if the dialog fails.
+			println(message)
+		}
+		os.Exit(1)
+	}
+}
 
-	err := wails.Run(&options.App{
+func runDesktop(app *App) error {
+	return wails.Run(&options.App{
 		Title:  "Manga Update Manager",
 		Width:  1024,
 		Height: 768,
@@ -29,8 +41,4 @@ func main() {
 			app,
 		},
 	})
-
-	if err != nil {
-		println("Error:", err.Error())
-	}
 }

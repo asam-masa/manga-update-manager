@@ -51,6 +51,7 @@
 - [画像を展開する前に検査する](./thumbnail-validation.md)
 - [仕様の記録と検証状態の更新を分ける](./documentation-checks.md)
 - [保存処理より先に画像の通り道を確かめる](./image-delivery-probe.md)
+- [ファイルの存在とロックの寿命を分ける](./storage-instance-lock.md)
 
 ## クイズでの利用
 

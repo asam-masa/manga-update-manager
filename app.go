@@ -24,6 +24,7 @@ type App struct {
 	openURL       func(string) error
 	store         *storage.Store
 	dataDirectory func() (string, error)
+	stopped       bool
 }
 
 // NewApp creates the Wails application boundary.
@@ -39,7 +40,7 @@ func (a *App) Status() string {
 func (a *App) startup(ctx context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.store != nil {
+	if a.stopped || a.store != nil {
 		return
 	}
 	a.ctx = ctx
@@ -62,6 +63,9 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown(_ context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	// Wails starts OnStartup asynchronously. A queued callback must never
+	// reopen storage after shutdown (and the production storage lock release).
+	a.stopped = true
 	a.works = nil
 	a.display = nil
 	a.opener = nil

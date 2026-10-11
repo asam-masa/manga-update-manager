@@ -53,6 +53,8 @@ exeはGit対象外の`build/bin/image-delivery-build/bin`、生成バインデ�
 
 推奨候補はMiddlewareで専用経路を処理し、作品IDと現在の管理画像をGo側で解決する方式である。no-storeは今回の確認に使った候補であり、本番のキャッシュ方式は未採用。結果を踏まえてIssue #42で採否とAPI・警告契約を決める。本番実装へ試作コードを機械的にコピーしない。
 
+2026-10-11、PR #57のマージ後のgrillingで、作品IDから現在画像を解決するMiddlewareと初回no-storeを承認した。上記は試作時点の候補記録であり、現在の判断は[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)を参照する。本番の配信・DB連携は引き続き未実装である。
+
 ## 根拠
 
 - [Wails Options](https://v2.wails.io/docs/reference/options/)
