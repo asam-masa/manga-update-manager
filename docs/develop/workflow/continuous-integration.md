@@ -7,6 +7,7 @@
 Windows 2025のGitHub-hosted runnerで、次の順に実行します。
 
 1. `go.mod`のGo設定とNode.js 24を準備する
+   - `node --test tools/verification/renovate-config.test.mjs`で依存更新設定とWails本体・CLI版の一致を確認する
 2. `npm --prefix frontend ci`でlockfileに従って依存を導入する
 3. `npm --prefix frontend test`と`npm --prefix frontend run build`を実行する
 4. `go test ./...`と`go vet ./...`を実行する
@@ -25,4 +26,4 @@ Wailsの`-s`はフロントエンドの再ビルドを省略します。`-m`と`
 - 失敗時は最初に失敗したステップのログを調べます。PRには実行URL、結果、未確認事項を記録します。
 - 新しい実行で古い同一refの実行をキャンセルします。ジョブは30分で打ち切ります。
 
-CIの成功は実WebView2、IME、既定ブラウザー、利用者データの操作を保証しません。必要な実機確認は別に行います。自動マージとブランチ保護の変更は対象外です。依存更新の自動提案は別Issueで検討します。
+CIの成功は実WebView2、IME、既定ブラウザー、利用者データの操作を保証しません。必要な実機確認は別に行います。自動マージとブランチ保護の変更は対象外です。依存更新の提案と採用は[依存更新運用](./dependency-updates.md)に従います。

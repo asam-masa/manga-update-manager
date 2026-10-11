@@ -47,6 +47,7 @@
 - [レビュー対象と独立性を分けて考える](./change-reviews.md)
 - [画像を保存する前に境界を分ける](./cover-image-boundaries.md)
 - [CIでクリーンな環境を確認する](./windows-ci.md)
+- [更新提案と採用判断を分ける](./dependency-update-proposals.md)
 
 ## クイズでの利用
 

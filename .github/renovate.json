@@ -1,0 +1,48 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "enabledManagers": ["gomod", "npm", "github-actions", "custom.regex"],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["* 0-5 * * 1"],
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 0,
+  "automerge": false,
+  "platformAutomerge": false,
+  "separateMajorMinor": true,
+  "semanticCommits": "disabled",
+  "postUpdateOptions": ["gomodTidy"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "automerge": false
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "go install (?<depName>github\\.com/wailsapp/wails/v2)/cmd/wails@(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "datasourceTemplate": "go",
+      "versioningTemplate": "go"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Only update action and workflow dependencies, not CI runtimes",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["github-runner", "uses-with", "docker", "container", "service"],
+      "enabled": false
+    },
+    {
+      "description": "Keep the project's Go version a manual decision",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "enabled": false
+    },
+    {
+      "description": "Update the Wails module and CI CLI together",
+      "matchDepNames": ["github.com/wailsapp/wails/v2"],
+      "groupName": "Wails module and CLI"
+    }
+  ]
+}
