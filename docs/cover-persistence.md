@@ -46,6 +46,8 @@ Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決す
 
 [SQLiteとWindows照合の接続Spike](./verification/cover-sqlite-identity.md)では、16文字volume serial・32文字file IDを保存表現の候補として検証する。管理記録の状態制約・作品参照・削除処理との統合や、本番方式の採用は含まない。
 
+[管理記録の状態と候補取得のSpike](./verification/managed-cover-state.md)で、同じ表現を予約・保存確認済みの制約へ組み合わせ、合成の共有参照と照合する。本番の作品テーブル、競合排他、安全な領域確認、削除への統合は残る。
+
 | 情報 | 用途 |
 | --- | --- |
 | アプリ生成の識別子・相対パス | 一意の管理名。作品IDや元ファイル名を使わない |

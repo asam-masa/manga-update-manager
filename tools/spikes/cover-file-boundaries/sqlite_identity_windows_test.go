@@ -39,10 +39,14 @@ func saveSnapshot(db *sql.DB, value fingerprint) error {
 }
 
 func loadSnapshot(db *sql.DB) (fingerprint, error) {
+	return scanFingerprint(db.QueryRow("SELECT volume,file_id,size,hash FROM snapshots WHERE id=1"))
+}
+
+func scanFingerprint(row *sql.Row) (fingerprint, error) {
 	var value fingerprint
 	var volume, id string
 	var hash []byte
-	err := db.QueryRow("SELECT volume,file_id,size,hash FROM snapshots WHERE id=1").Scan(&volume, &id, &value.Size, &hash)
+	err := row.Scan(&volume, &id, &value.Size, &hash)
 	if err != nil {
 		return fingerprint{}, err
 	}
