@@ -1,8 +1,6 @@
-<!-- 日本語の記述は docs/develop/quality/japanese-writing.md に従ってください -->
-
-# Pull Request
-
 ## Overview
+
+<!-- 日本語の記述は docs/develop/quality/japanese-writing.md に従ってください -->
 
 <!-- 変更の背景、目的、変更概要を記載してください -->
 
