@@ -22,6 +22,14 @@ Vite 8はビルド・変換にRolldownとOxcを使用します。lockfileの差�
 
 ## 自動化にも境界がある
 
+### TypeScriptの型検査と画面の変換
+
+[Issue #73](https://github.com/asam-masa/manga-update-manager/issues/73)ではTypeScript 7へ移行します。Viteがモジュールを解決するため、型検査も`moduleResolution: Bundler`へ合わせ、廃止された`esModuleInterop: false`を除きます。`tsc`は`noEmit`で型検査を担当し、配布するJavaScriptの変換はViteが担当します。コンパイラーの更新が、そのまま画面の実行コード変更を意味するわけではありません。
+
+アプリ用の`tsc`だけでは、参照先のVite設定用プロジェクトまで検査したとは言えません。ビルドでは`tsconfig.node.json`も明示的に検査します。この設定はNode.jsで実行するため、開発依存の`@types/node`と`types: ["node"]`、必要なESライブラリを指定します。型エラーを避けるために`any`へ置き換えたり、検査を新たに無効化したりしません。再生成できる`*.tsbuildinfo`はGit対象外です。
+
+TypeScript 7は従来のコンパイラーAPIを提供しません。今回のコードではCLIの`tsc`を利用し、APIの直接利用は確認されていません。エディターの言語サーバーはCLIと別の境界なので、ビルド成功からエディターの補完まで検証済みとは判断しません。移行の根拠は[公式リリース説明](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)を参照してください。
+
 設定validatorは項目と形式を確認します。検出テストは想定した文字列に一致するかを確認します。CIは変更後のテストとビルドを確認します。どれも実際のBot運用や全GUI操作の代わりにはなりません。
 
 スケジュールはBotを起動する予約ではなく、実行時に新規更新を許可する条件です。PR数の制限も通常更新の予算であり、脆弱性修正は別扱いです。保証できることと、外部サービス・アラート・実行頻度に依存することを分けて記録します。

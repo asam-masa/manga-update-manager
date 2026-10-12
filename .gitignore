@@ -37,6 +37,7 @@ bookmarks.html
 /frontend/.vite/
 /frontend/.vitest/
 /frontend/coverage/
+/frontend/*.tsbuildinfo
 
 # Wails build output
 /build/bin/
