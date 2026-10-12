@@ -36,6 +36,8 @@ AIによるコード・文書生成だけをレビュー実施と扱いません
 
 ### AI Reviewの記載方法
 
+`## AI Review`の見出しは表示し、その本文をGitHubの`<details>`と`<summary>`で囲みます。既定では閉じ、summaryには「指摘なし」「要対応」「未実施」など実際の状況を短く記載します。本文のMarkdown見出しや表が展開後に表示されるよう、`<summary>`の後と`</details>`の前に空行を置きます。`## Result`は閉じタグの後に置き、折り畳みに含めません。指摘がある場合も隠さず、summaryと展開後の記録で確認できるようにします。
+
 使用ツールまたはモデルを明記し、`### review-code-changes`と`### run-adversarial-review`の小見出しで通常・独立レビューを分けます。各方式の確認観点、主な指摘、対応結果を記載します。実際に確認した観点だけを書き、未実施の検証を成功として扱いません。AIレビューは人間のセルフレビューやコードレビューの代替ではありません。
 
 指摘がある方式では、上記の`Prefix / Finding / Status / Response`表を使用します。プレフィックスを残し、修正内容・回答・未対応の理由と必要な合意を記載します。指摘がない場合は「指摘なし」、実施していない場合は「未実施」と理由を記載します。独立レビューが適用対象外の場合も見出しを残します。
@@ -43,6 +45,11 @@ AIによるコード・文書生成だけをレビュー実施と扱いません
 `### レビュー対象の版`に固定版と確認範囲をまとめます。方式ごとに対象版が異なる場合は、その対応を明記します。記載例は次のとおりです。
 
 ```markdown
+## AI Review
+
+<details>
+<summary>レビュー結果を表示（wantに対応済み）</summary>
+
 使用ツール: Codex
 
 ### review-code-changes
@@ -61,7 +68,13 @@ AIによるコード・文書生成だけをレビュー実施と扱いません
 
 - コミット前: HEAD、index tree、対象範囲を記載
 - PR前: base、head、merge-base、対象範囲を記載
+
+</details>
+
+## Result
 ```
+
+折り畳み表示の書式は[GitHub公式文書](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-collapsed-sections)に従います。
 
 この変更は記載形式の統一です。未解決`must`によるコミット停止、必要な独立レビュー、Draft条件は従来どおり維持します。
 

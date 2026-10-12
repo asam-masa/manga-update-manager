@@ -10,6 +10,9 @@
 
 ## AI Review
 
+<details>
+<summary>レビュー結果を表示（指摘なし／要対応／未実施から選ぶ）</summary>
+
 <!-- 使用ツールまたはモデルを記載してください。AI生成だけをレビュー実施と扱わないでください -->
 
 ### review-code-changes
@@ -25,6 +28,8 @@
 ### レビュー対象の版
 
 <!-- 固定したbase/head/merge-base、コミット前のHEAD/index treeと確認範囲を記載してください。実施した方式に応じて対象版と結果を対応付けてください -->
+
+</details>
 
 ## Result
 
