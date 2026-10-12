@@ -14,7 +14,7 @@
 
 <!-- 使用ツール、固定したbase/head/merge-baseまたはHEAD/index tree、通常・独立レビューの実施状況、指摘と対応を記載してください。指摘なしは「指摘なし」、未実施は理由を記載してください -->
 
-<!-- 指摘がある場合は Prefix / Finding / Status / Response の表で整理してください。既存の [must] / [should] 等を維持してください -->
+<!-- 指摘は Prefix / Finding / Status / Response の表で整理してください。新規指摘は must / want / ask / imo / nits / info を使用し、want見送りの合意・askの回答を記載してください -->
 
 ## Result
 
