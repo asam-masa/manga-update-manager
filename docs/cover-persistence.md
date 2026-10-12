@@ -44,6 +44,8 @@ Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決す
 
 2026-10-12、従来の64bitファイルIDではなく、128bitのファイルIDとvolume serial・サイズ・SHA-256の照合を検証する方針を承認した。識別情報を取得できない場合は削除せず保持・警告する。[Windows照合Spike](./verification/cover-file-identity.md)は合成ファイルでの確認に限定する。[SQLite候補の検証](./verification/managed-cover-schema.md)は従来API用の保存表現を扱った履歴であり、本番採用前に保存表現を合わせて再検証する。
 
+[SQLiteとWindows照合の接続Spike](./verification/cover-sqlite-identity.md)では、16文字volume serial・32文字file IDを保存表現の候補として検証する。管理記録の状態制約・作品参照・削除処理との統合や、本番方式の採用は含まない。
+
 | 情報 | 用途 |
 | --- | --- |
 | アプリ生成の識別子・相対パス | 一意の管理名。作品IDや元ファイル名を使わない |
