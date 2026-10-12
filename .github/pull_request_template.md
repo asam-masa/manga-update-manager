@@ -10,9 +10,21 @@
 
 ## AI Review
 
-<!-- 使用ツール、固定したbase/head/merge-baseまたはHEAD/index tree、通常・独立レビューの実施状況、指摘と対応を記載してください。指摘なしは「指摘なし」、未実施は理由を記載してください -->
+<!-- 使用ツールまたはモデルを記載してください。AI生成だけをレビュー実施と扱わないでください -->
 
-<!-- 指摘は Prefix / Finding / Status / Response の表で整理してください。新規指摘は must / want / ask / imo / nits / info を使用し、want見送りの合意・askの回答を記載してください -->
+### review-code-changes
+
+<!-- 確認観点と結果を記載してください。指摘なしは「指摘なし」、未実施は「未実施」と理由を記載してください -->
+
+<!-- 指摘がある場合だけ Prefix / Finding / Status / Response の表を使用してください。must / want / ask / imo / nits / info を残し、修正内容・回答・未対応理由と必要な合意を記載してください -->
+
+### run-adversarial-review
+
+<!-- 独立レビューの確認観点と結果を同じ形式で記載してください。不要な場合も「未実施」と適用基準に基づく理由を記載してください -->
+
+### レビュー対象の版
+
+<!-- 固定したbase/head/merge-base、コミット前のHEAD/index treeと確認範囲を記載してください。実施した方式に応じて対象版と結果を対応付けてください -->
 
 ## Result
 
