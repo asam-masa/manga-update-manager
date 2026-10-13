@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブルだけを追加した。ファイル保存・作品参照変更・削除・配信・画像APIは本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブル、#97でStorageの予約・確定・取得処理を追加した。ファイル保存・作品参照変更・削除・配信・画像APIは本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 保存順序
 
@@ -42,7 +42,7 @@ Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決す
 
 2026-10-12に、作品参照とは独立したSQLiteの管理記録を削除候補の根拠とする方式を承認した。作品が画像を外しても記録を先に消さず、削除成功またはファイル不存在を安全に確認した後に記録を処理する。未知の既存`thumbnail_path`を自動で管理記録へ登録しない。
 
-Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途を画像ファイル管理に限定し、閲覧履歴や元画像パスは保存しない。列・制約は[データ仕様](./データ仕様.md#生成画像の管理記録)を参照する。予約・保存確認済みの操作APIと実ファイルの照合はまだ本番へ接続していない。
+Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途を画像ファイル管理に限定し、閲覧履歴や元画像パスは保存しない。列・制約は[データ仕様](./データ仕様.md#生成画像の管理記録)を参照する。#97のStorage処理はまだApplicationや実ファイルの照合から呼び出していない。
 
 2026-10-12、従来の64bitファイルIDではなく、128bitのファイルIDとvolume serial・サイズ・SHA-256の照合を検証する方針を承認した。識別情報を取得できない場合は削除せず保持・警告する。[Windows照合Spike](./verification/cover-file-identity.md)は合成ファイルでの確認に限定する。[SQLite候補の検証](./verification/managed-cover-schema.md)は従来API用の保存表現を扱った履歴であり、本番採用前に保存表現を合わせて再検証する。
 
@@ -68,6 +68,22 @@ Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途�
 排他とDB初期化の後、画像操作を受け付ける前に行う。全参照の取得に失敗したら何も削除しない。管理領域内のアプリ生成ファイルで、通常ファイル・安全なリンク状態・DB未参照を確認できたものだけを処理する。名前だけで所有や安全性を証明しない。未知名・サブディレクトリ・判定不能なファイルは削除しない。整理失敗でも一覧を利用可能にし、まとめた警告を保持する。保存先全体の再帰削除は行わない。
 
 ## 検証計画と未決定事項
+
+### 実装済みのStorage操作
+
+`internal/storage/managed_covers.go`はDB記録だけを扱う。ファイルがアプリ生成画像であることや、保存・確認が完了したことをこの処理自身では証明しない。後続の呼び出し側がファイル確認を終えてから確定する。
+
+| 操作 | 入力と結果 |
+| --- | --- |
+| `ReserveManagedCover` | 小文字16進32文字のIDをそのまま検証し予約する。重複は`ErrManagedCoverExists`で既存記録を保持 |
+| `ConfirmManagedCover` | IDと確認情報を受け、予約かつ確認情報が全NULLの場合だけ一つのUPDATEで確定。更新件数1が必須。不存在・確定済み・破損した予約は`ErrManagedCoverNotReserved` |
+| `ManagedCoverByID` | IDで取得し、状態・生成パス・NULL・確認情報を検証。不存在は`ErrManagedCoverNotFound`、不正情報は`ErrInvalidManagedCover`。失敗時はゼロ値を返し自動修復しない |
+
+Storageの`ManagedCoverInfo`はuint64のvolume serial、APIの順序を保つ16 byte file ID、正のint64サイズ、32 byteのSHA-256を持つ。DBでは既存の小文字16進・INTEGER・BLOBへ変換する。`ManagedCover.Info`は予約時だけnil、保存確認済みでは確認情報を返す。これらは内部の保存契約であり、Wailsへ公開するDTOではない。キャンセル・DBエラーは失敗として返し、呼び出し側は内部診断をUIへ直接出さない。
+
+一時SQLiteで再接続と上位bitの保持、重複・二重確定・確定失敗・キャンセル・DB終了・破損情報の拒否を検証する。未参照候補の取得、作品参照との同一トランザクション、整理・ファイル操作との排他は後続に残る。
+
+### 残る検証
 
 [管理記録と削除要求の接続Spike](./verification/managed-cover-cleanup.md)は、一時SQLite・合成ファイルで照合後の同一ハンドル削除と、拒否・部分成功を検証する。単一スレッド・固定した一時領域だけの試作であり、安全な祖先保護、並行処理、不存在時の記録整理と再試行は本番採用前の条件として残す。
 
