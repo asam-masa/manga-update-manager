@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の実装前の設計メモ。本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブルだけを追加した。ファイル保存・作品参照変更・削除・配信・画像APIは本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 保存順序
 
@@ -42,7 +42,7 @@ Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決す
 
 2026-10-12に、作品参照とは独立したSQLiteの管理記録を削除候補の根拠とする方式を承認した。作品が画像を外しても記録を先に消さず、削除成功またはファイル不存在を安全に確認した後に記録を処理する。未知の既存`thumbnail_path`を自動で管理記録へ登録しない。
 
-実装案のテーブル名は`managed_covers`。用途を画像ファイル管理に限定し、閲覧履歴や元画像パスは保存しない。列・制約・OS識別情報の表現は実装時に検証する。
+Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途を画像ファイル管理に限定し、閲覧履歴や元画像パスは保存しない。列・制約は[データ仕様](./データ仕様.md#生成画像の管理記録)を参照する。予約・保存確認済みの操作APIと実ファイルの照合はまだ本番へ接続していない。
 
 2026-10-12、従来の64bitファイルIDではなく、128bitのファイルIDとvolume serial・サイズ・SHA-256の照合を検証する方針を承認した。識別情報を取得できない場合は削除せず保持・警告する。[Windows照合Spike](./verification/cover-file-identity.md)は合成ファイルでの確認に限定する。[SQLite候補の検証](./verification/managed-cover-schema.md)は従来API用の保存表現を扱った履歴であり、本番採用前に保存表現を合わせて再検証する。
 

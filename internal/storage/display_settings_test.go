@@ -135,7 +135,7 @@ func TestDisplaySettingsMigrationPreservesExistingWorks(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Restore this temporary fixture to the two-migration schema used before #27.
-	if _, err := store.db.Exec("DROP TABLE display_settings; DELETE FROM schema_migrations WHERE version = '003_display_settings.sql';"); err != nil {
+	if _, err := store.db.Exec("DROP TABLE display_settings; DROP TABLE managed_covers; DELETE FROM schema_migrations WHERE version IN ('003_display_settings.sql', '004_managed_covers.sql');"); err != nil {
 		t.Fatal(err)
 	}
 	store.Close()
