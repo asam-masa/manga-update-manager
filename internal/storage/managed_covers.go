@@ -92,12 +92,18 @@ func (s *Store) ManagedCoverByID(ctx context.Context, id string) (ManagedCover, 
 	if !lowerHex(id, 32) {
 		return ManagedCover{}, ErrInvalidManagedCover
 	}
+	return scanManagedCover(s.db.QueryRowContext(ctx, managedCoverByIDQuery, id), id)
+}
+
+const managedCoverByIDQuery = `SELECT id,relative_path,state,volume_serial,file_id,byte_size,sha256
+ FROM managed_covers WHERE id=?`
+
+func scanManagedCover(row *sql.Row, id string) (ManagedCover, error) {
 	var value ManagedCover
 	var volume, fileID sql.NullString
 	var size sql.NullInt64
 	var hash sql.Null[[]byte]
-	err := s.db.QueryRowContext(ctx, `SELECT id,relative_path,state,volume_serial,file_id,byte_size,sha256
- FROM managed_covers WHERE id=?`, id).Scan(&value.ID, &value.RelativePath, &value.State, &volume, &fileID, &size, &hash)
+	err := row.Scan(&value.ID, &value.RelativePath, &value.State, &volume, &fileID, &size, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ManagedCover{}, ErrManagedCoverNotFound
 	}

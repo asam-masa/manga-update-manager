@@ -80,6 +80,8 @@ Issue #56の配信試作は、合成画像だけを使い、開発モードとex
 
 2026-10-13、Issue #97でStorageの予約・確定・ID取得を追加した。一時SQLiteで再接続・上位bitの保持、重複・二重確定・確定失敗・キャンセル・破損した記録の拒否を確認した。実ファイル確認、作品参照変更、整理・配信との接続は残るためPendingを維持する。内部の操作契約は[画像保存契約](../cover-persistence.md#実装済みのstorage操作)を参照する。
 
+2026-10-13、Issue #101で作品の画像参照と`updatedAt`を同じトランザクションで設定・解除するStorage操作を追加した。正常なready記録の検証、再接続、時計の巻き戻り、変更なし、DB失敗・キャンセル時の旧状態保持を一時SQLiteで検証する。ファイル保存・削除・配信、操作排他、Applicationとの接続が残るためPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

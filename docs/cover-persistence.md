@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブル、#97でStorageの予約・確定・取得処理を追加した。ファイル保存・作品参照変更・削除・配信・画像APIは本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブル、#97でStorageの予約・確定・取得処理、#101で作品参照変更を追加した。ファイル保存・削除・配信・画像APIは本番未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 保存順序
 
@@ -78,10 +78,16 @@ Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途�
 | `ReserveManagedCover` | 小文字16進32文字のIDをそのまま検証し予約する。重複は`ErrManagedCoverExists`で既存記録を保持 |
 | `ConfirmManagedCover` | IDと確認情報を受け、予約かつ確認情報が全NULLの場合だけ一つのUPDATEで確定。更新件数1が必須。不存在・確定済み・破損した予約は`ErrManagedCoverNotReserved` |
 | `ManagedCoverByID` | IDで取得し、状態・生成パス・NULL・確認情報を検証。不存在は`ErrManagedCoverNotFound`、不正情報は`ErrInvalidManagedCover`。失敗時はゼロ値を返し自動修復しない |
+| `SetWorkCover` | 作品ID・管理ID・操作時刻を受け、正常なready記録だけを設定。作品取得・管理記録検証・参照と日時の更新を同じトランザクションで確定 |
+| `RemoveWorkCover` | 作品ID・操作時刻を受け、参照と日時を同じトランザクションで更新。ファイルと管理記録は変更しない |
+
+#101の参照操作は、成功時に更新後作品と旧相対パスを返す。旧パスは削除許可ではなく、管理記録・全作品の未参照・実ファイル・排他の確認が別途必要である。既存の任意パスも自動登録せず変更・解除できる。失敗時はゼロ値作品と空パスを返す。不存在作品は`ErrWorkNotFound`、不存在管理記録は`ErrManagedCoverNotFound`、reserved・破損・不正IDは`ErrInvalidManagedCover`とする。
+
+操作時刻0と保存済み作成・更新日時の不整合は`manga.ErrTimestampInvalid`で拒否する。変更時刻はUTCへ変換し、保存済み更新日時より戻さない。未設定の解除と同一参照の再設定は日時も変更しない。`createdAt`・`lastAccessedAt`・その他の作品項目は保持する。このStorage操作は実ファイルの検証や操作排他を代替せず、まだApplicationから呼び出していない。
 
 Storageの`ManagedCoverInfo`はuint64のvolume serial、APIの順序を保つ16 byte file ID、正のint64サイズ、32 byteのSHA-256を持つ。DBでは既存の小文字16進・INTEGER・BLOBへ変換する。`ManagedCover.Info`は予約時だけnil、保存確認済みでは確認情報を返す。これらは内部の保存契約であり、Wailsへ公開するDTOではない。キャンセル・DBエラーは失敗として返し、呼び出し側は内部診断をUIへ直接出さない。
 
-一時SQLiteで再接続と上位bitの保持、重複・二重確定・確定失敗・キャンセル・DB終了・破損情報の拒否を検証する。未参照候補の取得、作品参照との同一トランザクション、整理・ファイル操作との排他は後続に残る。
+一時SQLiteで再接続と上位bitの保持、重複・二重確定・確定失敗・キャンセル・DB終了・破損情報の拒否を検証する。#101では参照変更の再接続、時計の巻き戻り、変更なし、DB失敗時の旧状態保持を検証する。未参照候補の取得、整理・ファイル操作との排他は後続に残る。
 
 ### 残る検証
 

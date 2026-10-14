@@ -91,15 +91,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 
 // WorkByID returns one work by its internal ID.
 func (s *Store) WorkByID(ctx context.Context, id int64) (manga.Work, error) {
+	return scanWork(s.db.QueryRowContext(ctx, workByIDQuery, id))
+}
+
+const workByIDQuery = `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at
+FROM works WHERE id = ?`
+
+func scanWork(row *sql.Row) (manga.Work, error) {
 	var work manga.Work
 	var createdAt string
 	var updatedAt string
 	var accessed sql.NullString
 
-	err := s.db.QueryRowContext(ctx, `
-SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at
-FROM works
-WHERE id = ?`, id).Scan(
+	err := row.Scan(
 		&work.ID,
 		&work.URL,
 		&work.Title,
