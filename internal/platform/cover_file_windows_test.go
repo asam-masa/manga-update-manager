@@ -116,7 +116,7 @@ func TestWriteNewCoverRefusals(t *testing.T) {
 				cancel()
 			}
 			got, err := WriteNewCover(ctx, base, id, data)
-			if err == nil || got != (CoverFileInfo{}) {
+			if err == nil || errors.Is(err, ErrCoverRelease) || got != (CoverFileInfo{}) {
 				t.Fatalf("refusal returned success: %#v %v", got, err)
 			}
 			contents, err := os.ReadFile(target)

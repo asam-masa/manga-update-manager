@@ -117,6 +117,8 @@ Issue #117でApplicationの受付・停止・終了判定を未接続部品と�
 
 Issue #119で停止判定と変更・整理の段階開始を同じmutexで保護した。開始済み段階は停止で消さず、実I/O中にmutexを保持しない。段階中の操作完了を拒否し、段階完了後の次段階は停止状態なら拒否する。実処理・DB確定結果・共有参照の削除排他・Wailsへの接続は残り、Pendingを維持する。[段階開始契約](../verification/cover-admission.md#段階開始と停止の境界)を参照する。
 
+Issue #121で画像境界のClose失敗に`ErrCoverRelease`を付け、元の原因や併発した処理エラーを保持した。合成Close失敗の判別と原因保持、通常失敗・キャンセルだけでは印が付かないことを検証する。実OS故障・復旧やApplicationの停止接続は未検証で、Pendingを維持する。[エラー契約](../verification/new-cover-file.md)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

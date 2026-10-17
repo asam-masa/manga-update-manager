@@ -24,7 +24,7 @@ type coverDirectoryGuard struct {
 func (g *coverDirectoryGuard) Close() error {
 	g.once.Do(func() {
 		for i := len(g.handles) - 1; i >= 0; i-- {
-			g.err = errors.Join(g.err, g.closeHandle(g.handles[i]))
+			g.err = errors.Join(g.err, coverReleaseError(g.closeHandle(g.handles[i])))
 		}
 	})
 	return g.err

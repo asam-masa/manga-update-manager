@@ -47,7 +47,7 @@ func WriteNewCover(ctx context.Context, directory, id string, data []byte) (resu
 	var file *os.File
 	defer func() {
 		if file != nil {
-			err = errors.Join(err, file.Close())
+			err = errors.Join(err, closeCoverResource(file))
 		}
 		err = errors.Join(err, guard.Close())
 		if err != nil {
@@ -72,7 +72,7 @@ func WriteNewCover(ctx context.Context, directory, id string, data []byte) (resu
 	if expected.SHA256 != sha256.Sum256(data) {
 		return result, ErrInvalidCoverFile
 	}
-	err = file.Close()
+	err = closeCoverResource(file)
 	file = nil // Do not retry Close on a possibly reused OS handle.
 	if err != nil {
 		return result, err
@@ -91,7 +91,7 @@ func WriteNewCover(ctx context.Context, directory, id string, data []byte) (resu
 	if actual != expected {
 		return result, ErrInvalidCoverFile
 	}
-	err = file.Close()
+	err = closeCoverResource(file)
 	file = nil
 	if err != nil {
 		return result, err
