@@ -18,6 +18,8 @@ Issue #111。Windows専用`platform.WriteNewCover(ctx, directory, id, data)`は�
 
 `ErrCoverRelease`は解放を確認できないことを示すだけで、実際のリークや復旧可能性を証明しない。成功・通常の保存失敗・キャンセルだけでは付けない。キャンセルとClose失敗が併発した場合は両方を判別できるため、キャンセルだから解放失敗を無視してよいとは扱わない。元のエラーに内部パスなどが含まれ得るので、そのまま利用者向け文言へ出さない。
 
+#123でApplicationの`CoverOperations.ObserveError`がこの印から受付停止を行う部品を追加した。実際の`WriteNewCover`呼び出しからの通知と画面案内はまだ未接続である。[通知契約](./cover-admission.md#解放失敗の通知)を参照する。
+
 ## 検証と限界
 
 2026-10-17、Windows・Go 1.26.9・CGO無効で合成PNGと一時領域だけを使う。
