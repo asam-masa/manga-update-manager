@@ -119,6 +119,8 @@ Issue #119で停止判定と変更・整理の段階開始を同じmutexで保�
 
 Issue #121で画像境界のClose失敗に`ErrCoverRelease`を付け、元の原因や併発した処理エラーを保持した。合成Close失敗の判別と原因保持、通常失敗・キャンセルだけでは印が付かないことを検証する。実OS故障・復旧やApplicationの停止接続は未検証で、Pendingを維持する。[エラー契約](../verification/new-cover-file.md)を参照する。
 
+Issue #123で解放失敗の通知からApplicationの画像受付停止へ接続する部品を追加した。通常失敗との区別、キャンセルとの併発、既存処理の保持、段階開始との競合を検証する。実画像操作からの通知、UI案内、DB確定結果の分類は未接続であり、Pendingを維持する。[通知契約](../verification/cover-admission.md#解放失敗の通知)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

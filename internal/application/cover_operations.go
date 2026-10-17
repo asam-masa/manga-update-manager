@@ -3,6 +3,8 @@ package application
 import (
 	"errors"
 	"sync"
+
+	"github.com/asam-masa/manga-update-manager/internal/platform"
 )
 
 var (
@@ -170,6 +172,15 @@ func (g *CoverOperations) Stop() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.stopped = true
+}
+
+// ObserveError connects the platform error contract to admission stopping.
+// Report all operation/release errors before ending tickets or starting another
+// stage. It neither consumes the error nor changes any operation's result.
+func (g *CoverOperations) ObserveError(err error) {
+	if errors.Is(err, platform.ErrCoverRelease) {
+		g.Stop()
+	}
 }
 
 // RequestClose rejects changes/cleanup without changing admission state. With
