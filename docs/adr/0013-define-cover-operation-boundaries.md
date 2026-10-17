@@ -90,6 +90,8 @@ Issue #56の配信試作は、合成画像だけを使い、開発モードとex
 
 2026-10-13、Issue #101で作品の画像参照と`updatedAt`を同じトランザクションで設定・解除するStorage操作を追加した。正常なready記録の検証、再接続、時計の巻き戻り、変更なし、DB失敗・キャンセル時の旧状態保持を一時SQLiteで検証する。ファイル保存・削除・配信、操作排他、Applicationとの接続が残るためPendingを維持する。
 
+2026-10-17、Issue #109で既存保存先を確認・保持して固定名coversを準備するWindows境界を追加した。失敗時の部分解放、キャンセル、作成後のフォルダー残置、Closeエラーの集約を扱う。Application・画像保存・削除・配信とは未接続であり、全体のPendingを維持する。[契約と検証](../verification/cover-directory-boundary.md)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
