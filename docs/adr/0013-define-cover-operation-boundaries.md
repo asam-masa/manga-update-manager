@@ -92,6 +92,8 @@ Issue #56の配信試作は、合成画像だけを使い、開発モードとex
 
 2026-10-17、Issue #109で既存保存先を確認・保持して固定名coversを準備するWindows境界を追加した。失敗時の部分解放、キャンセル、作成後のフォルダー残置、Closeエラーの集約を扱う。Application・画像保存・削除・配信とは未接続であり、全体のPendingを維持する。[契約と検証](../verification/cover-directory-boundary.md)を参照する。
 
+2026-10-17、Issue #111で新規ファイルの保存・同期・Close後の再取得照合を行うWindows境界を追加した。既存ファイルを上書きせず、確認できない場合は成功情報を返さない。失敗した新規出力は自動削除しない。SQLite・作品参照・Application・削除・配信は未接続であり、全体のPendingを維持する。[契約と検証](../verification/new-cover-file.md)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
