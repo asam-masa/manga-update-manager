@@ -269,8 +269,8 @@ func TestCoverConcurrentWorkAndStop(t *testing.T) {
 	}
 	wg.Go(g.Stop)
 	wg.Go(winner.SelectionDone)
-	wg.Go(winner.End)
-	wg.Go(winner.End)
+	wg.Go(func() { winner.End() })
+	wg.Go(func() { winner.End() })
 	wg.Wait()
 	if op, err := g.BeginChange(2, true); op != nil || !errors.Is(err, ErrCoverStopped) {
 		t.Fatal("stop lost")

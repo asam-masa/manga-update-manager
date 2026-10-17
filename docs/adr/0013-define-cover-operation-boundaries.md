@@ -115,6 +115,8 @@ Issue #115も合意の文書化だけであり、停止・受付・終了制御�
 
 Issue #117でApplicationの受付・停止・終了判定を未接続部品として追加した。受付と終了の競合、同作品・選択画面の重複、二重完了・古い票、読取の完了通知をテストする。段階ごとの停止・DB・OS操作・Wailsとの接続と実行検証は残り、Pendingを維持する。[契約と検証](../verification/cover-admission.md)を参照する。
 
+Issue #119で停止判定と変更・整理の段階開始を同じmutexで保護した。開始済み段階は停止で消さず、実I/O中にmutexを保持しない。段階中の操作完了を拒否し、段階完了後の次段階は停止状態なら拒否する。実処理・DB確定結果・共有参照の削除排他・Wailsへの接続は残り、Pendingを維持する。[段階開始契約](../verification/cover-admission.md#段階開始と停止の境界)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
