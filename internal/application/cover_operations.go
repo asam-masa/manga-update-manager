@@ -20,7 +20,7 @@ const (
 	coverCleanup
 )
 
-// CoverOperations coordinates admission only, not file/DB access or stage locks.
+// CoverOperations coordinates admission and stage starts, not file/DB access.
 // Its zero value is ready. Do not copy it after first use.
 type CoverOperations struct {
 	mu        sync.Mutex
@@ -39,6 +39,43 @@ type CoverOperation struct {
 	owner  *CoverOperations
 	kind   coverOperationKind
 	workID int64
+	stage  *CoverStage
+}
+
+// CoverStage marks an admitted stage, not successful I/O. Keep its pointer.
+type CoverStage struct {
+	operation *CoverOperation
+}
+
+// BeginStage atomically orders a change/cleanup stage start against Stop.
+// No mutex remains held during the caller's actual I/O.
+func (op *CoverOperation) BeginStage() (*CoverStage, error) {
+	g := op.owner
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, ok := g.active[op]; !ok || op.kind == coverRead {
+		return nil, ErrCoverOperationInvalid
+	}
+	if g.stopped {
+		return nil, ErrCoverStopped
+	}
+	if op.stage != nil {
+		return nil, ErrCoverBusy
+	}
+	stage := &CoverStage{operation: op}
+	op.stage = stage
+	return stage, nil
+}
+
+// End marks stage completion only. It does not end the overall operation.
+func (stage *CoverStage) End() {
+	op := stage.operation
+	g := op.owner
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if op.stage == stage {
+		op.stage = nil
+	}
 }
 
 func (g *CoverOperations) BeginChange(workID int64, selecting bool) (*CoverOperation, error) {
@@ -100,12 +137,16 @@ func (op *CoverOperation) SelectionDone() {
 
 // End is idempotent. The caller must finish all resource release attempts first.
 // It does not close OS handles or assert that their release succeeded.
-func (op *CoverOperation) End() {
+// A running stage returns ErrCoverBusy; finish it and retry operation End.
+func (op *CoverOperation) End() error {
 	g := op.owner
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if _, ok := g.active[op]; !ok {
-		return
+		return nil
+	}
+	if op.stage != nil {
+		return ErrCoverBusy
 	}
 	delete(g.active, op)
 	if op.kind == coverChange {
@@ -120,6 +161,7 @@ func (op *CoverOperation) End() {
 	if g.closing && len(g.active) == 0 {
 		close(g.drained)
 	}
+	return nil
 }
 
 // Stop rejects new tickets without cancelling or completing existing tickets.
