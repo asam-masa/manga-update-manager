@@ -156,10 +156,10 @@ func TestCoverDirectoryCloseAttemptsAllAndCachesFailure(t *testing.T) {
 		}
 		return nil
 	}}
-	if err := g.Close(); !errors.Is(err, failure) {
+	if err := g.Close(); !errors.Is(err, failure) || !errors.Is(err, ErrCoverRelease) {
 		t.Fatalf("close error lost: %v", err)
 	}
-	if err := g.Close(); !errors.Is(err, failure) {
+	if err := g.Close(); !errors.Is(err, failure) || !errors.Is(err, ErrCoverRelease) {
 		t.Fatalf("repeated close error lost: %v", err)
 	}
 	if !reflect.DeepEqual(calls, []windows.Handle{3, 2, 1}) {
