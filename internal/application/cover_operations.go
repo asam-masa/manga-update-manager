@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/asam-masa/manga-update-manager/internal/platform"
+	"github.com/asam-masa/manga-update-manager/internal/storage"
 )
 
 var (
@@ -174,11 +175,11 @@ func (g *CoverOperations) Stop() {
 	g.stopped = true
 }
 
-// ObserveError connects the platform error contract to admission stopping.
+// ObserveError connects release/outcome error contracts to admission stopping.
 // Report all operation/release errors before ending tickets or starting another
 // stage. It neither consumes the error nor changes any operation's result.
 func (g *CoverOperations) ObserveError(err error) {
-	if errors.Is(err, platform.ErrCoverRelease) {
+	if errors.Is(err, platform.ErrCoverRelease) || errors.Is(err, storage.ErrWorkCoverOutcomeUnknown) {
 		g.Stop()
 	}
 }
