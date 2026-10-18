@@ -131,6 +131,8 @@ Issue #125では正常Commit・読み取り競合・遅延外部キー制約の3
 
 Issue #127で作品参照変更のCommitエラーへ`ErrWorkCoverOutcomeUnknown`を付け、元の原因を保持するようにした。一時SQLiteの読取競合で設定・解除の識別と成功情報を返さないこと、入力拒否との区別を検証する。Applicationの停止・結果契約・UIと、Commit前のRollback失敗や接続隔離への対応は残るためPendingを維持する。
 
+Issue #129で、結果不明の印をApplicationの既存受付停止へ接続した。通常失敗との区別、キャンセル・解放失敗との併発、既存票の保持、段階開始との競合を部品内で検証する。実Storageからの通知・結果分類・案内・接続隔離は未接続でありPendingを維持する。[通知契約](../verification/cover-admission.md#解放失敗の通知)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
