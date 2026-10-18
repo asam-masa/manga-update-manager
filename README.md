@@ -41,7 +41,7 @@
 
 ## 開発コマンド
 
-JPEG・PNG・WebPの静止画像を検証し、PNGサムネイルを生成します。`SelectWorkCover` APIは画像選択から新規保存・作品参照更新と、照合できた未参照の旧管理画像削除まで接続しています。画像の画面操作・配信・解除API・起動時整理は未実装です。確認不能な画像や失敗時の出力は残すため、容量が増える場合があります。[画像生成の契約](./docs/thumbnail-processing.md)と[旧画像削除の範囲・検証の限界](./docs/verification/verified-cover-cleanup.md)を参照してください。配布時は[依存ライブラリの通知](./THIRD_PARTY_NOTICES.md)を同梱してください。
+JPEG・PNG・WebPの静止画像を検証し、PNGサムネイルを生成します。`SelectWorkCover` APIは画像選択から新規保存・作品参照更新と、照合できた未参照の旧管理画像削除まで接続しています。`RemoveWorkCover` APIで参照を解除し、同じ条件で旧画像を処理できます。画像の画面操作・配信・起動時整理は未実装です。確認不能な画像や失敗時の出力は残すため、容量が増える場合があります。[画像生成の契約](./docs/thumbnail-processing.md)・[解除API](./docs/verification/cover-remove-api.md)・[旧画像削除の範囲・検証の限界](./docs/verification/verified-cover-cleanup.md)を参照してください。配布時は[依存ライブラリの通知](./THIRD_PARTY_NOTICES.md)を同梱してください。
 
 最低Go版は1.26.0です。テスト・ビルドには1.26系の最新修正版を使用します。その他の必要な環境はNode.js 24.15.0以降の24系、npm、Wails CLI v2.16.0、WebView2です。画面テストのjsdomと推移依存が要求するNode.jsバージョンを満たしてください。今回の検証ではNode.js 24.18.0を使用しました。
 

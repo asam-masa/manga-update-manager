@@ -21,6 +21,28 @@ type SelectWorkCoverResult struct {
 	Warnings  []CoverWarningDTO `json:"warnings"`
 }
 
+type RemoveWorkCoverResult struct {
+	Work     WorkDTO           `json:"work"`
+	Warnings []CoverWarningDTO `json:"warnings"`
+}
+
+func (a *App) RemoveWorkCover(workID int64) (RemoveWorkCoverResult, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.covers == nil {
+		return RemoveWorkCoverResult{}, unavailableError()
+	}
+	result, err := a.covers.Remove(a.ctx, workID)
+	if err != nil {
+		apiErr := coverAPIError(err)
+		if converted, ok := apiErr.(*APIError); ok && converted.Code == "cover_import_failed" {
+			apiErr = &APIError{Code: "cover_remove_failed", Message: "画像を解除できませんでした。保存先を確認してから再度操作してください。"}
+		}
+		return RemoveWorkCoverResult{}, apiErr
+	}
+	return RemoveWorkCoverResult{Work: workDTO(*result.Work), Warnings: coverWarnings(result.Warnings, "画像を解除しましたが、")}, nil
+}
+
 func chooseCover(ctx context.Context) (string, error) {
 	return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{Title: "作品の画像を選択", Filters: []runtime.FileFilter{{DisplayName: "画像（JPEG・PNG・WebP）", Pattern: "*.jpg;*.jpeg;*.png;*.webp"}}})
 }
@@ -40,20 +62,26 @@ func (a *App) SelectWorkCover(workID int64) (SelectWorkCoverResult, error) {
 		work := workDTO(*result.Work)
 		dto.Work = &work
 	}
-	for _, code := range result.Warnings {
-		message := "画像を設定しましたが、旧画像の後処理を確認できませんでした。確定済みの設定は維持しています。旧画像や管理記録が残っている場合があります。"
+	dto.Warnings = coverWarnings(result.Warnings, "画像を設定しましたが、")
+	return dto, nil
+}
+
+func coverWarnings(codes []string, prefix string) []CoverWarningDTO {
+	warnings := make([]CoverWarningDTO, 0, len(codes))
+	for _, code := range codes {
+		message := prefix + "旧画像の後処理を確認できませんでした。確定済みの設定は維持しています。旧画像や管理記録が残っている場合があります。"
 		if code == "cover_unavailable_after_commit" {
-			message = "画像を設定しましたが、画像機能を停止しています。アプリを再起動して状態を確認してください。"
+			message = prefix + "画像機能を停止しています。アプリを再起動して状態を確認してください。"
 		}
 		if code == "cover_release_unconfirmed" {
-			message = "画像を設定しましたが、資源の解放を確認できないため画像機能を停止しています。アプリを再起動して状態を確認してください。"
+			message = prefix + "資源の解放を確認できないため画像機能を停止しています。アプリを再起動して状態を確認してください。"
 		}
 		if code == "database_stopped_after_commit" {
-			message = "画像を設定しましたが、後始末を確認できないため新たな読み書きを停止しています。アプリを再起動して状態を確認してください。"
+			message = prefix + "後始末を確認できないため新たな読み書きを停止しています。アプリを再起動して状態を確認してください。"
 		}
-		dto.Warnings = append(dto.Warnings, CoverWarningDTO{Code: code, Message: message})
+		warnings = append(warnings, CoverWarningDTO{Code: code, Message: message})
 	}
-	return dto, nil
+	return warnings
 }
 
 func coverAPIError(err error) error {

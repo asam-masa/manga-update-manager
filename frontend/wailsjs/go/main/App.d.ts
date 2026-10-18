@@ -10,6 +10,8 @@ export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
 export function OpenWork(arg1:number):Promise<main.WorkDTO>;
 
+export function RemoveWorkCover(arg1:number):Promise<main.RemoveWorkCoverResult>;
+
 export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>;
 
 export function SetRegistrationFormVisible(arg1:boolean):Promise<void>;
