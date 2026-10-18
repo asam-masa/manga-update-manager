@@ -55,11 +55,11 @@ func TestSelectWorkCoverAPI(t *testing.T) {
 		t.Fatal(first, err)
 	}
 	second, err := app.SelectWorkCover(work.ID)
-	if err != nil || second.Work == nil || first.Work.ThumbnailPath == second.Work.ThumbnailPath || len(second.Warnings) != 1 || second.Warnings[0].Code != "cover_cleanup_deferred" {
+	if err != nil || second.Work == nil || first.Work.ThumbnailPath == second.Work.ThumbnailPath || len(second.Warnings) != 0 {
 		t.Fatal(second, err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(first.Work.ThumbnailPath))); err != nil {
-		t.Fatal("old managed image was removed", err)
+	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(first.Work.ThumbnailPath))); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("old unreferenced managed image remains", err)
 	}
 	after, err := os.ReadFile(sourcePath)
 	if err != nil || !bytes.Equal(after, source.Bytes()) {

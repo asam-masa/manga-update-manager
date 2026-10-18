@@ -1,6 +1,6 @@
 # 管理記録確定と画像参照変更の共通排他
 
-Issue #145。正本は[画像保存契約](../cover-persistence.md#参照と後処理の共通排他)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。削除の前提となるアプリ内排他を実経路へ接続する段階であり、実ファイル削除を追加しない。
+Issue #145時点の参照排他の接続記録。後続#148で[旧画像削除](./verified-cover-cleanup.md)をこの排他へ接続した。正本は[画像保存契約](../cover-persistence.md#参照と後処理の共通排他)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。以下の未接続は#145時点の検証範囲を示す。
 
 ## 対象と確認
 

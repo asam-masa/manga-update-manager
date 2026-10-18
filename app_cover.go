@@ -41,7 +41,10 @@ func (a *App) SelectWorkCover(workID int64) (SelectWorkCoverResult, error) {
 		dto.Work = &work
 	}
 	for _, code := range result.Warnings {
-		message := "画像の後処理が完了していません。画像は削除せず保持しています。"
+		message := "画像を設定しましたが、旧画像の後処理を確認できませんでした。確定済みの設定は維持しています。旧画像や管理記録が残っている場合があります。"
+		if code == "cover_unavailable_after_commit" {
+			message = "画像を設定しましたが、画像機能を停止しています。アプリを再起動して状態を確認してください。"
+		}
 		if code == "cover_release_unconfirmed" {
 			message = "画像を設定しましたが、資源の解放を確認できないため画像機能を停止しています。アプリを再起動して状態を確認してください。"
 		}
