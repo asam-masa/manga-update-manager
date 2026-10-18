@@ -94,13 +94,19 @@ func formatAPIError(err error) any {
 }
 
 func workAPIError(err error) error {
+	if errors.Is(err, storage.ErrDBStopped) {
+		if errors.Is(err, application.ErrAccessSave) {
+			return &APIError{Code: "access_save_failed", Message: "ページを開きましたが、最終アクセス日時の保存を確認できません。データの安全性を確認できないため、新たな読み書きを停止しています。アプリを再起動して状態を確認してください。"}
+		}
+		return databaseStoppedError()
+	}
 	for _, entry := range []struct {
 		err           error
 		code, message string
 	}{
+		{application.ErrAccessSave, "access_save_failed", "ページを開きましたが、最終アクセス日時を保存できませんでした。保存先を確認してください。"},
 		{manga.ErrWorkNotFound, "work_not_found", "作品が見つかりません。一覧を再読み込みしてください。"},
 		{application.ErrBrowserOpen, "browser_open_failed", "ページを開けませんでした。既定ブラウザーの設定を確認して再度お試しください。"},
-		{application.ErrAccessSave, "access_save_failed", "ページを開きましたが、最終アクセス日時を保存できませんでした。保存先を確認してください。"},
 		{application.ErrOpenInProgress, "work_open_in_progress", "この作品を開いています。処理が終わるまでお待ちください。"},
 	} {
 		if errors.Is(err, entry.err) {
@@ -116,6 +122,10 @@ func workAPIError(err error) error {
 		}
 	}
 	return &APIError{Code: "storage_error", Message: "作品データを読み書きできません。保存先の空き容量とアクセス権限を確認し、アプリを再起動してください。"}
+}
+
+func databaseStoppedError() error {
+	return &APIError{Code: "database_stopped", Message: "データの安全性を確認できないため、新たな読み書きを停止しています。アプリを再起動して状態を確認してください。表示中の一覧は最新とは限りません。"}
 }
 
 func unavailableError() error {

@@ -77,7 +77,7 @@ describe('作品管理画面', () => {
         expect(list).toHaveBeenCalledTimes(2);
     });
 
-    it.each(['duplicate_url', 'invalid_input', 'database_unavailable'])('登録失敗 %s で入力を保持する', async (code) => {
+    it.each(['duplicate_url', 'invalid_input', 'database_unavailable', 'database_stopped'])('登録失敗 %s で入力を保持する', async (code) => {
         create.mockRejectedValue({code, message: '入力と保存先を確認してください'});
         render(<App />);
         await screen.findByText('まだ作品が登録されていません');
@@ -129,6 +129,21 @@ describe('作品管理画面', () => {
         await user.click(screen.getByRole('button', {name: '再読み込み'}));
         await screen.findByRole('heading', {name: '追加作品'});
         expect(create).toHaveBeenCalledTimes(1);
+    });
+
+    it('DB停止後の取得失敗で一覧と検索を残し、再読み込みを促さず自動再試行しない', async () => {
+        list.mockResolvedValueOnce([work]).mockRejectedValue({code: 'database_stopped', message: 'アプリを再起動して状態を確認してください。'});
+        render(<App />);
+        await screen.findByRole('heading', {name: work.title});
+        fireEvent.change(screen.getByRole('searchbox'), {target: {value: work.title}});
+        await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
+        const alert = await screen.findByRole('alert');
+        expect(alert.textContent).toContain('再起動して状態を確認');
+        expect(alert.textContent).not.toContain('一覧を再読み込み');
+        expect(screen.getByRole('heading', {name: work.title})).toBeTruthy();
+        expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe(work.title);
+        expect(list).toHaveBeenCalledTimes(2);
+        expect(create).not.toHaveBeenCalled();
     });
 
     it('StrictModeの古い一覧応答で新しい一覧を上書きしない', async () => {

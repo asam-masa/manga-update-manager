@@ -54,7 +54,7 @@ func (a *WorkOpener) OpenWork(ctx context.Context, id int64) (manga.Work, error)
 	}
 	at := a.now().Round(0).UTC()
 	if err := a.repository.RecordLastAccess(ctx, id, at); err != nil {
-		return manga.Work{}, ErrAccessSave
+		return manga.Work{}, errors.Join(ErrAccessSave, err)
 	}
 	work.LastAccessedAt = &at
 	return work, nil

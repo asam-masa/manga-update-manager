@@ -43,6 +43,12 @@ func TestAccessAPI(t *testing.T) {
 	if _, err = app.OpenWork(work.ID); errorCode(t, err) != "access_save_failed" {
 		t.Fatal(err)
 	}
+	if !strings.Contains(err.Error(), "ページを開きました") || !strings.Contains(err.Error(), "再起動して状態を確認") {
+		t.Fatal("lost partial success or stop notice", err)
+	}
+	if _, err := app.OpenWork(work.ID); errorCode(t, err) != "database_stopped" {
+		t.Fatal("launch after stop", err)
+	}
 	app.shutdown(context.Background())
 	// A restart creates a fresh App; a stopped App cannot reopen its database.
 	app = testApp(t, directory)

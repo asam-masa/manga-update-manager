@@ -3,7 +3,7 @@ import type {FormEvent} from 'react';
 import {CreateWork, ListWorks, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible} from '../wailsjs/go/main/App';
 import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
-import {apiErrorMessage} from './work-display';
+import {apiErrorMessage, isDatabaseStopped} from './work-display';
 import {titleMatches} from './work-search';
 import './App.css';
 
@@ -14,6 +14,7 @@ function App() {
     const [works, setWorks] = useState<WorkView[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [listError, setListError] = useState('');
+    const [listStopped, setListStopped] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [registeredTitle, setRegisteredTitle] = useState<string | null>(null);
@@ -41,6 +42,7 @@ function App() {
         const revision = accessRevision.current;
         setLoading(true);
         setListError('');
+        setListStopped(false);
         try {
             const result = await ListWorks();
             if (current === request.current) setWorks(result.map((work) => {
@@ -49,7 +51,9 @@ function App() {
             }));
         } catch (error: unknown) {
             if (current === request.current) {
-                setListError(apiErrorMessage(error, '作品一覧を取得できません。再読み込みをお試しください。'));
+                const stopped = isDatabaseStopped(error);
+                setListError(apiErrorMessage(error, stopped ? 'データの読み書きを停止しています。アプリを再起動して状態を確認してください。' : '作品一覧を取得できません。再読み込みをお試しください。'));
+                setListStopped(stopped);
             }
         } finally {
             if (current === request.current) setLoading(false);
@@ -217,7 +221,7 @@ function App() {
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
                     {listError && <div className="message error-message" role="alert">
                         <p>{listError}</p>
-                        <p>一覧を再読み込みしてください。登録した作品は再登録する必要はありません。</p>
+                        {!listStopped && <p>一覧を再読み込みしてください。登録した作品は再登録する必要はありません。</p>}
                     </div>}
                     <div aria-busy={loading}>
                         {works !== null && visibleWorks !== undefined && <>

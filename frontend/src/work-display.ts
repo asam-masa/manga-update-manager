@@ -1,6 +1,10 @@
 import type {main} from '../wailsjs/go/models';
 export type WorkView = Omit<main.WorkDTO, 'lastAccessedAt'> & {lastAccessedAt?: string | null};
-const knownCodes = new Set(['database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error', 'browser_open_failed', 'access_save_failed', 'work_not_found', 'work_open_in_progress', 'settings_read_failed', 'settings_save_failed']);
+const knownCodes = new Set(['database_stopped', 'database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error', 'browser_open_failed', 'access_save_failed', 'work_not_found', 'work_open_in_progress', 'settings_read_failed', 'settings_save_failed']);
+
+export function isDatabaseStopped(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === 'database_stopped';
+}
 
 // Raw runtime errors may contain diagnostics; only the structured contract is shown.
 export function apiErrorMessage(error: unknown, fallback: string): string {

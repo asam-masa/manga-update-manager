@@ -30,6 +30,26 @@ it('初回復元は自動保存せず、フォーカスも移動しない', asyn
     expect(document.activeElement).toBe(document.body);
 });
 
+it('設定読込時のDB停止は再起動案内を表示し自動保存しない', async () => {
+    load.mockRejectedValue({code: 'database_stopped', message: 'データの読み書きを停止しています。再起動して状態を確認してください。'});
+    render(<App />);
+    expect((await screen.findByRole('alert')).textContent).toContain('再起動して状態を確認');
+    await screen.findByRole('heading', {name: '作品'});
+    expect(save).not.toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(1);
+});
+
+it('設定保存時のDB停止は一覧と操作後の表示を維持して案内する', async () => {
+    save.mockRejectedValue({code: 'database_stopped', message: 'データの読み書きを停止しています。再起動して状態を確認してください。'});
+    render(<App />);
+    await screen.findByRole('button', {name: '登録する'});
+    await userEvent.click(screen.getByRole('button', {name: '登録フォームを閉じる'}));
+    expect((await screen.findByRole('alert')).textContent).toContain('再起動して状態を確認');
+    expect(screen.getByRole('heading', {name: '作品'})).toBeTruthy();
+    expect(screen.queryByRole('button', {name: '登録する'})).toBeNull();
+    expect(save).toHaveBeenCalledExactlyOnceWith(false);
+});
+
 it('設定取得中は開閉と登録を待ち、隠す設定を復元する', async () => {
     const pending = deferred<main.DisplaySettingsDTO>();
     load.mockReturnValue(pending.promise);
