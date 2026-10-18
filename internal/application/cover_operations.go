@@ -179,7 +179,7 @@ func (g *CoverOperations) Stop() {
 // Report all operation/release errors before ending tickets or starting another
 // stage. It neither consumes the error nor changes any operation's result.
 func (g *CoverOperations) ObserveError(err error) {
-	if errors.Is(err, platform.ErrCoverRelease) || errors.Is(err, storage.ErrWorkCoverOutcomeUnknown) {
+	if errors.Is(err, platform.ErrCoverRelease) || errors.Is(err, storage.ErrWorkCoverOutcomeUnknown) || errors.Is(err, storage.ErrDBStopped) {
 		g.Stop()
 	}
 }

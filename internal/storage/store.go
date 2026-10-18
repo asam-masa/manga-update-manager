@@ -19,7 +19,8 @@ const storageTimeFormat = "2006-01-02T15:04:05.000000000Z07:00"
 
 // Store persists application data in SQLite.
 type Store struct {
-	db *sql.DB
+	db        *sql.DB
+	admission dbAdmission
 }
 
 // Open opens a SQLite database and applies pending migrations.
@@ -47,11 +48,14 @@ func Open(ctx context.Context, dataSourceName string) (*Store, error) {
 
 // Close releases the SQLite connection pool.
 func (s *Store) Close() error {
+	s.admission.stop()
+	s.admission.slot <- struct{}{}
+	defer func() { <-s.admission.slot }()
 	return s.db.Close()
 }
 
 // CreateWork inserts a new work and returns it with the assigned ID.
-func (s *Store) CreateWork(ctx context.Context, work manga.Work) (manga.Work, error) {
+func (s *Store) CreateWork(ctx context.Context, work manga.Work) (_ manga.Work, err error) {
 	if work.ID != 0 {
 		return manga.Work{}, errors.New("登録前の作品にIDを指定できません")
 	}
@@ -62,7 +66,12 @@ func (s *Store) CreateWork(ctx context.Context, work manga.Work) (manga.Work, er
 		return manga.Work{}, err
 	}
 
-	result, err := s.db.ExecContext(ctx, `
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return manga.Work{}, err
+	}
+	defer finish(&err)
+	result, err := conn.ExecContext(ctx, `
 INSERT INTO works(url, title, site_name, thumbnail_path, notes, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		work.URL,
@@ -90,14 +99,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 }
 
 // WorkByID returns one work by its internal ID.
-func (s *Store) WorkByID(ctx context.Context, id int64) (manga.Work, error) {
-	return scanWork(s.db.QueryRowContext(ctx, workByIDQuery, id))
+func (s *Store) WorkByID(ctx context.Context, id int64) (_ manga.Work, err error) {
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return manga.Work{}, err
+	}
+	defer finish(&err)
+	return scanWork(queryOne(ctx, conn, workByIDQuery, id))
 }
 
 const workByIDQuery = `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at
 FROM works WHERE id = ?`
 
-func scanWork(row *sql.Row) (manga.Work, error) {
+func scanWork(row oneRow) (manga.Work, error) {
 	var work manga.Work
 	var createdAt string
 	var updatedAt string
@@ -114,7 +128,7 @@ func scanWork(row *sql.Row) (manga.Work, error) {
 		&updatedAt,
 		&accessed,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) && !errors.Is(err, ErrDBStopped) {
 		return manga.Work{}, ErrWorkNotFound
 	}
 	if err != nil {
@@ -152,11 +166,16 @@ func parseAccessTime(value sql.NullString) (*time.Time, error) {
 }
 
 // RecordLastAccess changes access metadata, not the work's content modification date.
-func (s *Store) RecordLastAccess(ctx context.Context, id int64, at time.Time) error {
+func (s *Store) RecordLastAccess(ctx context.Context, id int64, at time.Time) (err error) {
 	if at.IsZero() {
 		return manga.ErrTimestampInvalid
 	}
-	result, err := s.db.ExecContext(ctx, "UPDATE works SET last_accessed_at = ? WHERE id = ?", formatTime(at), id)
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer finish(&err)
+	result, err := conn.ExecContext(ctx, "UPDATE works SET last_accessed_at = ? WHERE id = ?", formatTime(at), id)
 	if err != nil {
 		return fmt.Errorf("record last access: %w", err)
 	}

@@ -14,6 +14,10 @@ import (
 // Its absence does not prove that resource cleanup succeeded.
 var ErrWorkCoverOutcomeUnknown = errors.New("work cover outcome unknown")
 
+// ErrWorkCoverCommitted marks a confirmed Commit followed by cleanup failure.
+// The returned work/previous path are committed results, never deletion authority.
+var ErrWorkCoverCommitted = errors.New("work cover committed with cleanup failure")
+
 // SetWorkCover attaches a valid ready record, not an arbitrary path.
 // The previous path is not authorization to delete a file.
 func (s *Store) SetWorkCover(ctx context.Context, workID int64, coverID string, at time.Time) (manga.Work, string, error) {
@@ -28,16 +32,35 @@ func (s *Store) RemoveWorkCover(ctx context.Context, workID int64, at time.Time)
 	return s.changeWorkCover(ctx, workID, "", at)
 }
 
-func (s *Store) changeWorkCover(ctx context.Context, workID int64, coverID string, at time.Time) (manga.Work, string, error) {
+func (s *Store) changeWorkCover(ctx context.Context, workID int64, coverID string, at time.Time) (_ manga.Work, _ string, err error) {
 	if at.IsZero() {
 		return manga.Work{}, "", manga.ErrTimestampInvalid
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return manga.Work{}, "", err
+	}
+	committed := false
+	defer func() {
+		finish(&err)
+		if committed && err != nil {
+			err = errors.Join(ErrWorkCoverCommitted, err)
+		}
+	}()
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return manga.Work{}, "", fmt.Errorf("begin work cover change: %w", err)
 	}
-	defer tx.Rollback()
-	work, err := scanWork(tx.QueryRowContext(ctx, workByIDQuery, workID))
+	finalized := false
+	defer func() {
+		if !finalized {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.admission.stop()
+				err = errors.Join(err, ErrDBStopped, rollbackErr)
+			}
+		}
+	}()
+	work, err := scanWork(queryOne(ctx, tx, workByIDQuery, workID))
 	if err != nil {
 		return manga.Work{}, "", err
 	}
@@ -46,7 +69,7 @@ func (s *Store) changeWorkCover(ctx context.Context, workID int64, coverID strin
 	}
 	nextPath := ""
 	if coverID != "" {
-		cover, err := scanManagedCover(tx.QueryRowContext(ctx, managedCoverByIDQuery, coverID), coverID)
+		cover, err := scanManagedCover(queryOne(ctx, tx, managedCoverByIDQuery, coverID), coverID)
 		if err != nil {
 			return manga.Work{}, "", err
 		}
@@ -74,8 +97,12 @@ func (s *Store) changeWorkCover(ctx context.Context, workID int64, coverID strin
 		}
 		work.ThumbnailPath, work.UpdatedAt = nextPath, at
 	}
-	if err := tx.Commit(); err != nil {
-		return manga.Work{}, "", fmt.Errorf("commit work cover change: %w", errors.Join(ErrWorkCoverOutcomeUnknown, err))
+	commitErr := tx.Commit()
+	finalized = true // Commit owns Tx completion, including driver-side cleanup.
+	if commitErr != nil {
+		s.admission.stop()
+		return manga.Work{}, "", fmt.Errorf("commit work cover change: %w", errors.Join(ErrWorkCoverOutcomeUnknown, ErrDBStopped, commitErr))
 	}
+	committed = true
 	return work, previous, nil
 }

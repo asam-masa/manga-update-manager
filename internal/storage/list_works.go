@@ -3,18 +3,29 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/asam-masa/manga-update-manager/internal/manga"
 )
 
 // ListWorks returns all works in ascending ID order, including an empty slice.
-func (s *Store) ListWorks(ctx context.Context) ([]manga.Work, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at FROM works ORDER BY id ASC`)
+func (s *Store) ListWorks(ctx context.Context) (_ []manga.Work, err error) {
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer finish(&err)
+	rows, err := conn.QueryContext(ctx, `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at FROM works ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list works: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			s.admission.stop()
+			err = errors.Join(err, ErrDBStopped, closeErr)
+		}
+	}()
 	works := make([]manga.Work, 0)
 	for rows.Next() {
 		var work manga.Work
@@ -38,7 +49,9 @@ func (s *Store) ListWorks(ctx context.Context) ([]manga.Work, error) {
 		works = append(works, work)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate works: %w", err)
+		// Next may already have closed Rows and retained a Close failure here.
+		s.admission.stop()
+		return nil, fmt.Errorf("iterate works: %w", errors.Join(ErrDBStopped, err))
 	}
 	return works, nil
 }
