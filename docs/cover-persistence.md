@@ -1,6 +1,16 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。Issue #95で管理記録テーブル、#97でStorageの予約・確定・取得処理、#101で作品参照変更、#109でWindowsフォルダー準備境界、#111で新規画像保存・再取得照合境界を追加した。Windows境界はApplicationと未接続である。画像削除・配信・画像APIは未実装であり、具体API名・型は実装予定である。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。Issue #143で、既存の生成・保存境界とStorageをApplication経由で`SelectWorkCover`へ接続した。画像削除・配信・解除API・画面操作は未実装である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の接続範囲は次節と[結合検証](./verification/cover-import-api.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+
+## 現在の段階実装
+
+2026-10-18、Issue #143で選択からDB参照変更までを先に接続し、削除と配信を後続へ分ける方針を承認した。初回の`SelectWorkCover`は、作品確認、OSの選択画面、読み取り専用の元画像からのPNG生成、祖先保持、ランダムIDの予約、新規保存・照合、管理記録確定、作品参照変更の順に実行する。元画像パスはDBや結果へ保存しない。
+
+以下の保存順序5と起動時整理は最終的な契約であり、今回は実行しない。旧参照がある成功では`cover_cleanup_deferred`を返し、旧画像を保持する。失敗した新規出力・予約記録も自動削除しないため容量が増える場合がある。この段階を削除機能の完成とは扱わない。
+
+操作票は最終解放まで保持し、各段階終了前に停止対象エラーを通知する。保存先が安全でない場合も画像機能を停止する。画像操作中の通常終了は案内して拒否し、完了後に再度閉じる。DB停止は既存APIのエラー経路からも画像受付へ通知するが、別々のStoreと画像受付のmutexを単一の原子的な停止判定とは扱わない。Store自身が停止後のDB実行を拒否する。
+
+DB参照Commit結果不明では`cover_outcome_unknown`で再起動後の確認を案内し、成功や旧状態保持を断定しない。確定済み後のDB返却失敗は成功と`database_stopped_after_commit`、最後のフォルダー解放失敗は成功と`cover_release_unconfirmed`に分ける。生のエラー・絶対パスを利用者へ返さない。画像UI・警告表示は#43、削除・配信・整理は#42の後続で扱う。
 
 ## 保存順序
 
@@ -16,11 +26,11 @@ DB確定前の失敗では旧画像と旧参照を保持する。新規未参照
 
 画像の設定・変更・解除がDBへ確定した時点で、作品内容の`updatedAt`を同じDBトランザクションで更新する。キャンセル・DB確定前の失敗・すでに未設定の解除では更新しない。DB確定後の削除警告では更新済み日時を戻さない。`createdAt`、`lastAccessedAt`、漫画の更新予定は変更しない。時計が戻った場合も日時の既存規則を壊さず、保存済み`updatedAt`より前へ戻さない。
 
-## APIの実装予定
+## APIの実装状況と予定
 
 | API | 入力 | 成功結果 |
 | --- | --- | --- |
-| `SelectWorkCover` | 作品ID | `cancelled`、`work`、`warnings` |
+| `SelectWorkCover`（#143で実装） | 作品ID | `cancelled`、`work`、`warnings` |
 | `RemoveWorkCover` | 作品ID | 更新後の`work`、`warnings` |
 | `LoadCoverWarnings` | なし | 起動時整理の警告配列 |
 
