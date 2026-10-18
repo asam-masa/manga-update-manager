@@ -165,6 +165,9 @@ func TestCoverImportReleaseOutcomesAndStageStop(t *testing.T) {
 					}
 					err := guard.Close()
 					if mode == "guard-release" {
+						if len(a.operations.references) != 1 {
+							t.Error("reference exclusion ended before guard release")
+						}
 						err = errors.Join(err, errors.New("synthetic guard release"))
 					}
 					return err
@@ -343,5 +346,105 @@ func TestCoverImportSelectionExclusionAndClose(t *testing.T) {
 		default:
 			t.Fatal("not drained")
 		}
+	}
+}
+
+func TestCoverImportReferenceWait(t *testing.T) {
+	for _, mode := range []string{"complete", "stop", "cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			a, s, old, dir := importFixture(t)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			other, err := manga.NewWork(manga.NewWorkInput{URL: "https://example.com/other", Title: "Other"}, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			other, err = s.CreateWork(ctx, other)
+			if err != nil {
+				t.Fatal(err)
+			}
+			unlock, err := a.operations.LockReferences(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer unlock()
+			written := make(chan struct{})
+			write := a.write
+			a.write = func(ctx context.Context, dir, id string, data []byte) (platform.CoverFileInfo, error) {
+				info, err := write(ctx, dir, id, data)
+				close(written)
+				return info, err
+			}
+			selectCount := 0
+			a.choose = func(context.Context) (string, error) {
+				selectCount++
+				if selectCount == 1 {
+					return "selected-source", nil
+				}
+				return "", nil
+			}
+			type outcome struct {
+				result CoverImportResult
+				err    error
+			}
+			done := make(chan outcome, 1)
+			go func() { r, err := a.Select(ctx, old.ID); done <- outcome{r, err} }()
+			select {
+			case <-written:
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+			// Saved but not confirmed: cleanup must not treat this as ready.
+			files, err := os.ReadDir(filepath.Join(dir, "covers"))
+			if err != nil || len(files) != 1 {
+				t.Fatal(files, err)
+			}
+			id := strings.TrimSuffix(files[0].Name(), ".png")
+			record, err := s.ManagedCoverByID(ctx, id)
+			if err != nil || record.State != "reserved" {
+				t.Fatal("confirmation bypassed reference gate", record, err)
+			}
+			if r, err := a.Select(ctx, other.ID); err != nil || !r.Cancelled {
+				t.Fatal("other selection blocked by reference section", r, err)
+			}
+			if _, err := a.operations.RequestClose(); !errors.Is(err, ErrCoverBusy) {
+				t.Fatal("close accepted during reference wait", err)
+			}
+			if mode == "stop" {
+				a.operations.Stop()
+			}
+			if mode == "cancel" {
+				cancel()
+			} else {
+				unlock()
+			}
+			var got outcome
+			select {
+			case got = <-done:
+			case <-time.After(10 * time.Second):
+				t.Fatal("reference wait did not complete")
+			}
+			if mode == "complete" {
+				if got.err != nil || got.result.Work == nil {
+					t.Fatal(got)
+				}
+			} else {
+				want := ErrCoverStopped
+				if mode == "cancel" {
+					want = context.Canceled
+				}
+				if !errors.Is(got.err, want) || got.result.Work != nil {
+					t.Fatal(got)
+				}
+				stored, err := s.WorkByID(context.Background(), old.ID)
+				if err != nil || stored.ThumbnailPath != old.ThumbnailPath {
+					t.Fatal(stored, err)
+				}
+				record, err := s.ManagedCoverByID(context.Background(), id)
+				if err != nil || record.State != "reserved" {
+					t.Fatal(record, err)
+				}
+			}
+		})
 	}
 }

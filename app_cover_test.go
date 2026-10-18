@@ -10,9 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/application"
+	"github.com/asam-masa/manga-update-manager/internal/manga"
 	"github.com/asam-masa/manga-update-manager/internal/platform"
 	"github.com/asam-masa/manga-update-manager/internal/storage"
 )
@@ -113,5 +116,74 @@ func TestCoverAPIErrorSafety(t *testing.T) {
 		if errorCode(t, got) != tc.code || strings.Contains(got.Error(), "private") {
 			t.Fatal(got)
 		}
+	}
+}
+
+type referenceWaitContext struct {
+	context.Context
+	checked chan struct{}
+	once    sync.Once
+}
+
+func (c *referenceWaitContext) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.checked) })
+	return c.Context.Done()
+}
+
+type referenceCreateRepository struct {
+	application.WorkRepository
+	entered chan struct{}
+}
+
+func (r referenceCreateRepository) CreateWork(ctx context.Context, work manga.Work) (manga.Work, error) {
+	r.entered <- struct{}{}
+	return r.WorkRepository.CreateWork(ctx, work)
+}
+
+func TestCreateWorkJoinsImageReferenceGate(t *testing.T) {
+	app := NewApp()
+	app.dataDirectory = func() (string, error) { return t.TempDir(), nil }
+	app.startup(context.Background())
+	defer app.shutdown(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wait := &referenceWaitContext{Context: ctx, checked: make(chan struct{})}
+	app.ctx = wait
+	entered := make(chan struct{}, 1)
+	app.works = application.NewWorks(referenceCreateRepository{app.store, entered}, time.Now)
+	unlock, err := app.coverOperations.LockReferences(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	done := make(chan error, 1)
+	go func() {
+		_, err := app.CreateWork(CreateWorkInput{URL: "https://example.com/ref", Title: "Synthetic", ThumbnailPath: "covers/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"})
+		done <- err
+	}()
+	select {
+	case <-wait.checked:
+	case <-time.After(10 * time.Second):
+		t.Fatal("registration did not reach reference wait")
+	}
+	select {
+	case <-entered:
+		t.Fatal("registration repository started inside another reference section")
+	default:
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("cancelled registration succeeded")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("reference wait ignored cancellation")
+	}
+	unlock()
+	app.ctx = context.Background()
+	app.coverOperations.Stop()
+	if _, err := app.CreateWork(CreateWorkInput{URL: "https://example.com/ref", Title: "Synthetic"}); err != nil {
+		t.Fatal("image-only stop prevented registration", err)
 	}
 }

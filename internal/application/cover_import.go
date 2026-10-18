@@ -52,6 +52,14 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 		return result, err
 	}
 	defer func() { err = errors.Join(err, op.End()) }()
+	var unlockReferences func()
+	// Registered before the guard defer: notify its release outcome before
+	// allowing another operation to enter the reference/cleanup section.
+	defer func() {
+		if unlockReferences != nil {
+			unlockReferences()
+		}
+	}()
 	stage := func(fn func() error) error {
 		ticket, err := op.BeginStage()
 		if err != nil {
@@ -126,6 +134,13 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 	}
 	var info platform.CoverFileInfo
 	if err = stage(func() error { var err error; info, err = a.write(ctx, a.directory, id, png); return err }); err != nil {
+		return result, err
+	}
+	if err = stage(func() error {
+		var err error
+		unlockReferences, err = a.operations.LockReferences(ctx)
+		return err
+	}); err != nil {
 		return result, err
 	}
 	if err = stage(func() error {

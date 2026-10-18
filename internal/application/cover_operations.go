@@ -34,6 +34,8 @@ type CoverOperations struct {
 	stopped   bool
 	closing   bool
 	drained   chan struct{}
+
+	references chan struct{}
 }
 
 // CoverOperation must be retained through cleanup and resource release.
