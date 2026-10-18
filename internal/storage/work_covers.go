@@ -2,11 +2,17 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/manga"
 )
+
+// ErrWorkCoverOutcomeUnknown marks a failed Commit, not a confirmed rollback.
+// Preserve images; callers must not retry or infer connection health from it.
+// Its absence does not prove that resource cleanup succeeded.
+var ErrWorkCoverOutcomeUnknown = errors.New("work cover outcome unknown")
 
 // SetWorkCover attaches a valid ready record, not an arbitrary path.
 // The previous path is not authorization to delete a file.
@@ -69,7 +75,7 @@ func (s *Store) changeWorkCover(ctx context.Context, workID int64, coverID strin
 		work.ThumbnailPath, work.UpdatedAt = nextPath, at
 	}
 	if err := tx.Commit(); err != nil {
-		return manga.Work{}, "", fmt.Errorf("commit work cover change: %w", err)
+		return manga.Work{}, "", fmt.Errorf("commit work cover change: %w", errors.Join(ErrWorkCoverOutcomeUnknown, err))
 	}
 	return work, previous, nil
 }
