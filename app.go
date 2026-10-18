@@ -16,20 +16,24 @@ import (
 
 // App exposes the application boundary to the Wails frontend.
 type App struct {
-	mu            sync.RWMutex
-	ctx           context.Context
-	works         *application.Works
-	display       *application.DisplaySettings
-	opener        *application.WorkOpener
-	openURL       func(string) error
-	store         *storage.Store
-	dataDirectory func() (string, error)
-	stopped       bool
+	mu              sync.RWMutex
+	ctx             context.Context
+	works           *application.Works
+	display         *application.DisplaySettings
+	opener          *application.WorkOpener
+	covers          *application.CoverImporter
+	coverOperations application.CoverOperations
+	chooseCover     func(context.Context) (string, error)
+	coverBusyNotice func(context.Context)
+	openURL         func(string) error
+	store           *storage.Store
+	dataDirectory   func() (string, error)
+	stopped         bool
 }
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverBusyNotice: coverBusyNotice}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -58,6 +62,7 @@ func (a *App) startup(ctx context.Context) {
 	a.works = application.NewWorks(store, time.Now)
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
+	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
 }
 
 func (a *App) shutdown(_ context.Context) {
@@ -69,6 +74,7 @@ func (a *App) shutdown(_ context.Context) {
 	a.works = nil
 	a.display = nil
 	a.opener = nil
+	a.covers = nil
 	if a.store != nil {
 		if err := a.store.Close(); err != nil {
 			log.Print("作品データベースを閉じられませんでした")
@@ -175,6 +181,7 @@ func (a *App) OpenWork(id int64) (WorkDTO, error) {
 	}
 	work, err := a.opener.OpenWork(a.ctx, id)
 	if err != nil {
+		a.coverOperations.ObserveError(err)
 		return WorkDTO{}, workAPIError(err)
 	}
 	return workDTO(work), nil
@@ -188,6 +195,7 @@ func (a *App) CreateWork(input CreateWorkInput) (WorkDTO, error) {
 	}
 	work, err := a.works.CreateWork(a.ctx, manga.NewWorkInput{URL: input.URL, Title: input.Title, SiteName: input.SiteName, ThumbnailPath: input.ThumbnailPath, Notes: input.Notes})
 	if err != nil {
+		a.coverOperations.ObserveError(err)
 		return WorkDTO{}, workAPIError(err)
 	}
 	return workDTO(work), nil
@@ -201,6 +209,7 @@ func (a *App) ListWorks() ([]WorkDTO, error) {
 	}
 	works, err := a.works.ListWorks(a.ctx)
 	if err != nil {
+		a.coverOperations.ObserveError(err)
 		return nil, workAPIError(err)
 	}
 	result := make([]WorkDTO, 0, len(works))

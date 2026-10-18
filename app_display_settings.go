@@ -18,6 +18,7 @@ func (a *App) LoadDisplaySettings() (DisplaySettingsDTO, error) {
 	}
 	value, err := a.display.Load(a.ctx)
 	if err != nil {
+		a.coverOperations.ObserveError(err)
 		if errors.Is(err, storage.ErrDBStopped) {
 			return DisplaySettingsDTO{}, databaseStoppedError()
 		}
@@ -37,6 +38,7 @@ func (a *App) SetRegistrationFormVisible(visible bool) error {
 		return displaySettingsSaveError()
 	}
 	if err := a.display.SetRegistrationFormVisible(a.ctx, visible); err != nil {
+		a.coverOperations.ObserveError(err)
 		if errors.Is(err, storage.ErrDBStopped) {
 			return databaseStoppedError()
 		}

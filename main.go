@@ -36,6 +36,7 @@ func runDesktop(app *App) error {
 		BackgroundColour: &options.RGBA{R: 246, G: 247, B: 249, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		OnBeforeClose:    app.beforeClose,
 		ErrorFormatter:   formatAPIError,
 		Bind: []interface{}{
 			app,
