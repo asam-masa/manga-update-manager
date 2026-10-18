@@ -193,6 +193,13 @@ func (a *App) CreateWork(input CreateWorkInput) (WorkDTO, error) {
 	if a.works == nil {
 		return WorkDTO{}, unavailableError()
 	}
+	// Registration can supply a thumbnail reference too; it must not race
+	// managed-image reference changes or future unreferenced-file cleanup.
+	unlock, err := a.coverOperations.LockReferences(a.ctx)
+	if err != nil {
+		return WorkDTO{}, workAPIError(err)
+	}
+	defer unlock()
 	work, err := a.works.CreateWork(a.ctx, manga.NewWorkInput{URL: input.URL, Title: input.Title, SiteName: input.SiteName, ThumbnailPath: input.ThumbnailPath, Notes: input.Notes})
 	if err != nil {
 		a.coverOperations.ObserveError(err)
