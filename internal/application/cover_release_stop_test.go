@@ -30,6 +30,8 @@ func TestCoverObserveErrorClassification(t *testing.T) {
 		{"release-unknown", errors.Join(platform.ErrCoverRelease, storage.ErrWorkCoverOutcomeUnknown), true},
 		{"same-text-unknown", errors.New(storage.ErrWorkCoverOutcomeUnknown.Error()), false},
 		{"input-rejection", storage.ErrInvalidManagedCover, false},
+		{"db-stopped", storage.ErrDBStopped, true},
+		{"wrapped-db-stopped", fmt.Errorf("read: %w", storage.ErrDBStopped), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var g CoverOperations

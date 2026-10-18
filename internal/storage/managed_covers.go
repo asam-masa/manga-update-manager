@@ -49,11 +49,16 @@ func lowerHex(value string, width int) bool {
 }
 
 // ReserveManagedCover reserves a generated ID without enrolling existing files.
-func (s *Store) ReserveManagedCover(ctx context.Context, id string) error {
+func (s *Store) ReserveManagedCover(ctx context.Context, id string) (err error) {
 	if !lowerHex(id, 32) {
 		return ErrInvalidManagedCover
 	}
-	_, err := s.db.ExecContext(ctx, "INSERT INTO managed_covers(id,state) VALUES (?,'reserved')", id)
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer finish(&err)
+	_, err = conn.ExecContext(ctx, "INSERT INTO managed_covers(id,state) VALUES (?,'reserved')", id)
 	if err != nil {
 		var sqliteErr *sqlite.Error
 		if errors.As(err, &sqliteErr) && (sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY || sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE) {
@@ -66,11 +71,16 @@ func (s *Store) ReserveManagedCover(ctx context.Context, id string) error {
 
 // ConfirmManagedCover persists verification data exactly once, from reserved.
 // The caller must finish file verification before calling this operation.
-func (s *Store) ConfirmManagedCover(ctx context.Context, id string, info ManagedCoverInfo) error {
+func (s *Store) ConfirmManagedCover(ctx context.Context, id string, info ManagedCoverInfo) (err error) {
 	if !lowerHex(id, 32) || info.ByteSize <= 0 {
 		return ErrInvalidManagedCover
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE managed_covers
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer finish(&err)
+	result, err := conn.ExecContext(ctx, `UPDATE managed_covers
  SET state='ready',volume_serial=?,file_id=?,byte_size=?,sha256=?
  WHERE id=? AND state='reserved'
  AND volume_serial IS NULL AND file_id IS NULL AND byte_size IS NULL AND sha256 IS NULL`, fmt.Sprintf("%016x", info.VolumeSerial), hex.EncodeToString(info.FileID[:]), info.ByteSize, info.SHA256[:], id)
@@ -88,23 +98,28 @@ func (s *Store) ConfirmManagedCover(ctx context.Context, id string, info Managed
 }
 
 // ManagedCoverByID validates persisted state before returning any record.
-func (s *Store) ManagedCoverByID(ctx context.Context, id string) (ManagedCover, error) {
+func (s *Store) ManagedCoverByID(ctx context.Context, id string) (_ ManagedCover, err error) {
 	if !lowerHex(id, 32) {
 		return ManagedCover{}, ErrInvalidManagedCover
 	}
-	return scanManagedCover(s.db.QueryRowContext(ctx, managedCoverByIDQuery, id), id)
+	conn, finish, err := s.begin(ctx)
+	if err != nil {
+		return ManagedCover{}, err
+	}
+	defer finish(&err)
+	return scanManagedCover(queryOne(ctx, conn, managedCoverByIDQuery, id), id)
 }
 
 const managedCoverByIDQuery = `SELECT id,relative_path,state,volume_serial,file_id,byte_size,sha256
  FROM managed_covers WHERE id=?`
 
-func scanManagedCover(row *sql.Row, id string) (ManagedCover, error) {
+func scanManagedCover(row oneRow, id string) (ManagedCover, error) {
 	var value ManagedCover
 	var volume, fileID sql.NullString
 	var size sql.NullInt64
 	var hash sql.Null[[]byte]
 	err := row.Scan(&value.ID, &value.RelativePath, &value.State, &volume, &fileID, &size, &hash)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) && !errors.Is(err, ErrDBStopped) {
 		return ManagedCover{}, ErrManagedCoverNotFound
 	}
 	if err != nil {

@@ -59,9 +59,8 @@ func TestWorkCoverCommitErrorIsUnknown(t *testing.T) {
 			if err := read.Rollback(); err != nil {
 				t.Fatal(err)
 			}
-			after, err := store.WorkByID(ctx, work.ID)
-			if err != nil || !reflect.DeepEqual(after, work) {
-				t.Fatalf("busy fixture changed work: %#v %v", after, err)
+			if _, err := store.WorkByID(ctx, work.ID); !errors.Is(err, ErrDBStopped) {
+				t.Fatalf("commit failure did not stop DB: %v", err)
 			}
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
@@ -71,7 +70,7 @@ func TestWorkCoverCommitErrorIsUnknown(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer reopened.Close()
-			after, err = reopened.WorkByID(ctx, work.ID)
+			after, err := reopened.WorkByID(ctx, work.ID)
 			if err != nil || !reflect.DeepEqual(after, work) {
 				t.Fatal("busy fixture changed persisted work")
 			}
