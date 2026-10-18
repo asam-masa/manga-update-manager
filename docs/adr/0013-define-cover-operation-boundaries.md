@@ -147,6 +147,8 @@ Issue #133も収束方針と検証条件の記録だけであり、実装・実�
 
 Issue #135で、実Storeの設定・解除と受付部品をテスト内で結び、正常・CommitのBUSY・入力拒否の6経路を検証する。結果不明通知後の画像受付停止、既存票の保持と読取終了待ち、再接続後の作品状態を確認する。本番呼び出し元・実資源解放・接続隔離・DB待機拒否・UIは未実装/未検証のためPendingを維持する。[結合検証と限界](../verification/cover-admission.md#storeと停止部品の結合検証)を参照する。
 
+Issue #137で、共通DB実行制御の候補を一時SQLiteで検証した。停止後の新規実行拒否と開始済みTxの完了、接続待ち後の検査、キャンセルと開始競合を確認した。本番Storeの全経路・接続安全性分類・隔離・UIは未対応であり、Pendingを維持する。[結果と限界](../verification/db-admission-spike.md)を参照する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
