@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/asam-masa/manga-update-manager/internal/manga"
+	"github.com/asam-masa/manga-update-manager/internal/storage"
 	"testing"
 	"time"
 )
@@ -31,6 +32,8 @@ func TestOpenWorkOutcomes(t *testing.T) {
 		{name: "success"}, {name: "missing", readErr: manga.ErrWorkNotFound, want: manga.ErrWorkNotFound},
 		{name: "browser failure", openErr: errors.New("private detail"), want: ErrBrowserOpen},
 		{name: "save failure", saveErr: errors.New("private detail"), want: ErrAccessSave},
+		{name: "stopped before launch", readErr: storage.ErrDBStopped, want: storage.ErrDBStopped},
+		{name: "stopped after launch", saveErr: storage.ErrDBStopped, want: ErrAccessSave},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			at := time.Date(2026, 10, 9, 1, 2, 3, 123, time.UTC)
@@ -52,6 +55,9 @@ func TestOpenWorkOutcomes(t *testing.T) {
 			got, err := a.OpenWork(context.Background(), 1)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("error %v want %v", err, tc.want)
+			}
+			if tc.saveErr != nil && (!launched || !errors.Is(err, tc.saveErr)) {
+				t.Fatal("lost launch outcome or save cause", err)
 			}
 			if tc.want == nil {
 				if got.LastAccessedAt == nil || !got.LastAccessedAt.Equal(at) || len(f.saved) != 1 {

@@ -132,11 +132,11 @@ func TestStorageFailureBecomesSafeError(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := app.ListWorks()
-	if errorCode(t, err) != "storage_error" {
+	if errorCode(t, err) != "database_stopped" {
 		t.Fatal(err)
 	}
 	_, err = app.CreateWork(CreateWorkInput{URL: "https://example.com/1", Title: "作品"})
-	if errorCode(t, err) != "storage_error" {
+	if errorCode(t, err) != "database_stopped" {
 		t.Fatal(err)
 	}
 }

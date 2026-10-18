@@ -46,7 +46,7 @@ func TestDisplaySettingsAPIErrorsDoNotExposeDiagnostics(t *testing.T) {
 	saveErr := app.SetRegistrationFormVisible(false)
 	for _, err := range []error{readErr, saveErr} {
 		code := errorCode(t, err)
-		if code != "settings_read_failed" && code != "settings_save_failed" {
+		if code != "database_stopped" {
 			t.Fatal(err)
 		}
 		encoded, _ := json.Marshal(formatAPIError(err))
