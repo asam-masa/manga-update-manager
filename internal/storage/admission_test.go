@@ -18,6 +18,10 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 	s, _ := managedRecordStore(t)
 	w := coverReferenceWork(t, s)
 	readyCover(t, s, testCoverID)
+	cover, err := s.ManagedCoverByID(context.Background(), testCoverID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s.admission.stop()
 	ctx := context.Background()
 	for name, call := range map[string]func() error{
@@ -38,6 +42,8 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 		"managed-get":    func() error { _, err := s.ManagedCoverByID(ctx, testCoverID); return err },
 		"cover-set":      func() error { _, _, err := s.SetWorkCover(ctx, 1, testCoverID, time.Now()); return err },
 		"cover-remove":   func() error { _, _, err := s.RemoveWorkCover(ctx, 1, time.Now()); return err },
+		"cleanup-check":  func() error { _, _, err := s.UnusedManagedCover(ctx, testCoverID); return err },
+		"cleanup-forget": func() error { return s.ForgetUnusedManagedCover(ctx, cover) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); !errors.Is(err, ErrDBStopped) {

@@ -19,6 +19,8 @@ type CoverRepository interface {
 	ReserveManagedCover(context.Context, string) error
 	ConfirmManagedCover(context.Context, string, storage.ManagedCoverInfo) error
 	SetWorkCover(context.Context, int64, string, time.Time) (manga.Work, string, error)
+	UnusedManagedCover(context.Context, string) (storage.ManagedCover, bool, error)
+	ForgetUnusedManagedCover(context.Context, storage.ManagedCover) error
 }
 
 // Warnings are safe codes. Wails supplies user-facing messages, never raw errors.
@@ -37,14 +39,15 @@ type CoverImporter struct {
 	prepare    func(context.Context, string) (io.Closer, error)
 	openSource func(context.Context, string) (io.ReadCloser, error)
 	write      func(context.Context, string, string, []byte) (platform.CoverFileInfo, error)
+	delete     func(context.Context, string, string, platform.CoverFileInfo) error
 }
 
 func NewCoverImporter(repository CoverRepository, operations *CoverOperations, directory string, choose func(context.Context) (string, error), now func() time.Time) *CoverImporter {
 	return &CoverImporter{repository: repository, operations: operations, directory: directory, choose: choose, now: now,
-		prepare: platform.PrepareCoverDirectory, openSource: platform.OpenCoverSource, write: platform.WriteNewCover}
+		prepare: platform.PrepareCoverDirectory, openSource: platform.OpenCoverSource, write: platform.WriteNewCover, delete: platform.DeleteVerifiedCover}
 }
 
-// Select owns the operation through all resource release. No file is deleted.
+// Select owns the operation through cleanup and all resource release.
 func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverImportResult, err error) {
 	result.Warnings = make([]string, 0)
 	op, err := a.operations.BeginChange(workID, true)
@@ -118,7 +121,7 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 			closeErr = errors.Join(platform.ErrCoverRelease, closeErr)
 			a.operations.ObserveError(closeErr)
 			if result.Work != nil {
-				result.Warnings = append(result.Warnings, "cover_release_unconfirmed")
+				result.warn("cover_release_unconfirmed")
 			} else {
 				err = errors.Join(err, closeErr)
 			}
@@ -160,11 +163,35 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 	}
 	result.Work = &work
 	if err != nil {
-		result.Warnings = append(result.Warnings, "database_stopped_after_commit")
+		result.warn("database_stopped_after_commit")
+		if previous != "" {
+			result.warn("cover_cleanup_failed")
+		}
 		err = nil
+		return result, nil // Stopped after commit: never begin cleanup.
 	}
 	if previous != "" {
-		result.Warnings = append(result.Warnings, "cover_cleanup_deferred")
+		if cleanupErr := a.cleanupPrevious(ctx, previous, stage); cleanupErr != nil {
+			result.warn("cover_cleanup_failed")
+			if errors.Is(cleanupErr, storage.ErrDBStopped) {
+				result.warn("database_stopped_after_commit")
+			}
+			if errors.Is(cleanupErr, platform.ErrCoverRelease) {
+				result.warn("cover_release_unconfirmed")
+			}
+			if errors.Is(cleanupErr, ErrCoverStopped) || errors.Is(cleanupErr, platform.ErrUnsafeCoverDirectory) {
+				result.warn("cover_unavailable_after_commit")
+			}
+		}
 	}
 	return result, nil
+}
+
+func (r *CoverImportResult) warn(code string) {
+	for _, existing := range r.Warnings {
+		if existing == code {
+			return
+		}
+	}
+	r.Warnings = append(r.Warnings, code)
 }

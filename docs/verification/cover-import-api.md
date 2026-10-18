@@ -1,6 +1,6 @@
 # 画像取り込みAPIの結合検証
 
-Issue #143。正本は[画像保存契約](../cover-persistence.md#現在の段階実装)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。利用者データではなく、一時SQLite・一時領域・合成PNGで確認する。
+Issue #143時点の接続記録。後続#148で旧管理画像の削除を接続し、後処理保留警告を削除失敗時の警告へ変更した。現在の範囲は[旧画像削除](./verified-cover-cleanup.md)を参照する。正本は[画像保存契約](../cover-persistence.md#現在の段階実装)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。利用者データではなく、一時SQLite・一時領域・合成PNGで確認する。
 
 ## 接続と成功境界
 

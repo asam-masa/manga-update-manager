@@ -50,7 +50,7 @@ func importFixture(t *testing.T) (*CoverImporter, *storage.Store, manga.Work, st
 func TestCoverImportRealFileAndDB(t *testing.T) {
 	a, s, old, dir := importFixture(t)
 	got, err := a.Select(context.Background(), old.ID)
-	if err != nil || got.Cancelled || got.Work == nil || len(got.Warnings) != 1 || got.Warnings[0] != "cover_cleanup_deferred" {
+	if err != nil || got.Cancelled || got.Work == nil || len(got.Warnings) != 1 || got.Warnings[0] != "cover_cleanup_failed" {
 		t.Fatalf("%#v %v", got, err)
 	}
 	path := got.Work.ThumbnailPath
@@ -291,7 +291,7 @@ func TestCoverImportCommittedWarningDoesNotBecomeFailure(t *testing.T) {
 		return w, previous, errors.Join(storage.ErrWorkCoverCommitted, storage.ErrDBStopped, errors.New("synthetic post-commit cleanup failure"))
 	}}
 	got, err := a.Select(context.Background(), old.ID)
-	if err != nil || got.Work == nil || !containsWarning(got, "database_stopped_after_commit") || !containsWarning(got, "cover_cleanup_deferred") {
+	if err != nil || got.Work == nil || !containsWarning(got, "database_stopped_after_commit") || !containsWarning(got, "cover_cleanup_failed") {
 		t.Fatal(got, err)
 	}
 	if _, err := a.Select(context.Background(), old.ID); !errors.Is(err, ErrCoverStopped) {
