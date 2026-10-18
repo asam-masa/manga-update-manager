@@ -19,6 +19,7 @@ type CoverRepository interface {
 	ReserveManagedCover(context.Context, string) error
 	ConfirmManagedCover(context.Context, string, storage.ManagedCoverInfo) error
 	SetWorkCover(context.Context, int64, string, time.Time) (manga.Work, string, error)
+	RemoveWorkCover(context.Context, int64, time.Time) (manga.Work, string, error)
 	UnusedManagedCover(context.Context, string) (storage.ManagedCover, bool, error)
 	ForgetUnusedManagedCover(context.Context, storage.ManagedCover) error
 }
@@ -49,8 +50,18 @@ func NewCoverImporter(repository CoverRepository, operations *CoverOperations, d
 
 // Select owns the operation through cleanup and all resource release.
 func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverImportResult, err error) {
+	return a.change(ctx, workID, true)
+}
+
+// Remove shares the commit, cleanup and release boundaries with Select, but
+// never opens a chooser or reads/generates a source image.
+func (a *CoverImporter) Remove(ctx context.Context, workID int64) (CoverImportResult, error) {
+	return a.change(ctx, workID, false)
+}
+
+func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool) (result CoverImportResult, err error) {
 	result.Warnings = make([]string, 0)
-	op, err := a.operations.BeginChange(workID, true)
+	op, err := a.operations.BeginChange(workID, selecting)
 	if err != nil {
 		return result, err
 	}
@@ -83,33 +94,35 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 		return result, err
 	}
 	var path string
-	if err = stage(func() error {
-		var err error
-		path, err = a.choose(ctx)
-		op.SelectionDone()
-		return err
-	}); err != nil {
-		return result, err
-	}
-	if path == "" {
-		result.Cancelled = true
-		return result, nil
-	}
 	var png []byte
-	if err = stage(func() (err error) {
-		source, err := a.openSource(ctx, path)
-		if err != nil {
+	if selecting {
+		if err = stage(func() error {
+			var err error
+			path, err = a.choose(ctx)
+			op.SelectionDone()
 			return err
+		}); err != nil {
+			return result, err
 		}
-		defer func() {
-			if closeErr := source.Close(); closeErr != nil {
-				err = errors.Join(err, platform.ErrCoverRelease, closeErr)
+		if path == "" {
+			result.Cancelled = true
+			return result, nil
+		}
+		if err = stage(func() (err error) {
+			source, err := a.openSource(ctx, path)
+			if err != nil {
+				return err
 			}
-		}()
-		png, err = thumbnail.Generate(source)
-		return err
-	}); err != nil {
-		return result, err
+			defer func() {
+				if closeErr := source.Close(); closeErr != nil {
+					err = errors.Join(err, platform.ErrCoverRelease, closeErr)
+				}
+			}()
+			png, err = thumbnail.Generate(source)
+			return err
+		}); err != nil {
+			return result, err
+		}
 	}
 	var guard io.Closer
 	if err = stage(func() error { var err error; guard, err = a.prepare(ctx, a.directory); return err }); err != nil {
@@ -127,17 +140,22 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 			}
 		}
 	}()
-	var random [16]byte
-	if _, err = rand.Read(random[:]); err != nil {
-		return result, err
-	}
-	id := hex.EncodeToString(random[:])
-	if err = stage(func() error { return a.repository.ReserveManagedCover(ctx, id) }); err != nil {
-		return result, err
-	}
-	var info platform.CoverFileInfo
-	if err = stage(func() error { var err error; info, err = a.write(ctx, a.directory, id, png); return err }); err != nil {
-		return result, err
+	var id string
+	var savedInfo storage.ManagedCoverInfo
+	if selecting {
+		var random [16]byte
+		if _, err = rand.Read(random[:]); err != nil {
+			return result, err
+		}
+		id = hex.EncodeToString(random[:])
+		if err = stage(func() error { return a.repository.ReserveManagedCover(ctx, id) }); err != nil {
+			return result, err
+		}
+		var info platform.CoverFileInfo
+		if err = stage(func() error { var err error; info, err = a.write(ctx, a.directory, id, png); return err }); err != nil {
+			return result, err
+		}
+		savedInfo = storage.ManagedCoverInfo{VolumeSerial: info.VolumeSerial, FileID: info.FileID, ByteSize: info.ByteSize, SHA256: info.SHA256}
 	}
 	if err = stage(func() error {
 		var err error
@@ -146,16 +164,24 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 	}); err != nil {
 		return result, err
 	}
-	if err = stage(func() error {
-		return a.repository.ConfirmManagedCover(ctx, id, storage.ManagedCoverInfo{VolumeSerial: info.VolumeSerial, FileID: info.FileID, ByteSize: info.ByteSize, SHA256: info.SHA256})
-	}); err != nil {
-		return result, err
+	if selecting {
+		if err = stage(func() error {
+			// The saved output is re-read by WriteNewCover before this boundary.
+			// Keep its identity until confirmation without exposing it to Wails.
+			return a.repository.ConfirmManagedCover(ctx, id, savedInfo)
+		}); err != nil {
+			return result, err
+		}
 	}
 	var work manga.Work
 	var previous string
 	err = stage(func() error {
 		var err error
-		work, previous, err = a.repository.SetWorkCover(ctx, workID, id, a.now())
+		if selecting {
+			work, previous, err = a.repository.SetWorkCover(ctx, workID, id, a.now())
+		} else {
+			work, previous, err = a.repository.RemoveWorkCover(ctx, workID, a.now())
+		}
 		return err
 	})
 	if err != nil && !errors.Is(err, storage.ErrWorkCoverCommitted) {

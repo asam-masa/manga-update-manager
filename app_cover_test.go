@@ -69,6 +69,31 @@ func TestSelectWorkCoverAPI(t *testing.T) {
 	if strings.Contains(string(encoded), sourcePath) {
 		t.Fatal("source path exposed")
 	}
+	removed, err := app.RemoveWorkCover(work.ID)
+	if err != nil || removed.Work.ThumbnailPath != "" || len(removed.Warnings) != 0 {
+		t.Fatal(removed, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(second.Work.ThumbnailPath))); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("removed image remains", err)
+	}
+	encoded, _ = json.Marshal(removed)
+	if !strings.Contains(string(encoded), `"warnings":[]`) || strings.Contains(string(encoded), `"cancelled"`) || strings.Contains(string(encoded), sourcePath) {
+		t.Fatal(string(encoded))
+	}
+	again, err := app.RemoveWorkCover(work.ID)
+	if err != nil || again.Work.UpdatedAt != removed.Work.UpdatedAt || len(again.Warnings) != 0 {
+		t.Fatal("no-op removal changed result", again, err)
+	}
+	after, err = os.ReadFile(sourcePath)
+	if err != nil || !bytes.Equal(after, source.Bytes()) {
+		t.Fatal("removal changed source", err)
+	}
+	if _, err := app.RemoveWorkCover(0); errorCode(t, err) != "invalid_input" {
+		t.Fatal(err)
+	}
+	if _, err := app.RemoveWorkCover(work.ID + 1); errorCode(t, err) != "work_not_found" {
+		t.Fatal(err)
+	}
 	if err := app.store.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -77,6 +102,9 @@ func TestSelectWorkCoverAPI(t *testing.T) {
 	}
 	if _, err := app.SelectWorkCover(work.ID); errorCode(t, err) != "cover_unavailable" {
 		t.Fatal("DB error not observed by image gate", err)
+	}
+	if _, err := app.RemoveWorkCover(work.ID); errorCode(t, err) != "cover_unavailable" {
+		t.Fatal(err)
 	}
 }
 
@@ -98,6 +126,34 @@ func TestBeforeCloseWithImageOperation(t *testing.T) {
 		t.Fatal("close still refused")
 	}
 	if _, err := app.coverOperations.BeginChange(1, true); !errors.Is(err, application.ErrCoverClosing) {
+		t.Fatal(err)
+	}
+}
+
+func TestRemoveWorkCoverWarningsAndErrorSafety(t *testing.T) {
+	dir := t.TempDir()
+	app := NewApp()
+	app.dataDirectory = func() (string, error) { return dir, nil }
+	app.startup(context.Background())
+	defer app.shutdown(context.Background())
+	work, err := app.CreateWork(CreateWorkInput{URL: "https://example.com/legacy", Title: "Legacy", ThumbnailPath: "legacy/original.png"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := app.RemoveWorkCover(work.ID)
+	if err != nil || result.Work.ThumbnailPath != "" || len(result.Warnings) != 1 || result.Warnings[0].Code != "cover_cleanup_failed" || !strings.HasPrefix(result.Warnings[0].Message, "画像を解除しましたが、") {
+		t.Fatal(result, err)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil || strings.Contains(string(encoded), dir) || strings.Contains(string(encoded), "legacy/original.png") {
+		t.Fatal(string(encoded), err)
+	}
+	// A zero injected clock reaches an ordinary Store rejection, not a commit.
+	app.covers = application.NewCoverImporter(app.store, &app.coverOperations, dir, nil, func() time.Time { return time.Time{} })
+	if _, err := app.RemoveWorkCover(work.ID); errorCode(t, err) != "cover_remove_failed" || strings.Contains(err.Error(), dir) {
+		t.Fatal(err)
+	}
+	if _, err := NewApp().RemoveWorkCover(work.ID); errorCode(t, err) != "database_unavailable" {
 		t.Fatal(err)
 	}
 }

@@ -18,6 +18,10 @@ export function OpenWork(arg1) {
   return window['go']['main']['App']['OpenWork'](arg1);
 }
 
+export function RemoveWorkCover(arg1) {
+  return window['go']['main']['App']['RemoveWorkCover'](arg1);
+}
+
 export function SelectWorkCover(arg1) {
   return window['go']['main']['App']['SelectWorkCover'](arg1);
 }

@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。Issue #143で`SelectWorkCover`を接続し、#148で変更確定後の旧管理画像削除を追加した。配信・解除API・起動時整理・画面操作は未実装である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の接続範囲は次節と[取り込み](./verification/cover-import-api.md)・[旧画像削除の結合検証](./verification/verified-cover-cleanup.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。Issue #143で`SelectWorkCover`を接続し、#148で変更確定後の旧管理画像削除、#150で`RemoveWorkCover`を追加した。配信・起動時整理・画面操作は未実装である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の接続範囲は次節と[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除の結合検証](./verification/verified-cover-cleanup.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 現在の段階実装
 
@@ -20,7 +20,13 @@ Issue #145で、Applicationの`CoverOperations.LockReferences(ctx)`を同じApp�
 
 排他待機はcontextキャンセルで終了できる。画像停止中に待機が解けても、次の段階開始で停止を再確認してDB確定へ進まない。画像ファイルの解放失敗だけで通常の作品登録まで止めず、DB停止はStoreが判断する。排他取得自体はSQL・削除・画像段階の開始許可を意味しない。
 
-Issue #148の旧画像削除は同じ排他と操作票を使い、候補取得から削除・不存在確認・記録整理までを保護する。解除・起動整理・配信は未接続であり、後続も必要な区間をこの排他へ参加させる。[参照排他の検証](./verification/cover-reference-exclusion.md)と[旧画像削除](./verification/verified-cover-cleanup.md)を参照する。
+Issue #148の旧画像削除は同じ排他と操作票を使い、候補取得から削除・不存在確認・記録整理までを保護する。#150の解除も同じ区間を保護する。起動整理・配信は未接続であり、後続も必要な区間をこの排他へ参加させる。[参照排他の検証](./verification/cover-reference-exclusion.md)と[旧画像削除](./verification/verified-cover-cleanup.md)を参照する。
+
+### 画像の解除
+
+Issue #150の`RemoveWorkCover`は同作品の操作票を取り、存在確認、ローカル保存先の準備・祖先保持、共通参照排他、DB参照解除、旧画像の後処理、最終解放の順に処理する。画像選択・元画像読取・生成・新規予約保存は行わない。未設定の解除も同じ安全確認を行い、必要なら空のcoversを作成するが、作品の日時は変更しない。安全でない保存先ではDB解除へ進まず画像機能を停止する。
+
+結果は更新後作品と警告配列であり、`cancelled`は含めない。確定前の通常失敗は`cover_remove_failed`、結果不明は`cover_outcome_unknown`、確定後の後処理・解放失敗は成功と既存の警告コードを返す。確認ダイアログ・Undoはなく、元画像から再設定する。画面操作は#43で実装する。
 
 ### 旧管理画像の削除と記録整理
 
@@ -51,7 +57,7 @@ DB確定前の失敗では旧画像と旧参照を保持する。新規未参照
 | API | 入力 | 成功結果 |
 | --- | --- | --- |
 | `SelectWorkCover`（#143で実装） | 作品ID | `cancelled`、`work`、`warnings` |
-| `RemoveWorkCover` | 作品ID | 更新後の`work`、`warnings` |
+| `RemoveWorkCover`（#150で実装） | 作品ID | 更新後の`work`、`warnings` |
 | `LoadCoverWarnings` | なし | 起動時整理の警告配列 |
 
 `work`は既存作品DTO、`warnings`は安全な`code`と`message`の配列。選択キャンセルでは`cancelled: true`、`work: null`、空の警告配列を返し、変更と通知を行わない。成功結果に元画像のパスや内部診断を含めない。DB確定前の失敗は既存の`{code, message}`によるrejectへ変換する。

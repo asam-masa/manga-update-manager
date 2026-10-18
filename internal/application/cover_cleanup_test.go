@@ -29,6 +29,14 @@ func (r cleanupRepositoryHook) UnusedManagedCover(ctx context.Context, id string
 }
 
 func TestCoverCleanupPostCommitOutcomes(t *testing.T) {
+	for _, removing := range []bool{false, true} {
+		t.Run(map[bool]string{false: "select", true: "remove"}[removing], func(t *testing.T) {
+			testCoverCleanupPostCommitOutcomes(t, removing)
+		})
+	}
+}
+
+func testCoverCleanupPostCommitOutcomes(t *testing.T, removing bool) {
 	for _, mode := range []string{"normal", "shared", "shared-case", "uncertain-alias", "changed", "missing-record", "reserved", "forget-failure", "release", "stop-before-delete", "stop-before-forget"} {
 		t.Run(mode, func(t *testing.T) {
 			a, s, original, dir := importFixture(t)
@@ -94,7 +102,12 @@ func TestCoverCleanupPostCommitOutcomes(t *testing.T) {
 					return err
 				}
 			}
-			got, err := a.Select(ctx, old.ID)
+			var got CoverImportResult
+			if removing {
+				got, err = a.Remove(ctx, old.ID)
+			} else {
+				got, err = a.Select(ctx, old.ID)
+			}
 			if err != nil || got.Work == nil || got.Work.ThumbnailPath == old.ThumbnailPath {
 				t.Fatal("committed result lost", got, err)
 			}
