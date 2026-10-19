@@ -41,7 +41,7 @@
 
 ## 開発コマンド
 
-JPEG・PNG・WebPの静止画像を検証し、PNGサムネイルを生成します。`SelectWorkCover`と`RemoveWorkCover` APIは参照変更と安全な旧画像削除まで接続しています。初回描画後の起動時整理と、閉じられる警告表示も接続しています。画像の設定・解除の画面操作と配信は未実装です。reserved・未知・確認不能な画像は残すため、容量を必ず回収できるわけではありません。[画像生成](./docs/thumbnail-processing.md)・[解除API](./docs/verification/cover-remove-api.md)・[起動時整理の範囲と限界](./docs/verification/startup-cover-cleanup.md)を参照してください。配布時は[依存ライブラリの通知](./THIRD_PARTY_NOTICES.md)を同梱してください。
+JPEG・PNG・WebPの静止画像を検証し、PNGサムネイルを生成します。`SelectWorkCover`と`RemoveWorkCover` APIは参照変更と安全な旧画像削除まで接続しています。初回描画後の起動時整理と、閉じられる警告表示も接続しています。作品IDによる限定HTTP配信を接続しましたが、画像の表示・設定・解除の画面操作と、本番配信の実WebView2確認は未対応です。reserved・未知・確認不能な画像は残すため、容量を必ず回収できるわけではありません。[画像生成](./docs/thumbnail-processing.md)・[解除API](./docs/verification/cover-remove-api.md)・[起動時整理](./docs/verification/startup-cover-cleanup.md)・[HTTP配信の範囲と限界](./docs/verification/cover-http-delivery.md)を参照してください。配布時は[依存ライブラリの通知](./THIRD_PARTY_NOTICES.md)を同梱してください。
 
 最低Go版は1.26.0です。テスト・ビルドには1.26系の最新修正版を使用します。その他の必要な環境はNode.js 24.15.0以降の24系、npm、Wails CLI v2.16.0、WebView2です。画面テストのjsdomと推移依存が要求するNode.jsバージョンを満たしてください。今回の検証ではNode.js 24.18.0を使用しました。
 

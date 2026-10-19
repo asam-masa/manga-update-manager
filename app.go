@@ -23,6 +23,7 @@ type App struct {
 	display              *application.DisplaySettings
 	opener               *application.WorkOpener
 	covers               *application.CoverImporter
+	coverReader          coverHTTPReader
 	coverOperations      application.CoverOperations
 	chooseCover          func(context.Context) (string, error)
 	coverBusyNotice      func(context.Context)
@@ -71,6 +72,7 @@ func (a *App) startup(ctx context.Context) {
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
+	a.coverReader = application.NewCoverReader(store, &a.coverOperations, directory)
 	a.coverCleanupTicket, err = a.coverOperations.BeginCleanup()
 	if err != nil {
 		a.coverCleanupWarnings = []CoverWarningDTO{{Code: "cover_cleanup_failed", Message: "画像整理を開始できませんでした。アプリを再起動して状態を確認してください。"}}
@@ -92,6 +94,7 @@ func (a *App) shutdown(_ context.Context) {
 	a.display = nil
 	a.opener = nil
 	a.covers = nil
+	a.coverReader = nil
 	if a.store != nil {
 		if err := a.store.Close(); err != nil {
 			log.Print("作品データベースを閉じられませんでした")
