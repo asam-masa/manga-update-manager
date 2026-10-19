@@ -5,6 +5,12 @@
 - Date: 2026-10-11
 - Related: [#42](https://github.com/asam-masa/manga-update-manager/issues/42)、[#43](https://github.com/asam-masa/manga-update-manager/issues/43)、[#56](https://github.com/asam-masa/manga-update-manager/issues/56)
 
+## 追加判断: 画像の再取得用URL（Issue #174）
+
+2026-10-19、画像を再取得する際にURLへ専用の目印を付ける方式を承認した。要素の作り直しとno-storeだけでは、開発モードの実画面に旧画像が残り、画像変更後の配信要求も増えなかった。再取得ごとにランダムな小文字16進32文字の`v`を付け、配信側は未指定またはこの生の形式だけを許可する。目印は画像の版・認証・保存先ではなく、作品IDの現在画像を返す。未知・重複・エンコードされたクエリは引き続き拒否する。
+
+JavaScriptで取得してBlob URLを管理する案は、画像データの保持・解放と非同期制御が増えるため採用しない。専用目印なら既存のimg表示とno-storeを維持できるが、HTTP契約の限定的な変更と両側のテストが必要になる。[切り分け・修正の検証](../verification/cover-image-refresh.md)を参照する。#171と停止・長時間処理の実機確認は残り、Pendingを維持する。
+
 ## Context
 
 画像生成はIssue #41で実装した。次の保存・変更・解除では、ファイルとSQLiteを一つの原子的操作にできない。旧ファイル削除まで操作の成功条件へ含めると、DB更新後の失敗で何を戻すか曖昧になる。起動時の整理は、別プロセスが準備中の未参照画像を消す危険もある。

@@ -74,12 +74,15 @@ function CoverControls({work, ready, actions}: {work: WorkView; ready: boolean; 
 }
 
 function WorkCover({id, enabled}: {id: number; enabled: boolean}) {
+    // A new mount must also change src: remounting alone can reuse the document's image.
+    const [requestToken] = useState(() => Array.from(crypto.getRandomValues(new Uint8Array(16)),
+        (byte) => byte.toString(16).padStart(2, '0')).join(''));
     const [failed, setFailed] = useState(false);
     const [loaded, setLoaded] = useState(false);
     return <div className="work-cover">
         <div className="cover-placeholder" aria-hidden="true">
             {(!enabled || !loaded || failed) && <span>本</span>}
-            {enabled && !failed && <img src={`/__covers/works/${id}`} alt="" className={loaded ? '' : 'cover-loading'}
+            {enabled && !failed && <img src={`/__covers/works/${id}?v=${requestToken}`} alt="" className={loaded ? '' : 'cover-loading'}
                 onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
         </div>
         {failed && <p className="cover-error" role="status">画像を表示できません</p>}

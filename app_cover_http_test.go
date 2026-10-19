@@ -70,6 +70,13 @@ func TestCoverHTTPThroughWailsHandlers(t *testing.T) {
 		}
 		get := func(want int) []byte {
 			t.Helper()
+			for _, query := range []string{"?v=0123456789abcdef0123456789abcdef", "?v=abcdef0123456789abcdef0123456789"} {
+				w := httptest.NewRecorder()
+				h.ServeHTTP(w, httptest.NewRequest("GET", "/__covers/works/1"+query, nil))
+				if w.Code != want || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
+					t.Fatalf("external=%v query=%s: %d", external, query, w.Code)
+				}
+			}
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, httptest.NewRequest("GET", "/__covers/works/1", nil))
 			if w.Code != want || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
@@ -133,6 +140,16 @@ func TestCoverHTTPRejectsBeforeReading(t *testing.T) {
 	close(a.startupFinished)
 	a.coverReader = coverHTTPReaderFunc(func(context.Context, int64) ([]byte, error) { t.Fatal("invalid request read data"); return nil, nil })
 	h := a.coverMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(418) }))
+	for _, query := range []string{"v=", "v=" + strings.Repeat("a", 31), "v=" + strings.Repeat("a", 33),
+		"v=" + strings.Repeat("A", 32), "v=" + strings.Repeat("g", 32), "%76=" + strings.Repeat("a", 32),
+		"v=%61" + strings.Repeat("a", 31), "v=" + strings.Repeat("a", 32) + "&x=1",
+		"v=" + strings.Repeat("a", 32) + "&v=" + strings.Repeat("b", 32)} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "/__covers/works/1?"+query, nil))
+		if w.Code != 404 {
+			t.Fatalf("invalid query %s: %d", query, w.Code)
+		}
+	}
 	for _, target := range []string{"/__covers", "/__covers/works/0", "/__covers/works/-1", "/__covers/works/+1", "/__covers/works/01", "/__covers/works/9223372036854775808", "/__covers/works/1/", "/__covers/works/../1", "/__covers/works/%31", "/__covers/works/%2531", "/__covers%2fworks%2f1", "/__covers/works/1?x=1", "/__covers/works/1?", "/__covers/works/C:%5csecret"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", target, nil))
@@ -151,6 +168,29 @@ func TestCoverHTTPRejectsBeforeReading(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/normal", nil))
 	if w.Code != 418 {
 		t.Fatal("normal assets intercepted")
+	}
+}
+
+func TestCoverHTTPTokenDoesNotSelectHistoricalData(t *testing.T) {
+	a := NewApp()
+	close(a.startupFinished)
+	current := []byte("first image")
+	a.coverReader = coverHTTPReaderFunc(func(_ context.Context, id int64) ([]byte, error) {
+		if id != 7 {
+			t.Fatalf("unexpected work ID %d", id)
+		}
+		return current, nil
+	})
+	h := a.coverMiddleware(http.NotFoundHandler())
+	for _, value := range []string{"first image", "replacement image"} {
+		current = []byte(value)
+		for _, query := range []string{"", "?v=" + strings.Repeat("a", 32), "?v=" + strings.Repeat("b", 32)} {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest("GET", "/__covers/works/7"+query, nil))
+			if w.Code != 200 || w.Body.String() != value || w.Header().Get("Content-Type") != "image/png" {
+				t.Fatalf("query=%s: %d %q", query, w.Code, w.Body.String())
+			}
+		}
 	}
 }
 
