@@ -49,7 +49,7 @@ func (a *App) coverMiddleware(next http.Handler) http.Handler {
 		idText := strings.TrimPrefix(r.URL.Path, prefix)
 		id, err := strconv.ParseInt(idText, 10, 64)
 		if !strings.HasPrefix(r.URL.Path, prefix) || err != nil || id <= 0 || strconv.FormatInt(id, 10) != idText ||
-			r.URL.RawPath != "" || r.URL.EscapedPath() != r.URL.Path || r.URL.RawQuery != "" || r.URL.ForceQuery || r.URL.Fragment != "" {
+			r.URL.RawPath != "" || r.URL.EscapedPath() != r.URL.Path || !validCoverQuery(r.URL.RawQuery) || r.URL.ForceQuery || r.URL.Fragment != "" {
 			http.NotFound(w, r)
 			return
 		}
@@ -87,4 +87,21 @@ func (a *App) coverMiddleware(next http.Handler) http.Handler {
 		// A transport failure cannot undo the read or mutate its DB reference.
 		_, _ = w.Write(data)
 	})
+}
+
+// The optional token changes the image URL, not the work lookup or its version.
+// Validate the raw form to reject duplicates, escaping, and unknown parameters.
+func validCoverQuery(query string) bool {
+	if query == "" {
+		return true
+	}
+	if len(query) != 34 || !strings.HasPrefix(query, "v=") {
+		return false
+	}
+	for _, c := range query[2:] {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }

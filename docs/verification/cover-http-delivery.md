@@ -4,7 +4,7 @@ Issue #163時点の記録。正本は[画像保存・配信契約](../cover-pers
 
 ## 経路と寿命
 
-`GET /__covers/works/<作品ID>`だけを扱う。作品IDは先頭ゼロ・符号なしの正のint64十進表記とし、非正規パス・エンコード・余分なパス・空クエリを含むクエリを404、GET以外を405で拒否する。予約名前空間外は既存アセットへ渡す。正常応答はimage/png・no-store・nosniffと長さを設定する。欠損・未設定・不正画像は404、停止・起動失敗・一般障害は503とし、固定本文だけを返す。解放失敗・DB停止・危険な保存先の印は、併発する不存在より優先する。
+`GET /__covers/works/<作品ID>`だけを扱う。作品IDは先頭ゼロ・符号なしの正のint64十進表記とし、非正規パス・エンコード・余分なパスを404、GET以外を405で拒否する。クエリは当初全て拒否した。Issue #174以降は未指定、または生の`v=<小文字16進32文字>`だけを許可し、空・未知・重複・エンコードは404で拒否する。予約名前空間外は既存アセットへ渡す。正常応答はimage/png・no-store・nosniffと長さを設定する。欠損・未設定・不正画像は404、停止・起動失敗・一般障害は503とし、固定本文だけを返す。解放失敗・DB停止・危険な保存先の印は、併発する不存在より優先する。
 
 Appの初期化完了をロックなしで待ち、リクエストキャンセルに応答する。読み取り中だけAppの読取ロックを保持してshutdownによるDB終了を防ぐ。Applicationは同じ画像操作制御・参照排他を使う。全検証と解放が終わったバイト列を返し、送信前にAppのロックも返す。送信失敗で参照を変更・自動修復しない。
 
@@ -15,7 +15,8 @@ Middlewareインスタンスごとに4件の枠を設け、読み取り開始か
 ## 自動確認
 
 - `TestCoverHTTPThroughWailsHandlers`: 開発用外部ハンドラーと内蔵アセットハンドラーで、一時DB/実生成PNGの未設定・設定・変更・欠損・破損・解除とヘッダー、読み取り時の作品情報保持を確認する。
-- `TestCoverHTTPRejectsBeforeReading`: 非正規ID・overflow・余分なパス・エンコード・クエリ・メソッドをデータ読み取り前に拒否し、通常アセットへは干渉しない。
+- `TestCoverHTTPRejectsBeforeReading`: 非正規ID・overflow・余分なパス・エンコード・不正クエリ・メソッドをデータ読み取り前に拒否し、通常アセットへは干渉しない。
+- Issue #174では両Wailsハンドラーで目印付き要求も確認する。`TestCoverHTTPTokenDoesNotSelectHistoricalData`で、同じ目印を再利用してもサーバーは現在画像を返し、版の選択に使わないことを確認する。
 - `TestCoverHTTPDoesNotExposeErrors`: 生の絶対パス/データを含む合成エラーを公開せず、停止印を不存在より優先する。
 - `TestCoverHTTPTransmissionDoesNotHoldAppAndBoundsBuffers`: 4件のWriteを待機させ、5件目のキャンセルと、送信中のApp終了が完了することを確認する。
 - `TestCoverHTTPStartupWaitCanCancel`と`TestCoverHTTPReadProtectsDatabaseLifetime`: 初期化前キャンセル、終了後の拒否、読み取り解放までのApp/DB寿命を確認する。

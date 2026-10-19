@@ -163,7 +163,7 @@ DBには管理領域内の相対パスだけを保存する。元ファイル名
 
 管理ディレクトリと対象のreparse point・複数hard link・ディレクトリを拒否し、チェックと操作の間の付け替えも検証する。`os.Root`による領域制限だけで領域内リンクも拒否できたとは扱わない。Windowsの開いたハンドルの属性・種類・共有制御を使う具体方式は、実装テストが成立してから確定する。保存・削除・配信で同じ安全条件を守る。
 
-Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決する。任意パスを受け取らず、GET以外、余分なパス・クエリ、エンコードされた区切り・二重エンコードを拒否する。正常な管理PNGを`image/png`、`no-store`、`nosniff`で返す。未設定・不存在・欠損・破損は画像を返さず、DB参照を自動解除しない。内部パスをHTTP応答へ含めない。
+Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決する。任意パスを受け取らず、GET以外、余分なパス、エンコードされた区切り・二重エンコードを拒否する。クエリは未指定、または`v=`に小文字16進32文字が続く生の表記だけを許可する。空クエリ、未知・重複・エンコードされたパラメーターは拒否する。`v`は再取得用の目印であり、画像の版・認証・保存先として扱わず、常に作品IDの現在画像を解決する。正常な管理PNGを`image/png`、`no-store`、`nosniff`で返す。未設定・不存在・欠損・破損は画像を返さず、DB参照を自動解除しない。内部パスをHTTP応答へ含めない。
 
 2026-10-19、配信前に画像全体を上限付きで読み込み・検証し、ファイル・フォルダーと参照排他を解放してから応答する方針を承認した。通信中の変更・削除を妨げない代わりに、一応答だけ旧画像となる場合があり、変更完了後は画面から再取得する。初回の読み取り上限は2 MiBで、600px以下に生成されたPNGを対象とする。
 
@@ -171,7 +171,7 @@ Issue #159の`platform.ReadVerifiedCover`は、固定ID・管理記録の期待�
 
 Issue #161は`application.CoverReader`へ現在参照・ready管理記録の解決、共通排他、上限付き実ファイル読み取り、静止PNG検査を接続する。読み取り専用の段階受付で停止後の次段階を拒否し、全解放結果の通知後に排他と操作票を返す。正常終了要求だけでは開始済み読み取りをキャンセルしない。HTTP・App・画面はまだ未接続である。[Application読み取りの検証と限界](./verification/current-cover-reader.md)を参照する。
 
-Issue #163でWails Middlewareの`GET /__covers/works/<作品ID>`をAppの現在画像読み取りへ接続する。正規の正の十進ID以外・エンコード・クエリ・GET以外を拒否し、正常PNGはno-store/nosniffで返す。初期化待ち・AppのDB寿命保護・送信前のロック解放・Middleware内最大4件のバッファ保持を接続する。[HTTP配信の検証と限界](./verification/cover-http-delivery.md)を参照する。画像表示/設定UIと実WebView2の検証は残る。
+Issue #163でWails Middlewareの`GET /__covers/works/<作品ID>`をAppの現在画像読み取りへ接続した。当時は全クエリを拒否したが、Issue #174で上記の再取得用目印だけを許可する。正規の正の十進ID以外・エンコード・GET以外の拒否とno-store/nosniffを維持する。初期化待ち・AppのDB寿命保護・送信前のロック解放・Middleware内最大4件のバッファ保持を接続する。[HTTP配信の検証と限界](./verification/cover-http-delivery.md)を参照する。画像表示/設定UIと実WebView2の後続結果は[画像操作UI](./verification/cover-actions-ui.md)と[再取得の検証](./verification/cover-image-refresh.md)を参照する。
 
 ## 保護範囲と本番化の条件
 

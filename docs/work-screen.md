@@ -98,6 +98,8 @@ Windows版アプリで次を確認する。確認前に使用する保存先と�
 
 画像操作は`thumbnailPath`と`updatedAt`、URL起動は`lastAccessedAt`だけを画面へ統合する。作品DTO全体の置き換えで、別操作の結果を巻き戻さない。一覧取得開始後に完了した画像・アクセス更新を保持し、古い一覧応答にも上書きさせない。画像成功と一覧成功では画像を再取得する。
 
+再取得では画像要素の作り直しに加え、URLの`v`へ新しいランダムな小文字16進32文字の目印を付ける。通常の再描画だけでは変えない。管理パスや画像の版はURLへ含めず、目印も保存しない。[実WebView2の確認結果](./verification/cover-image-refresh.md)を参照する。
+
 保存・停止の成功境界は[画像保存契約](./cover-persistence.md)、検証と残る実機確認は[画像操作UI](./verification/cover-actions-ui.md)を参照する。
 
 ## 参照
