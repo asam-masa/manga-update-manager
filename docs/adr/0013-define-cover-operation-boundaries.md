@@ -179,6 +179,8 @@ Issue #152で起動時整理向けの管理記録一覧取得を先行追加す�
 
 Issue #157で起動時整理と警告API・最小限の警告表示を接続する。全記録・参照確認後の照合削除、失敗時の打切り、重複要求の合流、解放までの排他とDB寿命、開始前終了と遅延要求の拒否を検証する。開始前の予約だけなら終了を妨げず、開始済み処理を終了要求でキャンセルしない。[接続と限界](../verification/startup-cover-cleanup.md)を参照する。画像配信・操作UI・実WebView2の確認などが残るためPendingを維持する。
 
+Issue #161は現在参照からのApplication読み取りとPNG検査を接続する。読み取り専用段階受付でStopと新段階を順序付け、参照排他の下で現在参照・ready記録・実ファイルを照合する。読み取りと解放を終了待ちに含め、エラー時は画像を返さず参照を保持する。[検証と限界](../verification/current-cover-reader.md)を参照する。HTTP・App・画像UI・実WebView2の検証が残るためPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
