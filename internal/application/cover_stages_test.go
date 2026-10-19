@@ -67,8 +67,14 @@ func TestCoverStageTicketValidation(t *testing.T) {
 		t.Fatal("read started mutation stage")
 	}
 	read.End()
+	if stage, err := read.BeginReadStage(); stage != nil || !errors.Is(err, ErrCoverOperationInvalid) {
+		t.Fatal("ended read started stage")
+	}
 	op, err := g.BeginCleanup()
 	mustCover(t, op, err)
+	if stage, err := op.BeginReadStage(); stage != nil || !errors.Is(err, ErrCoverOperationInvalid) {
+		t.Fatal("cleanup started read stage")
+	}
 	copyOp := *op
 	if stage, err := copyOp.BeginStage(); stage != nil || !errors.Is(err, ErrCoverOperationInvalid) {
 		t.Fatal("copy started stage")
@@ -91,6 +97,41 @@ func TestCoverStageTicketValidation(t *testing.T) {
 	default:
 		t.Fatal("cleanup still active")
 	}
+}
+
+func TestCoverReadStagesStopAndClose(t *testing.T) {
+	var g CoverOperations
+	op, err := g.BeginRead()
+	mustCover(t, op, err)
+	stage, err := op.BeginReadStage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next, err := op.BeginReadStage(); next != nil || !errors.Is(err, ErrCoverBusy) {
+		t.Fatal("overlapping read stages")
+	}
+	if err := op.End(); !errors.Is(err, ErrCoverBusy) {
+		t.Fatal("read ended during stage")
+	}
+	drained, err := g.RequestClose()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage.End()
+	// Close does not cancel this already admitted read's subsequent stages.
+	stage, err = op.BeginReadStage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.Stop()
+	stage.End()
+	if next, err := op.BeginReadStage(); next != nil || !errors.Is(err, ErrCoverStopped) {
+		t.Fatal("read stage after Stop")
+	}
+	if err := op.End(); err != nil {
+		t.Fatal(err)
+	}
+	<-drained
 }
 
 func TestCoverStageConcurrentStop(t *testing.T) {

@@ -2,6 +2,8 @@
 
 Issue #150。設計正本は[画像保存契約](../cover-persistence.md)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。
 
+#157で[起動時整理と警告](./startup-cover-cleanup.md)を接続した。以下の未実装・未確認は#150時点の検証範囲であり、解除の操作UIと配信は引き続き未実装である。
+
 ## 接続範囲
 
 `App.RemoveWorkCover`からApplication、Storeの参照解除、既存の旧管理画像削除までを接続する。設定と解除はDB確定・警告分類・停止通知・フォルダー解放を共用し、解除では選択と新規生成保存だけを省く。祖先保持と共通参照排他はDB更新から削除・記録整理・最後の解放まで続ける。
