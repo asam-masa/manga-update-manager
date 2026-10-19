@@ -175,6 +175,8 @@ Issue #150で解除APIを本番へ接続する。参照解除と旧画像削除�
 
 Issue #152で起動時整理向けの管理記録一覧取得を先行追加する。ID順のreserved/ready、共通検証、部分一覧を返さない失敗契約、解放確認不能時の停止を一時SQLiteで検証する。起動処理・全参照確認・削除・警告の接続はまだ行わず、Pendingを維持する。[一覧取得の検証](../verification/managed-cover-inventory.md)を参照する。
 
+Issue #157で起動時整理と警告API・最小限の警告表示を接続する。全記録・参照確認後の照合削除、失敗時の打切り、重複要求の合流、解放までの排他とDB寿命、開始前終了と遅延要求の拒否を検証する。開始前の予約だけなら終了を妨げず、開始済み処理を終了要求でキャンセルしない。[接続と限界](../verification/startup-cover-cleanup.md)を参照する。画像配信・操作UI・実WebView2の確認などが残るためPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

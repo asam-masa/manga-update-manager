@@ -16,6 +16,7 @@ import (
 
 type CoverRepository interface {
 	WorkByID(context.Context, int64) (manga.Work, error)
+	ListManagedCovers(context.Context) ([]storage.ManagedCover, error)
 	ReserveManagedCover(context.Context, string) error
 	ConfirmManagedCover(context.Context, string, storage.ManagedCoverInfo) error
 	SetWorkCover(context.Context, int64, string, time.Time) (manga.Work, string, error)
@@ -75,20 +76,7 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 		}
 	}()
 	stage := func(fn func() error) error {
-		ticket, err := op.BeginStage()
-		if err != nil {
-			return err
-		}
-		err = ctx.Err()
-		if err == nil {
-			err = fn()
-		}
-		a.operations.ObserveError(err) // Before stage completion or any next stage.
-		if errors.Is(err, platform.ErrUnsafeCoverDirectory) {
-			a.operations.Stop()
-		}
-		ticket.End()
-		return err
+		return a.stage(ctx, op, fn)
 	}
 	if err = stage(func() error { _, err := a.repository.WorkByID(ctx, workID); return err }); err != nil {
 		return result, err

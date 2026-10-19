@@ -2,6 +2,8 @@
 
 Issue #152の先行実装。正本は[画像保存契約](../cover-persistence.md#起動時整理)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。
 
+#157で[起動時整理](./startup-cover-cleanup.md)へ接続した。以下の未接続記述は#152時点の範囲であり、現在の結合検証は接続先を参照する。
+
 ## 契約
 
 `Store.ListManagedCovers(ctx)`は、管理記録をID昇順に全件返す。reservedとready、作品から参照中の記録も含む。保存ID・生成相対パス・状態・NULL・識別情報はID取得と同じ検証関数を使う。空なら非nilの空配列、失敗ならnilとエラーを返す。途中の不正記録やRowsの自動Close失敗で、読み終えた分を候補として返さない。Rowsを閉じ、共通制御の接続返却を終え、その結果にエラーがあれば一覧を消して返す。

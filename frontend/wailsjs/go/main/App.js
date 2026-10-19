@@ -10,6 +10,10 @@ export function ListWorks() {
   return window['go']['main']['App']['ListWorks']();
 }
 
+export function LoadCoverWarnings() {
+  return window['go']['main']['App']['LoadCoverWarnings']();
+}
+
 export function LoadDisplaySettings() {
   return window['go']['main']['App']['LoadDisplaySettings']();
 }

@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
-import {CreateWork, ListWorks, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible} from '../wailsjs/go/main/App';
+import {CreateWork, ListWorks, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage, isDatabaseStopped} from './work-display';
@@ -22,6 +22,23 @@ function App() {
     const [settingsReady, setSettingsReady] = useState(false);
     const [settingsSaving, setSettingsSaving] = useState(false);
     const [settingsWarning, setSettingsWarning] = useState('');
+    const [coverWarnings, setCoverWarnings] = useState<{code: string; message: string}[]>([]);
+
+    useEffect(() => {
+        let active = true;
+        // A second frame leaves an initial paint opportunity before cleanup.
+        // Backend sync.Once also joins requests after remounts or reloads.
+        let frame = requestAnimationFrame(() => {
+            frame = requestAnimationFrame(() => {
+                void LoadCoverWarnings().then((warnings) => {
+                    if (active) setCoverWarnings(warnings);
+                }).catch(() => {
+                    if (active) setCoverWarnings([{code: 'cover_cleanup_unavailable', message: '画像整理の結果を取得できませんでした。アプリを再起動して状態を確認してください。'}]);
+                });
+            });
+        });
+        return () => { active = false; cancelAnimationFrame(frame); };
+    }, []);
     const visibleRef = useRef(true);
     const settingsRequest = useRef(0);
     const settingsRevision = useRef(0);
@@ -165,6 +182,11 @@ function App() {
                     </button>
                 </div>
             </header>
+            {coverWarnings.length > 0 && <section className="message error-message" role="alert" aria-label="画像整理のお知らせ">
+                <h2>画像整理のお知らせ</h2>
+                {coverWarnings.map((warning) => <p key={warning.code}>{warning.message}</p>)}
+                <button type="button" className="secondary-button" onClick={() => setCoverWarnings([])}>画像整理のお知らせを閉じる</button>
+            </section>}
             {!settingsReady && <p role="status">表示設定を読み込んでいます…</p>}
             {settingsSaving && <p role="status">表示設定を保存しています…</p>}
             {settingsWarning && <p className="message error-message" role="alert">{settingsWarning}</p>}
