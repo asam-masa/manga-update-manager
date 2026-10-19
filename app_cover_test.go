@@ -35,6 +35,9 @@ func TestSelectWorkCoverAPI(t *testing.T) {
 	selected := sourcePath
 	app.chooseCover = func(context.Context) (string, error) { return selected, nil }
 	app.startup(context.Background())
+	if _, err := app.LoadCoverWarnings(); err != nil {
+		t.Fatal(err)
+	}
 	defer app.shutdown(context.Background())
 	work, err := app.CreateWork(CreateWorkInput{URL: "https://example.com/synthetic", Title: "Synthetic"})
 	if err != nil {
@@ -135,6 +138,9 @@ func TestRemoveWorkCoverWarningsAndErrorSafety(t *testing.T) {
 	app := NewApp()
 	app.dataDirectory = func() (string, error) { return dir, nil }
 	app.startup(context.Background())
+	if _, err := app.LoadCoverWarnings(); err != nil {
+		t.Fatal(err)
+	}
 	defer app.shutdown(context.Background())
 	work, err := app.CreateWork(CreateWorkInput{URL: "https://example.com/legacy", Title: "Legacy", ThumbnailPath: "legacy/original.png"})
 	if err != nil {

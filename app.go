@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/application"
@@ -16,24 +17,30 @@ import (
 
 // App exposes the application boundary to the Wails frontend.
 type App struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	works           *application.Works
-	display         *application.DisplaySettings
-	opener          *application.WorkOpener
-	covers          *application.CoverImporter
-	coverOperations application.CoverOperations
-	chooseCover     func(context.Context) (string, error)
-	coverBusyNotice func(context.Context)
-	openURL         func(string) error
-	store           *storage.Store
-	dataDirectory   func() (string, error)
-	stopped         bool
+	mu                   sync.RWMutex
+	ctx                  context.Context
+	works                *application.Works
+	display              *application.DisplaySettings
+	opener               *application.WorkOpener
+	covers               *application.CoverImporter
+	coverOperations      application.CoverOperations
+	chooseCover          func(context.Context) (string, error)
+	coverBusyNotice      func(context.Context)
+	openURL              func(string) error
+	store                *storage.Store
+	dataDirectory        func() (string, error)
+	stopped              bool
+	startupFinished      chan struct{}
+	startupFinishedOnce  sync.Once
+	coverCleanupOnce     sync.Once
+	coverCleanupPhase    atomic.Uint32 // 0: pending, 1: claimed, 2: cancelled before start
+	coverCleanupTicket   *application.CoverOperation
+	coverCleanupWarnings []CoverWarningDTO
 }
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverBusyNotice: coverBusyNotice}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverBusyNotice: coverBusyNotice, startupFinished: make(chan struct{})}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -44,6 +51,7 @@ func (a *App) Status() string {
 func (a *App) startup(ctx context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	defer a.startupFinishedOnce.Do(func() { close(a.startupFinished) })
 	if a.stopped || a.store != nil {
 		return
 	}
@@ -63,6 +71,10 @@ func (a *App) startup(ctx context.Context) {
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
+	a.coverCleanupTicket, err = a.coverOperations.BeginCleanup()
+	if err != nil {
+		a.coverCleanupWarnings = []CoverWarningDTO{{Code: "cover_cleanup_failed", Message: "画像整理を開始できませんでした。アプリを再起動して状態を確認してください。"}}
+	}
 }
 
 func (a *App) shutdown(_ context.Context) {
@@ -71,6 +83,11 @@ func (a *App) shutdown(_ context.Context) {
 	// Wails starts OnStartup asynchronously. A queued callback must never
 	// reopen storage after shutdown (and the production storage lock release).
 	a.stopped = true
+	a.coverCleanupPhase.CompareAndSwap(0, 2)
+	a.startupFinishedOnce.Do(func() { close(a.startupFinished) })
+	if a.coverCleanupTicket != nil {
+		_ = a.coverCleanupTicket.End()
+	}
 	a.works = nil
 	a.display = nil
 	a.opener = nil
