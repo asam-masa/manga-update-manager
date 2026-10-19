@@ -1,6 +1,6 @@
 # 現在画像の限定HTTP配信
 
-Issue #163。正本は[画像保存・配信契約](../cover-persistence.md#ファイルと配信の安全条件)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。本番MiddlewareとAppへ接続するが、一覧への画像表示と画像設定UIは未実装である。
+Issue #163時点の記録。正本は[画像保存・配信契約](../cover-persistence.md#ファイルと配信の安全条件)と[ADR-0013](../adr/0013-define-cover-operation-boundaries.md)。本番MiddlewareとAppへ接続した。後続#165の[画像表示とexe確認](./display-current-cover.md)が本番表示の現在の範囲であり、画像設定UIは未実装である。
 
 ## 経路と寿命
 
