@@ -9,7 +9,7 @@ const work: WorkView = {id: 1, url: 'https://example.com/very-long-url', title: 
 describe('作品URL操作', () => {
     it('未アクセスと全文titleを表示し、キーボードで作品IDを渡す', async () => {
         const open = vi.fn().mockResolvedValue(undefined);
-        render(<WorkList works={[work]} showEmpty onOpen={open} />);
+        render(<WorkList works={[work]} showEmpty onOpen={open} coversReady coverRevision={0} />);
         expect(screen.getByText(/未アクセス/)).toBeTruthy();
         const link = screen.getByRole('button', {name: '作品のURLを開く'});
         expect(link.getAttribute('title')).toBe(work.url);
@@ -19,7 +19,7 @@ describe('作品URL操作', () => {
         expect(screen.getByRole('heading').tagName).toBe('H3');
     });
     it.each(['browser_open_failed', 'access_save_failed', 'database_stopped'])('失敗 %s で既存日時を残す', async (code) => {
-        render(<WorkList works={[{...work, lastAccessedAt: '2026-10-08T12:34:56+09:00'}]} showEmpty
+        render(<WorkList works={[{...work, lastAccessedAt: '2026-10-08T12:34:56+09:00'}]} showEmpty coversReady coverRevision={0}
             onOpen={vi.fn().mockRejectedValue({code, message: '起動または保存を確認してください'})} />);
         await userEvent.click(screen.getByRole('button'));
         expect((await screen.findByRole('alert')).textContent).toContain('確認してください');
@@ -27,7 +27,7 @@ describe('作品URL操作', () => {
     });
     it('起動後のDB停止はページを開いた案内と旧日時を残し、自動再起動しない', async () => {
         const open = vi.fn().mockRejectedValue({code: 'access_save_failed', message: 'ページを開きましたが、最終アクセス日時の保存を確認できません。アプリを再起動して状態を確認してください。'});
-        render(<WorkList works={[work]} showEmpty onOpen={open} />);
+        render(<WorkList works={[work]} showEmpty onOpen={open} coversReady coverRevision={0} />);
         await userEvent.click(screen.getByRole('button'));
         expect((await screen.findByRole('alert')).textContent).toContain('ページを開きました');
         expect(screen.getByText(/未アクセス/)).toBeTruthy();
@@ -37,7 +37,7 @@ describe('作品URL操作', () => {
     it('処理中は同じ作品を二重起動しない', async () => {
         let done!: () => void;
         const open = vi.fn(() => new Promise<void>((resolve) => { done = resolve; }));
-        render(<WorkList works={[work]} showEmpty onOpen={open} />);
+        render(<WorkList works={[work]} showEmpty onOpen={open} coversReady coverRevision={0} />);
         fireEvent.click(screen.getByRole('button'));
         fireEvent.click(screen.getByRole('button'));
         expect(open).toHaveBeenCalledTimes(1);

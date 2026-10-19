@@ -114,6 +114,22 @@ const managedCoverByIDQuery = `SELECT id,relative_path,state,volume_serial,file_
  FROM managed_covers WHERE id=?`
 
 func scanManagedCover(row oneRow, id string) (ManagedCover, error) {
+	value, err := scanManagedCoverRecord(row)
+	if err != nil {
+		return ManagedCover{}, err
+	}
+	if value.ID != id {
+		return ManagedCover{}, ErrInvalidManagedCover
+	}
+	return value, nil
+}
+
+// Both single-row and inventory reads use the same persisted-state validation.
+type managedCoverRow interface {
+	Scan(...any) error
+}
+
+func scanManagedCoverRecord(row managedCoverRow) (ManagedCover, error) {
 	var value ManagedCover
 	var volume, fileID sql.NullString
 	var size sql.NullInt64
@@ -125,7 +141,7 @@ func scanManagedCover(row oneRow, id string) (ManagedCover, error) {
 	if err != nil {
 		return ManagedCover{}, fmt.Errorf("read managed cover: %w", err)
 	}
-	if value.ID != id || value.RelativePath != "covers/"+id+".png" {
+	if !lowerHex(value.ID, 32) || value.RelativePath != "covers/"+value.ID+".png" {
 		return ManagedCover{}, ErrInvalidManagedCover
 	}
 	switch value.State {

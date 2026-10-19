@@ -34,6 +34,11 @@ func (g *coverDirectoryGuard) Close() error {
 // covers child until Close. It creates only that child, never removes anything,
 // and does not authorize image file operations or replace application locking.
 func PrepareCoverDirectory(ctx context.Context, directory string) (result io.Closer, err error) {
+	return holdCoverDirectory(ctx, directory, true)
+}
+
+// Reads must not create a missing covers directory.
+func holdCoverDirectory(ctx context.Context, directory string, create bool) (result io.Closer, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -63,7 +68,7 @@ func PrepareCoverDirectory(ctx context.Context, directory string) (result io.Clo
 		if err != nil {
 			return nil, err
 		}
-		if i == len(paths)-1 {
+		if create && i == len(paths)-1 {
 			// All existing parents are already checked and retained. Do not use
 			// MkdirAll, follow an existing link, or remove a failed creation.
 			if err := windows.CreateDirectory(p, nil); err != nil && !errors.Is(err, windows.ERROR_ALREADY_EXISTS) {

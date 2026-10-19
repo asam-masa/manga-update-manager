@@ -1,12 +1,12 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。Issue #143で`SelectWorkCover`を接続し、#148で変更確定後の旧管理画像削除、#150で`RemoveWorkCover`を追加した。配信・起動時整理・画面操作は未実装である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の接続範囲は次節と[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除の結合検証](./verification/verified-cover-cleanup.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。#143の取り込み、#148の旧管理画像削除、#150の解除API、#157の起動時整理・警告、#163の限定HTTP配信、#165の既存カード表示までを接続した。画像の設定・解除の画面操作は未対応である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の範囲は[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除](./verification/verified-cover-cleanup.md)・[起動時整理](./verification/startup-cover-cleanup.md)・[HTTP配信](./verification/cover-http-delivery.md)・[表示とexe確認](./verification/display-current-cover.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 現在の段階実装
 
 2026-10-18、Issue #143で選択からDB参照変更までを先に接続し、削除と配信を後続へ分ける方針を承認した。初回の`SelectWorkCover`は、作品確認、OSの選択画面、読み取り専用の元画像からのPNG生成、祖先保持、ランダムIDの予約、新規保存・照合、管理記録確定、作品参照変更の順に実行する。元画像パスはDBや結果へ保存しない。
 
-Issue #143時点では旧画像を保持し、`cover_cleanup_deferred`を返した。#148では変更確定後に旧管理画像の未参照と実ファイルを確認して削除する。確認不能・後処理失敗は成功と`cover_cleanup_failed`に分け、確定済み参照と日時を戻さない。共有参照があれば保持し、それ自体は警告にしない。未知パス・管理記録なし・reservedは削除せず警告する。失敗した新規出力・予約を走査で削除せず、起動時整理も未実装のため、残置で容量が増える場合がある。
+Issue #143時点では旧画像を保持し、`cover_cleanup_deferred`を返した。#148では変更確定後に旧管理画像の未参照と実ファイルを確認して削除する。確認不能・後処理失敗は成功と`cover_cleanup_failed`に分け、確定済み参照と日時を戻さない。共有参照があれば保持し、それ自体は警告にしない。未知パス・管理記録なし・reservedは削除せず警告する。#157の起動時整理もreservedや未知ファイルを走査で回収せず、残置で容量が増える場合がある。
 
 操作票は最終解放まで保持し、各段階終了前に停止対象エラーを通知する。保存先が安全でない場合も画像機能を停止する。画像操作中の通常終了は案内して拒否し、完了後に再度閉じる。DB停止は既存APIのエラー経路からも画像受付へ通知するが、別々のStoreと画像受付のmutexを単一の原子的な停止判定とは扱わない。Store自身が停止後のDB実行を拒否する。
 
@@ -20,7 +20,7 @@ Issue #145で、Applicationの`CoverOperations.LockReferences(ctx)`を同じApp�
 
 排他待機はcontextキャンセルで終了できる。画像停止中に待機が解けても、次の段階開始で停止を再確認してDB確定へ進まない。画像ファイルの解放失敗だけで通常の作品登録まで止めず、DB停止はStoreが判断する。排他取得自体はSQL・削除・画像段階の開始許可を意味しない。
 
-Issue #148の旧画像削除は同じ排他と操作票を使い、候補取得から削除・不存在確認・記録整理までを保護する。#150の解除も同じ区間を保護する。起動整理・配信は未接続であり、後続も必要な区間をこの排他へ参加させる。[参照排他の検証](./verification/cover-reference-exclusion.md)と[旧画像削除](./verification/verified-cover-cleanup.md)を参照する。
+Issue #148の旧画像削除は同じ排他と操作票を使い、候補取得から削除・不存在確認・記録整理までを保護する。#150の解除と#157の起動整理も同じ排他へ参加する。配信は未接続であり、後続も必要な区間を保護する。[参照排他](./verification/cover-reference-exclusion.md)と[旧画像削除](./verification/verified-cover-cleanup.md)を参照する。
 
 ### 画像の解除
 
@@ -58,7 +58,7 @@ DB確定前の失敗では旧画像と旧参照を保持する。新規未参照
 | --- | --- | --- |
 | `SelectWorkCover`（#143で実装） | 作品ID | `cancelled`、`work`、`warnings` |
 | `RemoveWorkCover`（#150で実装） | 作品ID | 更新後の`work`、`warnings` |
-| `LoadCoverWarnings` | なし | 起動時整理の警告配列 |
+| `LoadCoverWarnings`（#157で実装） | なし | 起動時整理の警告配列。一回の整理を待ち、以後は保持結果のコピー |
 
 `work`は既存作品DTO、`warnings`は安全な`code`と`message`の配列。選択キャンセルでは`cancelled: true`、`work: null`、空の警告配列を返し、変更と通知を行わない。成功結果に元画像のパスや内部診断を含めない。DB確定前の失敗は既存の`{code, message}`によるrejectへ変換する。
 
@@ -154,6 +154,14 @@ DBには管理領域内の相対パスだけを保存する。元ファイル名
 
 Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決する。任意パスを受け取らず、GET以外、余分なパス・クエリ、エンコードされた区切り・二重エンコードを拒否する。正常な管理PNGを`image/png`、`no-store`、`nosniff`で返す。未設定・不存在・欠損・破損は画像を返さず、DB参照を自動解除しない。内部パスをHTTP応答へ含めない。
 
+2026-10-19、配信前に画像全体を上限付きで読み込み・検証し、ファイル・フォルダーと参照排他を解放してから応答する方針を承認した。通信中の変更・削除を妨げない代わりに、一応答だけ旧画像となる場合があり、変更完了後は画面から再取得する。初回の読み取り上限は2 MiBで、600px以下に生成されたPNGを対象とする。
+
+Issue #159の`platform.ReadVerifiedCover`は、固定ID・管理記録の期待識別情報・サイズ・ハッシュからバイト列を照合し、解放失敗を含むエラー時はデータを返さない。読み取り時に`covers`を作成しない。PNG構文は検査せず、DBのready記録・現在参照・共通排他をこの関数だけでは確認できない。Application・HTTPへの接続でこれらを満たす必要がある。[部品の検証と限界](./verification/verified-cover-read.md)を参照する。本番配信は未実装である。
+
+Issue #161は`application.CoverReader`へ現在参照・ready管理記録の解決、共通排他、上限付き実ファイル読み取り、静止PNG検査を接続する。読み取り専用の段階受付で停止後の次段階を拒否し、全解放結果の通知後に排他と操作票を返す。正常終了要求だけでは開始済み読み取りをキャンセルしない。HTTP・App・画面はまだ未接続である。[Application読み取りの検証と限界](./verification/current-cover-reader.md)を参照する。
+
+Issue #163でWails Middlewareの`GET /__covers/works/<作品ID>`をAppの現在画像読み取りへ接続する。正規の正の十進ID以外・エンコード・クエリ・GET以外を拒否し、正常PNGはno-store/nosniffで返す。初期化待ち・AppのDB寿命保護・送信前のロック解放・Middleware内最大4件のバッファ保持を接続する。[HTTP配信の検証と限界](./verification/cover-http-delivery.md)を参照する。画像表示/設定UIと実WebView2の検証は残る。
+
 ## 保護範囲と本番化の条件
 
 2026-10-17、Issue #107で次の保護範囲を承認した。目標は操作ミス、不正パス、通常の同時操作から利用者データを守ることである。同じWindowsユーザー権限の悪意ある別プロセスが、実行中にドライブ割当やフォルダーの特殊属性を意図的に変更する攻撃への完全防御は保証しない。この境界は、通常の共有違反・途中終了・保存失敗を無視してよいという意味ではない。
@@ -185,6 +193,18 @@ Issue #111の`platform.WriteNewCover`は生成済みPNGを予約済みIDへ保�
 本番の画像操作はまだ未接続で、削除・配信も未実装である。全体のDoR・DoneやADR-0013のValidation Statusを、部分的な実装や文書化だけで達成済み・Verifiedへ変更しない。
 
 ## 起動時整理
+
+2026-10-18、起動時整理はウィンドウ表示後に行い、整理中は画像操作を受け付けない方針を承認した。表示前に長時間待たせる方式は採らない。開始済みの整理中は通常終了を案内して拒否し、完了後に再度閉じる。#157では未開始の予約だけが残る場合は、予約を破棄して終了できるようにする。終了と開始を原子的に順序付け、開始済み処理を終了要求でキャンセルしない。
+
+Issue #157では、DB初期化時に整理の操作票を確保し、Reactの初回commit後の二回のrequestAnimationFrameで最初の描画機会を設けてから`LoadCoverWarnings`を要求する。APIは初期化完了を待って一回だけ整理し、同時要求は合流する。Appの読取ロックを処理・警告確定まで保持し、終了処理はDBを先に閉じない。通常終了の受付は別の読取ロックで応答する。整理APIを再度呼んでも再削除せず、保持した安全な警告のコピーを返す。初期化・終了の通知により遅延要求がDBを再接続することはない。
+
+共通参照排他の下で全管理記録を取得し、全ready記録の参照確認を終えてから候補のファイルへ触る。reservedは保持して警告し、参照中の欠損画像も参照・記録を変更しない。候補がある場合だけ祖先を保持し、削除直前に既存の未参照・実体照合を再確認する。最初の失敗でその回の残りの削除を打ち切る。先に削除できた未参照画像を戻す原子性は保証しない。解放の通知後に参照排他・操作票を返す。通常失敗ではDB機能を継続し、DB停止や解放確認不能では既存の停止規則を優先する。
+
+警告は画面上部でまとめて表示し、利用者が閉じられる。閉じても画像の整理を再実行せず、バックエンドの保持結果は残す。生エラー・絶対パス・管理IDは表示しない。実WebView2の描画・操作検証は[検証記録](./verification/startup-cover-cleanup.md)の確認範囲と区別する。
+
+Issue #152では先行して`Store.ListManagedCovers`を追加する。reservedとreadyの全管理記録をID昇順に取得し、ID取得と同じ保存状態検証を行う。空のDBでは空配列を返す。読取・検証・Rows解放・接続返却のいずれかで失敗した場合は部分一覧を返さない。解放確認不能は共通DB停止規則へ渡す。一覧自体は参照確認も実ファイル確認も行わず、削除許可ではない。
+
+後続の整理処理は、この一覧と全参照の確認が完了してから削除を始める。reserved、共有参照、所有を確認できないファイルは削除しない。管理記録の取得から候補確認・削除・記録整理まで共通排他に参加させる。今回の一覧APIだけではその保持区間を保護しておらず、起動時整理の完成とは扱わない。[一覧取得の検証](./verification/managed-cover-inventory.md)を参照する。
 
 ### 生成画像の管理記録
 
@@ -226,6 +246,7 @@ Issue #95の`004_managed_covers.sql`で`managed_covers`を追加した。用途�
 | `ReserveManagedCover` | 小文字16進32文字のIDをそのまま検証し予約する。重複は`ErrManagedCoverExists`で既存記録を保持 |
 | `ConfirmManagedCover` | IDと確認情報を受け、予約かつ確認情報が全NULLの場合だけ一つのUPDATEで確定。更新件数1が必須。不存在・確定済み・破損した予約は`ErrManagedCoverNotReserved` |
 | `ManagedCoverByID` | IDで取得し、状態・生成パス・NULL・確認情報を検証。不存在は`ErrManagedCoverNotFound`、不正情報は`ErrInvalidManagedCover`。失敗時はゼロ値を返し自動修復しない |
+| `ListManagedCovers` | reservedとreadyをID昇順に全件取得し、各記録を同じ規則で検証。空なら空配列、失敗時はnil一覧。参照確認・ファイル操作・修復は行わない |
 | `SetWorkCover` | 作品ID・管理ID・操作時刻を受け、正常なready記録だけを設定。作品取得・管理記録検証・参照と日時の更新を同じトランザクションで確定 |
 | `RemoveWorkCover` | 作品ID・操作時刻を受け、参照と日時を同じトランザクションで更新。ファイルと管理記録は変更しない |
 
