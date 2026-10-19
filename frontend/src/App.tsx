@@ -5,6 +5,7 @@ import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage, isDatabaseStopped} from './work-display';
 import {titleMatches} from './work-search';
+import {useCoverActions} from './use-cover-actions';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -55,10 +56,19 @@ function App() {
     const request = useRef(0);
     const accessRevision = useRef(0);
     const savedAccess = useRef(new Map<number, {revision: number; value: WorkView['lastAccessedAt']}>());
+    const coverChangeRevision = useRef(0);
+    const savedCovers = useRef(new Map<number, {revision: number; work: WorkView}>());
+    const coverActions = useCoverActions(coversReady, (updated) => {
+        savedCovers.current.set(updated.id, {revision: ++coverChangeRevision.current, work: updated});
+        setWorks((current) => current?.map((work) => work.id === updated.id
+            ? {...work, thumbnailPath: updated.thumbnailPath, updatedAt: updated.updatedAt} : work) ?? null);
+        setCoverRevision((value) => value + 1);
+    });
 
     const loadWorks = useCallback(async () => {
         const current = ++request.current;
         const revision = accessRevision.current;
+        const coverStart = coverChangeRevision.current;
         setLoading(true);
         setListError('');
         setListStopped(false);
@@ -68,7 +78,10 @@ function App() {
                 setCoverRevision((value) => value + 1);
                 setWorks(result.map((work) => {
                     const saved = savedAccess.current.get(work.id);
-                    return saved && saved.revision > revision ? {...work, lastAccessedAt: saved.value} : work;
+                    const cover = savedCovers.current.get(work.id);
+                    return {...work,
+                        ...(saved && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
+                        ...(cover && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath, updatedAt: cover.work.updatedAt} : {})};
                 }));
             }
         } catch (error: unknown) {
@@ -164,7 +177,8 @@ function App() {
     async function openWork(id: number) {
         const updated = await OpenWork(id);
         savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt});
-        setWorks((current) => current?.map((work) => work.id === id ? updated : work) ?? null);
+        // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
+        setWorks((current) => current?.map((work) => work.id === id ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
     }
 
     const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
@@ -258,7 +272,7 @@ function App() {
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
                             <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork}
-                                coversReady={coversReady} coverRevision={coverRevision} />
+                                coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} />
                         </>}
                     </div>
                 </section>
