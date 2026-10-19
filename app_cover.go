@@ -113,6 +113,11 @@ func coverAPIError(err error) error {
 
 func (a *App) beforeClose(ctx context.Context) bool {
 	a.mu.RLock()
+	// No cleanup has begun yet: closing can discard the pending startup ticket.
+	// Once claimed, normal close must not cancel or wait out the running cleanup.
+	if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {
+		_ = a.coverCleanupTicket.End()
+	}
 	done, err := a.coverOperations.RequestClose()
 	a.mu.RUnlock()
 	if err != nil {

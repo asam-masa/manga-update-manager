@@ -55,10 +55,20 @@ type CoverStage struct {
 // BeginStage atomically orders a change/cleanup stage start against Stop.
 // No mutex remains held during the caller's actual I/O.
 func (op *CoverOperation) BeginStage() (*CoverStage, error) {
+	return op.beginStage(false)
+}
+
+// BeginReadStage orders each read step against Stop without granting a change
+// ticket. Closing admission does not cancel an already admitted read.
+func (op *CoverOperation) BeginReadStage() (*CoverStage, error) {
+	return op.beginStage(true)
+}
+
+func (op *CoverOperation) beginStage(read bool) (*CoverStage, error) {
 	g := op.owner
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if _, ok := g.active[op]; !ok || op.kind == coverRead {
+	if _, ok := g.active[op]; !ok || (op.kind == coverRead) != read {
 		return nil, ErrCoverOperationInvalid
 	}
 	if g.stopped {

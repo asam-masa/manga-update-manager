@@ -40,6 +40,7 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 		"reserve":        func() error { return s.ReserveManagedCover(ctx, testCoverID) },
 		"confirm":        func() error { return s.ConfirmManagedCover(ctx, testCoverID, ManagedCoverInfo{ByteSize: 1}) },
 		"managed-get":    func() error { _, err := s.ManagedCoverByID(ctx, testCoverID); return err },
+		"managed-list":   func() error { _, err := s.ListManagedCovers(ctx); return err },
 		"cover-set":      func() error { _, _, err := s.SetWorkCover(ctx, 1, testCoverID, time.Now()); return err },
 		"cover-remove":   func() error { _, _, err := s.RemoveWorkCover(ctx, 1, time.Now()); return err },
 		"cleanup-check":  func() error { _, _, err := s.UnusedManagedCover(ctx, testCoverID); return err },
