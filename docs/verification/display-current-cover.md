@@ -12,6 +12,8 @@ Issue #165。正本は[画面設計](../work-screen.md)と[画像保存・配信
 
 ## 検証
 
+本Issue後の操作UI・production exe確認は[画像操作UI](./cover-actions-ui.md)、開発モードの部分確認と未解決は[Issue #170の検証](./dev-cover-operations.md)を参照する。以下の未確認は各検証時点の範囲である。
+
 - `WorkList.cover.test.tsx`: 整理前/未設定で取得しない、ID専用URL、読み込み中/成功/失敗、カード単位の案内、再取得と古い要素のイベントを確認する。
 - `App.cleanup.test.tsx`: 整理API応答待ちの間は画像要素を出さず、完了後に表示し、一覧再取得成功で失敗状態を初期化する。
 - 既存の検索・URL起動・キーボードテストを含むUIテスト、Goテスト、静的解析とビルドを行う。
