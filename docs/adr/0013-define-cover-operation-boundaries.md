@@ -207,6 +207,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-19、本番コードをWails開発モードで起動し、分離した合成データで設定・変更時のHTTP画像内容切替・取消・解除・欠損回復・通常終了を確認した。一方、自動前面化を含む再確認でWebView2のフォーカスエラー終了を観測し、保存済み画像とPrintWindow撮影が一致しない条件も残った。通常操作の保存・配信成功から、開発モードの表示全体を検証完了とは扱わない。[結果と限界](../verification/dev-cover-operations.md)、[終了の切り分け #171](https://github.com/asam-masa/manga-update-manager/issues/171)、[撮影と表示の切り分け #172](https://github.com/asam-masa/manga-update-manager/issues/172)を参照する。停止・長時間処理の確認も残るためPendingを維持する。
 
+## Issue #171のフォーカス終了の切り分け
+
+2026-10-19、画像選択中の無効な親ウィンドウを検証補助から前面化すると、開発モードとproduction exeの両方で`MoveFocus`失敗からプロセス終了へ進む条件を再現した。ダイアログなしの前面化、開発モードでの利用者の手動Alt+Tabと取消では再現しなかった。各終了後の合成DBの整合性・作品情報と元画像の保持・起動ロック解放を確認したが、保存中断の全条件を保証しない。[結果と限界](../verification/webview-focus-exit.md)を参照する。本番の対策は未実装・未決定であり、既知の問題は[#176](https://github.com/asam-masa/manga-update-manager/issues/176)へ引き継ぐ。停止・長時間処理などの実機確認も残り、Pendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
