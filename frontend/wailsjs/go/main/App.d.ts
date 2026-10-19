@@ -16,6 +16,8 @@ export function RemoveWorkCover(arg1:number):Promise<main.RemoveWorkCoverResult>
 
 export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>;
 
+export function SelectWorkCoverWithOperation(arg1:number,arg2:string):Promise<main.SelectWorkCoverResult>;
+
 export function SetRegistrationFormVisible(arg1:boolean):Promise<void>;
 
 export function Status():Promise<string>;

@@ -57,12 +57,21 @@ DB確定前の失敗では旧画像と旧参照を保持する。新規未参照
 | API | 入力 | 成功結果 |
 | --- | --- | --- |
 | `SelectWorkCover`（#143で実装） | 作品ID | `cancelled`、`work`、`warnings` |
+| `SelectWorkCoverWithOperation`（#167で追加） | 作品ID、操作ID | `SelectWorkCover`と同じ |
 | `RemoveWorkCover`（#150で実装） | 作品ID | 更新後の`work`、`warnings` |
 | `LoadCoverWarnings`（#157で実装） | なし | 起動時整理の警告配列。一回の整理を待ち、以後は保持結果のコピー |
 
 `work`は既存作品DTO、`warnings`は安全な`code`と`message`の配列。選択キャンセルでは`cancelled: true`、`work: null`、空の警告配列を返し、変更と通知を行わない。成功結果に元画像のパスや内部診断を含めない。DB確定前の失敗は既存の`{code, message}`によるrejectへ変換する。
 
 選択画面はアプリ全体で一つ。同作品の選択・取り込み・解除は完了まで拒否し、失敗・キャンセルでも処理中状態を解放する。別作品は選択画面が閉じた後なら受け付け、生成は既存処理で直列化する。画像操作UIと警告表示はIssue #43で扱う。
+
+### 選択完了通知
+
+Issue #167では既存APIを残し、`SelectWorkCoverWithOperation(workID, operationID)`を追加する。操作IDは画面が要求ごとに生成する小文字16進32文字で、操作の取消権限や保存先を表さない。形式不正は`invalid_input`で拒否する。
+
+Goの選択処理が戻り、Applicationが全体の選択枠を解放した後、Wailsの`cover-selection-finished`イベントで`{workID, operationID}`だけを送る。取消と選択エラーでも選択処理が戻れば通知する。受付拒否・作品確認失敗などで選択処理へ入らなければ通知しない。これは成功・失敗の利用者向け通知ではなく、選択中状態を解く内部通知である。元画像パスは送らない。
+
+イベントは取り込み完了や同作品の操作権解放を意味しない。最終結果と同作品の処理中状態はAPIのPromise完了で判断する。画面はAPI呼出し前にイベントを購読し、作品IDと現在の操作IDが両方一致する場合だけ選択中状態を解く。遅延・重複・過去の操作の通知は無視し、Promise完了時にも同じIDで選択中状態を解く。イベントとPromiseの到着順やイベント受信の保証には依存しない。未受信の場合、全体の選択操作はPromise完了まで待つ保守的な動作になる。画面への接続と競合検証は#43で行う。
 
 ### Close失敗と通常終了
 

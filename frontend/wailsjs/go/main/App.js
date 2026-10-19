@@ -30,6 +30,10 @@ export function SelectWorkCover(arg1) {
   return window['go']['main']['App']['SelectWorkCover'](arg1);
 }
 
+export function SelectWorkCoverWithOperation(arg1, arg2) {
+  return window['go']['main']['App']['SelectWorkCoverWithOperation'](arg1, arg2);
+}
+
 export function SetRegistrationFormVisible(arg1) {
   return window['go']['main']['App']['SetRegistrationFormVisible'](arg1);
 }
