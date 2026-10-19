@@ -17,6 +17,8 @@ Issue #43。承認済みの配置・処理中の操作範囲・通知の寿命�
 
 ## 実画面確認と限界
 
+本節はIssue #43のproduction exe確認である。後続の開発モードでの部分確認・エラー終了・撮影不一致は[Issue #170の検証](./dev-cover-operations.md)へ分けて記録する。
+
 2026-10-19、Go 1.26.9、CGO_ENABLED=0、Wails CLI v2.16.0のproduction exeを、一時APPDATA・合成PNG・確認専用の3作品で確認した。保存先は`D:\appdata_local_tmp\mum-cover-actions-8d3b2d9b76a74187943970029725965d`。利用者のDBや元画像には触れていない。
 
 - 未設定作品へOS選択画面から合成PNGを設定し、画像と成功通知、変更・解除ボタンを確認した。

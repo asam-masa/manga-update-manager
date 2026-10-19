@@ -197,6 +197,10 @@ APIの最終結果だけを待つ案は単純だが、選択後の長い取り�
 
 production exeと分離データで設定・変更・取消・解除・再読み込み・再起動、代表的なTab/Enter操作を確認した。開発モード、残る停止・長時間処理の案内と実WebView2の故障系確認などは残るため、Validation StatusはPendingを維持する。
 
+## Issue #170の開発モード検証
+
+2026-10-19、本番コードをWails開発モードで起動し、分離した合成データで設定・変更時のHTTP画像内容切替・取消・解除・欠損回復・通常終了を確認した。一方、自動前面化を含む再確認でWebView2のフォーカスエラー終了を観測し、保存済み画像とPrintWindow撮影が一致しない条件も残った。通常操作の保存・配信成功から、開発モードの表示全体を検証完了とは扱わない。[結果と限界](../verification/dev-cover-operations.md)、[終了の切り分け #171](https://github.com/asam-masa/manga-update-manager/issues/171)、[撮影と表示の切り分け #172](https://github.com/asam-masa/manga-update-manager/issues/172)を参照する。停止・長時間処理の確認も残るためPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)
