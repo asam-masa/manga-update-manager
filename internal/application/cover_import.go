@@ -51,16 +51,23 @@ func NewCoverImporter(repository CoverRepository, operations *CoverOperations, d
 
 // Select owns the operation through cleanup and all resource release.
 func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverImportResult, err error) {
-	return a.change(ctx, workID, true)
+	return a.SelectWithSelectionDone(ctx, workID, nil)
+}
+
+// SelectWithSelectionDone reports chooser completion after releasing the shared
+// selection slot. The callback belongs to this request, not to the importer.
+// It must return promptly rather than wait for a later import to complete.
+func (a *CoverImporter) SelectWithSelectionDone(ctx context.Context, workID int64, selectionDone func()) (CoverImportResult, error) {
+	return a.change(ctx, workID, true, selectionDone)
 }
 
 // Remove shares the commit, cleanup and release boundaries with Select, but
 // never opens a chooser or reads/generates a source image.
 func (a *CoverImporter) Remove(ctx context.Context, workID int64) (CoverImportResult, error) {
-	return a.change(ctx, workID, false)
+	return a.change(ctx, workID, false, nil)
 }
 
-func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool) (result CoverImportResult, err error) {
+func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool, selectionDone func()) (result CoverImportResult, err error) {
 	result.Warnings = make([]string, 0)
 	op, err := a.operations.BeginChange(workID, selecting)
 	if err != nil {
@@ -88,6 +95,9 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 			var err error
 			path, err = a.choose(ctx)
 			op.SelectionDone()
+			if selectionDone != nil {
+				selectionDone()
+			}
 			return err
 		}); err != nil {
 			return result, err
