@@ -31,7 +31,8 @@ func runDesktop(app *App) error {
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:     assets,
+			Middleware: app.coverMiddleware,
 		},
 		BackgroundColour: &options.RGBA{R: 246, G: 247, B: 249, A: 1},
 		OnStartup:        app.startup,

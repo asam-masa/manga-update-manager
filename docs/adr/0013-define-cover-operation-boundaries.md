@@ -181,6 +181,8 @@ Issue #157で起動時整理と警告API・最小限の警告表示を接続す�
 
 Issue #161は現在参照からのApplication読み取りとPNG検査を接続する。読み取り専用段階受付でStopと新段階を順序付け、参照排他の下で現在参照・ready記録・実ファイルを照合する。読み取りと解放を終了待ちに含め、エラー時は画像を返さず参照を保持する。[検証と限界](../verification/current-cover-reader.md)を参照する。HTTP・App・画像UI・実WebView2の検証が残るためPendingを維持する。
 
+Issue #163で本番HTTP経路とAppのDB寿命を接続する。開発用/内蔵Wailsハンドラーと一時DB/PNGで経路拒否・再取得・欠損/破損・ヘッダー・送信中のAppロック解放を確認する。[HTTP配信の検証と限界](../verification/cover-http-delivery.md)を参照する。実WebView2と画像UIの確認が残り、Pendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

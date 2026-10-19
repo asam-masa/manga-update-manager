@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。#143の取り込み、#148の旧管理画像削除、#150の解除API、#157の起動時整理・警告までを接続した。配信と画像設定・解除の画面操作は未実装である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の範囲は[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除](./verification/verified-cover-cleanup.md)・[起動時整理](./verification/startup-cover-cleanup.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。#143の取り込み、#148の旧管理画像削除、#150の解除API、#157の起動時整理・警告、#163の限定HTTP配信までを接続した。画像の表示・設定・解除の画面操作と、本番配信の実WebView2確認は未対応である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の範囲は[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除](./verification/verified-cover-cleanup.md)・[起動時整理](./verification/startup-cover-cleanup.md)・[HTTP配信](./verification/cover-http-delivery.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 現在の段階実装
 
@@ -159,6 +159,8 @@ Middlewareは固定接頭辞と正の作品IDからDBの現在画像を解決す
 Issue #159の`platform.ReadVerifiedCover`は、固定ID・管理記録の期待識別情報・サイズ・ハッシュからバイト列を照合し、解放失敗を含むエラー時はデータを返さない。読み取り時に`covers`を作成しない。PNG構文は検査せず、DBのready記録・現在参照・共通排他をこの関数だけでは確認できない。Application・HTTPへの接続でこれらを満たす必要がある。[部品の検証と限界](./verification/verified-cover-read.md)を参照する。本番配信は未実装である。
 
 Issue #161は`application.CoverReader`へ現在参照・ready管理記録の解決、共通排他、上限付き実ファイル読み取り、静止PNG検査を接続する。読み取り専用の段階受付で停止後の次段階を拒否し、全解放結果の通知後に排他と操作票を返す。正常終了要求だけでは開始済み読み取りをキャンセルしない。HTTP・App・画面はまだ未接続である。[Application読み取りの検証と限界](./verification/current-cover-reader.md)を参照する。
+
+Issue #163でWails Middlewareの`GET /__covers/works/<作品ID>`をAppの現在画像読み取りへ接続する。正規の正の十進ID以外・エンコード・クエリ・GET以外を拒否し、正常PNGはno-store/nosniffで返す。初期化待ち・AppのDB寿命保護・送信前のロック解放・Middleware内最大4件のバッファ保持を接続する。[HTTP配信の検証と限界](./verification/cover-http-delivery.md)を参照する。画像表示/設定UIと実WebView2の検証は残る。
 
 ## 保護範囲と本番化の条件
 
