@@ -2,7 +2,7 @@ import {useRef, useState} from 'react';
 import {apiErrorMessage, registrationDate} from './work-display';
 import type {WorkView} from './work-display';
 
-export function WorkList({works, showEmpty, onOpen}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>}) {
+export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number}) {
     if (works.length === 0) {
         return showEmpty ? <div className="empty-state">
             <div className="empty-book" aria-hidden="true">本</div>
@@ -11,11 +11,11 @@ export function WorkList({works, showEmpty, onOpen}: {works: WorkView[]; showEmp
         </div> : null;
     }
     return <ul className="work-list" aria-label="作品一覧">
-        {works.map((work) => <WorkCard key={work.id} work={work} onOpen={onOpen} />)}
+        {works.map((work) => <WorkCard key={work.id} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} />)}
     </ul>;
 }
 
-function WorkCard({work, onOpen}: {work: WorkView; onOpen: (id: number) => Promise<void>}) {
+function WorkCard({work, onOpen, coversReady, coverRevision}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number}) {
     const pending = useRef(false);
     const [opening, setOpening] = useState(false);
     const [error, setError] = useState('');
@@ -29,7 +29,7 @@ function WorkCard({work, onOpen}: {work: WorkView; onOpen: (id: number) => Promi
         finally { pending.current = false; setOpening(false); }
     }
     return <li className="work-card">
-            <div className="cover-placeholder" aria-hidden="true">本</div>
+            <WorkCover key={`${work.thumbnailPath}:${coverRevision}`} id={work.id} enabled={coversReady && work.thumbnailPath !== ''} />
             <div className="work-details">
                 <h3>{work.title}</h3>
                 {work.siteName && <p className="site-name">{work.siteName}</p>}
@@ -43,4 +43,17 @@ function WorkCard({work, onOpen}: {work: WorkView; onOpen: (id: number) => Promi
                 {error && <p className="message error-message" role="alert">{error}</p>}
             </div>
         </li>;
+}
+
+function WorkCover({id, enabled}: {id: number; enabled: boolean}) {
+    const [failed, setFailed] = useState(false);
+    const [loaded, setLoaded] = useState(false);
+    return <div className="work-cover">
+        <div className="cover-placeholder" aria-hidden="true">
+            {(!enabled || !loaded || failed) && <span>本</span>}
+            {enabled && !failed && <img src={`/__covers/works/${id}`} alt="" className={loaded ? '' : 'cover-loading'}
+                onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+        </div>
+        {failed && <p className="cover-error" role="status">画像を表示できません</p>}
+    </div>;
 }

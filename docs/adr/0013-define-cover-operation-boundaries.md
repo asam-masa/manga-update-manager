@@ -183,6 +183,8 @@ Issue #161は現在参照からのApplication読み取りとPNG検査を接続�
 
 Issue #163で本番HTTP経路とAppのDB寿命を接続する。開発用/内蔵Wailsハンドラーと一時DB/PNGで経路拒否・再取得・欠損/破損・ヘッダー・送信中のAppロック解放を確認する。[HTTP配信の検証と限界](../verification/cover-http-delivery.md)を参照する。実WebView2と画像UIの確認が残り、Pendingを維持する。
 
+Issue #165で既存カードの画像表示を接続する。整理完了後の取得、未設定の仮表示、表示失敗のカード内案内と参照保持、一覧再読み込みでの再取得をUIテストで確認する。production exeと分離した合成データで正常表示・欠損からの回復・通常終了を確認した。[表示の検証と限界](../verification/display-current-cover.md)を参照する。設定/解除UI、開発モードと残る操作の実WebView2確認があり、Pendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

@@ -23,6 +23,8 @@ function App() {
     const [settingsSaving, setSettingsSaving] = useState(false);
     const [settingsWarning, setSettingsWarning] = useState('');
     const [coverWarnings, setCoverWarnings] = useState<{code: string; message: string}[]>([]);
+    const [coversReady, setCoversReady] = useState(false);
+    const [coverRevision, setCoverRevision] = useState(0);
 
     useEffect(() => {
         let active = true;
@@ -31,7 +33,7 @@ function App() {
         let frame = requestAnimationFrame(() => {
             frame = requestAnimationFrame(() => {
                 void LoadCoverWarnings().then((warnings) => {
-                    if (active) setCoverWarnings(warnings);
+                    if (active) { setCoverWarnings(warnings); setCoversReady(true); }
                 }).catch(() => {
                     if (active) setCoverWarnings([{code: 'cover_cleanup_unavailable', message: '画像整理の結果を取得できませんでした。アプリを再起動して状態を確認してください。'}]);
                 });
@@ -62,10 +64,13 @@ function App() {
         setListStopped(false);
         try {
             const result = await ListWorks();
-            if (current === request.current) setWorks(result.map((work) => {
-                const saved = savedAccess.current.get(work.id);
-                return saved && saved.revision > revision ? {...work, lastAccessedAt: saved.value} : work;
-            }));
+            if (current === request.current) {
+                setCoverRevision((value) => value + 1);
+                setWorks(result.map((work) => {
+                    const saved = savedAccess.current.get(work.id);
+                    return saved && saved.revision > revision ? {...work, lastAccessedAt: saved.value} : work;
+                }));
+            }
         } catch (error: unknown) {
             if (current === request.current) {
                 const stopped = isDatabaseStopped(error);
@@ -252,7 +257,8 @@ function App() {
                                     <h3>検索条件に一致する作品がありません</h3>
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
-                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} />
+                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork}
+                                coversReady={coversReady} coverRevision={coverRevision} />
                         </>}
                     </div>
                 </section>

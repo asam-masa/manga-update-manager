@@ -1,6 +1,6 @@
 # 画像保存・配信契約
 
-Issue #42の段階実装の設計メモ。#143の取り込み、#148の旧管理画像削除、#150の解除API、#157の起動時整理・警告、#163の限定HTTP配信までを接続した。画像の表示・設定・解除の画面操作と、本番配信の実WebView2確認は未対応である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の範囲は[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除](./verification/verified-cover-cleanup.md)・[起動時整理](./verification/startup-cover-cleanup.md)・[HTTP配信](./verification/cover-http-delivery.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
+Issue #42の段階実装の設計メモ。#143の取り込み、#148の旧管理画像削除、#150の解除API、#157の起動時整理・警告、#163の限定HTTP配信、#165の既存カード表示までを接続した。画像の設定・解除の画面操作は未対応である。以下のIssue別の「未接続」は各段階時点の履歴であり、現在の範囲は[取り込み](./verification/cover-import-api.md)・[解除API](./verification/cover-remove-api.md)・[旧画像削除](./verification/verified-cover-cleanup.md)・[起動時整理](./verification/startup-cover-cleanup.md)・[HTTP配信](./verification/cover-http-delivery.md)・[表示とexe確認](./verification/display-current-cover.md)を参照する。成功境界は[ADR-0013](./adr/0013-define-cover-operation-boundaries.md)、起動排他は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を正本とする。
 
 ## 現在の段階実装
 

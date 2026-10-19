@@ -1,9 +1,9 @@
-import {act, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {beforeEach, afterEach, expect, it, vi} from 'vitest';
 import {StrictMode} from 'react';
 import App from './App';
-import {LoadCoverWarnings} from '../wailsjs/go/main/App';
+import {LoadCoverWarnings, ListWorks} from '../wailsjs/go/main/App';
 
 vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
 let frames: Map<number, FrameRequestCallback>;
@@ -43,4 +43,22 @@ it('アンマウント後には整理を要求しない', async () => {
     const view = render(<App />);
     await frame(); view.unmount(); await frame();
     expect(LoadCoverWarnings).not.toHaveBeenCalled();
+});
+
+it('整理API完了後に画像取得を開始し、一覧再読み込み成功後に取得をやり直す', async () => {
+    let complete!: (warnings: []) => void;
+    vi.mocked(LoadCoverWarnings).mockReturnValue(new Promise((resolve) => { complete = resolve; }));
+    vi.mocked(ListWorks).mockResolvedValue([{id: 1, title: '画像作品', url: 'https://example.com/', siteName: '', notes: '', thumbnailPath: 'covers/managed.png', createdAt: '', updatedAt: ''}]);
+    const view = render(<App />);
+    await screen.findByRole('heading', {name: '画像作品'});
+    await frame(); await frame();
+    expect(view.container.querySelector('img')).toBeNull();
+    await act(async () => complete([]));
+    const old = view.container.querySelector('img')!;
+    fireEvent.error(old);
+    expect(screen.getByText('画像を表示できません')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
+    expect(screen.queryByText('画像を表示できません')).toBeNull();
+    expect(view.container.querySelector('img')).not.toBe(old);
+    vi.mocked(ListWorks).mockResolvedValue([]);
 });
