@@ -40,6 +40,10 @@ Firefoxで開いた開発用画面に「Goバックエンド: 接続済み」と
 
 ## 正本と根拠
 
+エラーも、Goの返却値とJavaScriptが受け取る値を分けて確認する必要がある。Issue #180では、Goから安全なオブジェクトを返してもWailsの`new Error(object)`で`[object Object]`になり、画面のコード判定が働かなかった。オブジェクトを直接rejectするモックだけでは見つからず、実WebView2の検証で分かった。
+
+JSON文字列ならError.messageに内容を保持できる。ただし、何でも解析してそのまま表示すると内部診断を公開する危険がある。識別子とサイズを確認してから復元し、既知コードと文言の形を検証する。自動テストも実ランタイムと同じError包装を通す。正本は[ADR-0016](../adr/0016-preserve-safe-api-errors-through-wails.md)であり、エラー文字列を信頼できる証明へ変える方式ではない。
+
 - [ADR-0001: デスクトップアプリケーション基盤を選定する](../adr/0001-select-desktop-application-foundation.md)
 - [ADR-0003: フロントエンド構成を選定する](../adr/0003-select-frontend-foundation.md)
 - [PR #16: Wailsアプリの雛形を生成する](https://github.com/asam-masa/manga-update-manager/pull/16)

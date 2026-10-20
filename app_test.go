@@ -113,7 +113,7 @@ func TestInitializationFailuresAreSafeAPIErrors(t *testing.T) {
 			}
 		})
 	}
-	if got := formatAPIError(errors.New("private diagnostic")).(*APIError); got.Code != "internal_error" || strings.Contains(got.Message, "private") {
+	if got := decodeFormattedError(t, errors.New("private diagnostic")); got.Code != "internal_error" || strings.Contains(got.Message, "private") {
 		t.Fatal(got)
 	}
 }

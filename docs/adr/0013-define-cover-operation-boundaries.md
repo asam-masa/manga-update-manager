@@ -234,6 +234,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-19、画像選択中の無効な親ウィンドウを検証補助から前面化すると、開発モードとproduction exeの両方で`MoveFocus`失敗からプロセス終了へ進む条件を再現した。ダイアログなしの前面化、開発モードでの利用者の手動Alt+Tabと取消では再現しなかった。各終了後の合成DBの整合性・作品情報と元画像の保持・起動ロック解放を確認したが、保存中断の全条件を保証しない。[結果と限界](../verification/webview-focus-exit.md)を参照する。本番の対策は未実装・未決定であり、既知の問題は[#176](https://github.com/asam-masa/manga-update-manager/issues/176)へ引き継ぐ。停止・長時間処理などの実機確認も残り、Pendingを維持する。
 
+## Issue #180/#181の停止案内とエラー伝達
+
+2026-10-20、Issue #180/#181でAPI境界の実Commit競合・画像だけの合成停止と保全を検証し、実WebView2の結果不明・停止・確定後警告の案内を確認した。WailsのError包装でコードが失われる問題を[ADR-0016](./0016-preserve-safe-api-errors-through-wails.md)の方式で修正した。[検証範囲と限界](../verification/cover-stop-ui.md)を参照する。長時間案内・処理中の終了・保存削除復旧の最終照合は残り、本ADRはPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"path/filepath"
@@ -112,12 +113,21 @@ type APIError struct {
 
 func (e *APIError) Error() string { return e.Message }
 
+const apiErrorWirePrefix = "manga-update-manager:api-error:v1:"
+const apiErrorWireLimit = 8192
+
 func formatAPIError(err error) any {
 	var apiError *APIError
-	if errors.As(err, &apiError) {
-		return apiError
+	if !errors.As(err, &apiError) || apiError == nil {
+		apiError = &APIError{Code: "internal_error", Message: "処理に失敗しました。アプリを再起動して再度お試しください。"}
 	}
-	return &APIError{Code: "internal_error", Message: "処理に失敗しました。アプリを再起動して再度お試しください。"}
+	// Wails wraps the formatted value with new Error(value). A string survives;
+	// an object loses its fields through JavaScript's default string conversion.
+	payload, marshalErr := json.Marshal(apiError)
+	if marshalErr != nil || len(apiErrorWirePrefix)+len(payload) > apiErrorWireLimit {
+		return apiErrorWirePrefix + `{"code":"internal_error","message":"処理に失敗しました。アプリを再起動して再度お試しください。"}`
+	}
+	return apiErrorWirePrefix + string(payload)
 }
 
 func workAPIError(err error) error {

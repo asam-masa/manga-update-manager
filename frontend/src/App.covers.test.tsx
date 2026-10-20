@@ -162,3 +162,37 @@ it('画像変更の遅い応答で新しい最終アクセスを戻さず、次�
     await userEvent.click(select('一'));
     expect(screen.queryByText('画像を設定しました。')).toBeNull();
 });
+
+it.each(['cover_outcome_unknown', 'database_stopped', 'cover_unavailable'])('停止・結果不明 %s では旧表示を保持し、成功扱いや自動再試行をしない', async (code) => {
+    const message = `${code}: アプリを再起動して状態を確認してください。`;
+    vi.mocked(SelectWorkCoverWithOperation).mockRejectedValue(new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message})));
+    const view = await boot();
+    const oldSource = view.container.querySelector('img')!.getAttribute('src');
+    const listCalls = vi.mocked(ListWorks).mock.calls.length;
+    const search = screen.getByRole('searchbox', {name: '漫画名で検索'});
+    await userEvent.type(search, '一');
+    await userEvent.click(select('一'));
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.queryByText('画像を設定しました。')).toBeNull();
+    expect(view.container.querySelector('img')!.getAttribute('src')).toBe(oldSource);
+    expect((search as HTMLInputElement).value).toBe('一');
+    expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
+    expect(ListWorks).toHaveBeenCalledTimes(listCalls);
+    expect(RemoveWorkCover).not.toHaveBeenCalled();
+    expect(select('一').hasAttribute('disabled')).toBe(false);
+});
+
+it.each(['cover_release_unconfirmed', 'database_stopped_after_commit'])('確定後の停止警告 %s では新画像と成功を保持する', async (code) => {
+    const message = '後始末を確認できません。アプリを再起動して状態を確認してください。';
+    vi.mocked(SelectWorkCoverWithOperation).mockResolvedValue(new main.SelectWorkCoverResult({
+        cancelled: false, work: {...first, thumbnailPath: 'covers/committed.png'}, warnings: [{code, message}],
+    }));
+    const view = await boot();
+    const oldSource = view.container.querySelector('img')!.getAttribute('src');
+    await userEvent.click(select('一'));
+    expect(await screen.findByText('画像を設定しました。')).toBeTruthy();
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(view.container.querySelector('img')!.getAttribute('src')).not.toBe(oldSource);
+    expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
+    expect(RemoveWorkCover).not.toHaveBeenCalled();
+});
