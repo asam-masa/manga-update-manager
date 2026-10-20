@@ -26,6 +26,7 @@ type App struct {
 	covers                 *application.CoverImporter
 	coverReader            coverHTTPReader
 	coverOperations        application.CoverOperations
+	coverProgress          coverProgressState
 	chooseCover            func(context.Context) (string, error)
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)

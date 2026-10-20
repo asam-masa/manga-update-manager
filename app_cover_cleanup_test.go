@@ -57,6 +57,10 @@ func TestStartupCleanupWaitsJoinsAndKeepsDatabaseUntilRelease(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("cleanup not started")
 	}
+	progress := app.LoadCoverProgress()
+	if len(progress) != 1 || progress[0].OperationID != "startup-cleanup" || progress[0].Kind != "cleanup" || progress[0].Stage != "checking" || !progress[0].Timed {
+		t.Error("running cleanup not observable", progress)
+	}
 	if !app.beforeClose(context.Background()) {
 		t.Fatal("running cleanup allowed close")
 	}
@@ -72,6 +76,9 @@ func TestStartupCleanupWaitsJoinsAndKeepsDatabaseUntilRelease(t *testing.T) {
 	}
 	close(release)
 	wg.Wait()
+	if len(app.LoadCoverProgress()) != 0 {
+		t.Error("finished cleanup retained")
+	}
 	select {
 	case <-closed:
 	case <-time.After(10 * time.Second):

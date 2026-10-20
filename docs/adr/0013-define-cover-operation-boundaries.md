@@ -242,6 +242,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-20、Issue #183で長時間処理の案内を具体化し、#184で要求ごとのApplication段階通知を追加した。[通知契約と検証範囲](../verification/cover-progress-stages.md)を参照する。Wails・画面・10秒計測は未接続であり、長時間案内の必須項目は未完了、Pendingを維持する。
 
+## Issue #186の状態取得API
+
+2026-10-20、#186で[ADR-0017](./0017-poll-cover-progress-snapshots.md)の方式を採用し、段階・経過時間をメモリへ反映するWails APIを追加した。[契約と検証範囲](../verification/cover-progress-api.md)を参照する。約1秒の画面取得・10秒表示・実WebView2検証は未接続のため、長時間案内は未完了、Pendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

@@ -6,6 +6,8 @@ export function CreateWork(arg1:main.CreateWorkInput):Promise<main.WorkDTO>;
 
 export function ListWorks():Promise<Array<main.WorkDTO>>;
 
+export function LoadCoverProgress():Promise<Array<main.CoverProgressDTO>>;
+
 export function LoadCoverWarnings():Promise<Array<main.CoverWarningDTO>>;
 
 export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
@@ -13,6 +15,8 @@ export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 export function OpenWork(arg1:number):Promise<main.WorkDTO>;
 
 export function RemoveWorkCover(arg1:number):Promise<main.RemoveWorkCoverResult>;
+
+export function RemoveWorkCoverWithOperation(arg1:number,arg2:string):Promise<main.RemoveWorkCoverResult>;
 
 export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>;
 

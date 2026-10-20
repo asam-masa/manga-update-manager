@@ -27,12 +27,16 @@ type RemoveWorkCoverResult struct {
 }
 
 func (a *App) RemoveWorkCover(workID int64) (RemoveWorkCoverResult, error) {
+	return a.removeWorkCover(workID, nil)
+}
+
+func (a *App) removeWorkCover(workID int64, progress application.CoverProgress) (RemoveWorkCoverResult, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.covers == nil {
 		return RemoveWorkCoverResult{}, unavailableError()
 	}
-	result, err := a.covers.Remove(a.ctx, workID)
+	result, err := a.covers.RemoveWithProgress(a.ctx, workID, progress)
 	if err != nil {
 		apiErr := coverAPIError(err)
 		if converted, ok := apiErr.(*APIError); ok && converted.Code == "cover_import_failed" {
@@ -54,15 +58,15 @@ func (a *App) SelectWorkCover(workID int64) (SelectWorkCoverResult, error) {
 // SelectWorkCoverWithOperation keeps source paths inside Go. The opaque ID is
 // only for correlating notifications; it grants no authority over an operation.
 func (a *App) SelectWorkCoverWithOperation(workID int64, operationID string) (SelectWorkCoverResult, error) {
-	if len(operationID) != 32 {
+	if !validCoverOperationID(operationID) {
 		return SelectWorkCoverResult{}, invalidCoverOperationID()
 	}
-	for _, c := range operationID {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
-			return SelectWorkCoverResult{}, invalidCoverOperationID()
-		}
+	progress, finish, ok := a.coverProgress.begin(operationID, workID, "select")
+	if !ok {
+		return SelectWorkCoverResult{}, coverAPIError(application.ErrCoverBusy)
 	}
-	return a.selectWorkCover(workID, func() { a.coverSelectionFinished(a.ctx, workID, operationID) })
+	defer finish()
+	return a.selectWorkCoverWithProgress(workID, func() { a.coverSelectionFinished(a.ctx, workID, operationID) }, progress)
 }
 
 func invalidCoverOperationID() error {
@@ -77,12 +81,16 @@ func emitCoverSelectionFinished(ctx context.Context, workID int64, operationID s
 }
 
 func (a *App) selectWorkCover(workID int64, selectionDone func()) (SelectWorkCoverResult, error) {
+	return a.selectWorkCoverWithProgress(workID, selectionDone, nil)
+}
+
+func (a *App) selectWorkCoverWithProgress(workID int64, selectionDone func(), progress application.CoverProgress) (SelectWorkCoverResult, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.covers == nil {
 		return SelectWorkCoverResult{}, unavailableError()
 	}
-	result, err := a.covers.SelectWithSelectionDone(a.ctx, workID, selectionDone)
+	result, err := a.covers.SelectWithProgress(a.ctx, workID, selectionDone, progress)
 	if err != nil {
 		return SelectWorkCoverResult{}, coverAPIError(err)
 	}

@@ -24,7 +24,11 @@ func (a *App) LoadCoverWarnings() ([]CoverWarningDTO, error) {
 		if a.coverCleanupTicket == nil {
 			return
 		}
-		codes, err := a.covers.Cleanup(a.ctx, a.coverCleanupTicket)
+		// sync.Once owns this reserved non-client ID; an unexpected duplicate
+		// must not block the actual cleanup or retire somebody else's record.
+		progress, finish, _ := a.coverProgress.begin("startup-cleanup", 0, "cleanup")
+		defer finish()
+		codes, err := a.covers.CleanupWithProgress(a.ctx, a.coverCleanupTicket, progress)
 		for _, code := range codes {
 			if code == "cover_cleanup_unverified" {
 				a.coverCleanupWarnings = append(a.coverCleanupWarnings, CoverWarningDTO{Code: code, Message: "保存完了を確認できない画像の管理記録を保持しています。安全性を確認できない画像は削除していません。"})
