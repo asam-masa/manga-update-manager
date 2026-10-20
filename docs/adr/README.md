@@ -21,4 +21,5 @@
 | [0013](./0013-define-cover-operation-boundaries.md) | 画像操作と不要ファイル削除の成功境界を分ける | Accepted | Pending | 2026-10-11 | [#42](https://github.com/asam-masa/manga-update-manager/issues/42)、[#56](https://github.com/asam-masa/manga-update-manager/issues/56) |
 | [0014](./0014-lock-storage-before-startup.md) | DB接続より先に保存先の排他を確保する | Accepted | Verified | 2026-10-11 | [#58](https://github.com/asam-masa/manga-update-manager/issues/58) |
 | [0015](./0015-separate-go-minimum-and-validation-version.md) | Goの最低版と検証版を分ける | Accepted | Verified | 2026-10-12 | [#67](https://github.com/asam-masa/manga-update-manager/issues/67) |
+| [0016](./0016-preserve-safe-api-errors-through-wails.md) | Wailsのエラー包装を越えて安全なAPI情報を保持する | Accepted | Verified | 2026-10-20 | [#181](https://github.com/asam-masa/manga-update-manager/issues/181)、[#180](https://github.com/asam-masa/manga-update-manager/issues/180) |
 

@@ -133,7 +133,7 @@ describe('作品管理画面', () => {
     });
 
     it('DB停止後の取得失敗で一覧と検索を残し、再読み込みを促さず自動再試行しない', async () => {
-        list.mockResolvedValueOnce([work]).mockRejectedValue({code: 'database_stopped', message: 'アプリを再起動して状態を確認してください。'});
+        list.mockResolvedValueOnce([work]).mockRejectedValue(new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code: 'database_stopped', message: 'アプリを再起動して状態を確認してください。'})));
         render(<App />);
         await screen.findByRole('heading', {name: work.title});
         fireEvent.change(screen.getByRole('searchbox'), {target: {value: work.title}});

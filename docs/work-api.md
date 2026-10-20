@@ -32,7 +32,7 @@ Applicationの`WorkRepository`は登録と一覧だけを定義する。時刻�
 
 作品DTOは入力項目に加え、`id`, `createdAt`, `updatedAt`を持つ。日時は`Asia/Tokyo`のRFC 3339文字列（`+09:00`、小数秒は必要な桁数）で返す。DB保存は既存のUTC・小数秒固定9桁を維持する。IDと登録日時は利用者入力として受け取らない。サムネイルの相対パスは既存規則で検証するだけで、画像操作は行わない。
 
-エラーはWailsの`ErrorFormatter`から`{code, message}`としてPromiseをrejectする。生成TypeScriptの戻り値型は成功時の型のみであるため、画面側はcatchでコードを確認する。
+エラーはWailsの`ErrorFormatter`から、`manga-update-manager:api-error:v1:`と安全な`{code,message}`のJSONを連結した文字列として返す。WailsがこれをError.messageへ包み、画面の共通処理が識別子・上限・既知コード・文言を確認して復元する。生のError.messageや未知形式は表示せず、DB停止判定も同じ検証を使う。生成TypeScriptの戻り値型は成功時の型だけである。[ADR-0016](./adr/0016-preserve-safe-api-errors-through-wails.md)を正本とする。成功DTOとDBの形式は変えない。
 
 | code | 意味 |
 | --- | --- |
