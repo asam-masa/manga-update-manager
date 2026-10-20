@@ -238,6 +238,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-20、Issue #180/#181でAPI境界の実Commit競合・画像だけの合成停止と保全を検証し、実WebView2の結果不明・停止・確定後警告の案内を確認した。WailsのError包装でコードが失われる問題を[ADR-0016](./0016-preserve-safe-api-errors-through-wails.md)の方式で修正した。[検証範囲と限界](../verification/cover-stop-ui.md)を参照する。長時間案内・処理中の終了・保存削除復旧の最終照合は残り、本ADRはPendingを維持する。
 
+## Issue #184の段階通知
+
+2026-10-20、Issue #183で長時間処理の案内を具体化し、#184で要求ごとのApplication段階通知を追加した。[通知契約と検証範囲](../verification/cover-progress-stages.md)を参照する。Wails・画面・10秒計測は未接続であり、長時間案内の必須項目は未完了、Pendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

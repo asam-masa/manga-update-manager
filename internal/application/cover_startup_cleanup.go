@@ -12,19 +12,25 @@ import (
 // Cleanup consumes the startup ticket reserved before exposing image APIs.
 // It never scans files to enroll unknown names or changes work references.
 func (a *CoverImporter) Cleanup(ctx context.Context, op *CoverOperation) (warnings []string, err error) {
+	return a.CleanupWithProgress(ctx, op, nil)
+}
+
+func (a *CoverImporter) CleanupWithProgress(ctx context.Context, op *CoverOperation, progress CoverProgress) (warnings []string, err error) {
 	warnings = make([]string, 0)
 	if op == nil || op.owner != a.operations || op.kind != coverCleanup {
 		return warnings, ErrCoverOperationInvalid
 	}
 	defer func() { err = errors.Join(err, op.End()) }()
-	stage := func(fn func() error) error { return a.stage(ctx, op, fn) }
+	stage := func(code CoverProgressStage, fn func() error) error {
+		return a.progressStage(ctx, op, progress, code, fn)
+	}
 	var unlock func()
-	if err = stage(func() error { var e error; unlock, e = a.operations.LockReferences(ctx); return e }); err != nil {
+	if err = stage(CoverProgressWaiting, func() error { var e error; unlock, e = a.operations.LockReferences(ctx); return e }); err != nil {
 		return warnings, err
 	}
 	defer unlock()
 	var records []storage.ManagedCover
-	if err = stage(func() error { var e error; records, e = a.repository.ListManagedCovers(ctx); return e }); err != nil {
+	if err = stage(CoverProgressChecking, func() error { var e error; records, e = a.repository.ListManagedCovers(ctx); return e }); err != nil {
 		return warnings, err
 	}
 	paths := make([]string, 0, len(records))
@@ -38,7 +44,7 @@ func (a *CoverImporter) Cleanup(ctx context.Context, op *CoverOperation) (warnin
 			continue
 		}
 		var unused bool
-		if err = stage(func() error {
+		if err = stage(CoverProgressChecking, func() error {
 			var e error
 			_, unused, e = a.repository.UnusedManagedCover(ctx, record.ID)
 			return e
@@ -53,10 +59,11 @@ func (a *CoverImporter) Cleanup(ctx context.Context, op *CoverOperation) (warnin
 		return warnings, nil
 	}
 	var guard io.Closer
-	if err = stage(func() error { var e error; guard, e = a.prepare(ctx, a.directory); return e }); err != nil {
+	if err = stage(CoverProgressPreparing, func() error { var e error; guard, e = a.prepare(ctx, a.directory); return e }); err != nil {
 		return warnings, err
 	}
 	defer func() {
+		progress.report(CoverProgressReleasing)
 		if e := guard.Close(); e != nil {
 			e = errors.Join(platform.ErrCoverRelease, e)
 			a.operations.ObserveError(e)
@@ -65,7 +72,8 @@ func (a *CoverImporter) Cleanup(ctx context.Context, op *CoverOperation) (warnin
 	}()
 	for _, path := range paths {
 		// Recheck references and identity immediately before the existing deletion.
-		if err = a.cleanupPrevious(ctx, path, stage); err != nil {
+		cleanupStage := func(fn func() error) error { return stage(CoverProgressCleaning, fn) }
+		if err = a.cleanupPrevious(ctx, path, cleanupStage); err != nil {
 			return warnings, err
 		}
 	}

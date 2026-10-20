@@ -58,16 +58,25 @@ func (a *CoverImporter) Select(ctx context.Context, workID int64) (result CoverI
 // selection slot. The callback belongs to this request, not to the importer.
 // It must return promptly rather than wait for a later import to complete.
 func (a *CoverImporter) SelectWithSelectionDone(ctx context.Context, workID int64, selectionDone func()) (CoverImportResult, error) {
-	return a.change(ctx, workID, true, selectionDone)
+	return a.SelectWithProgress(ctx, workID, selectionDone, nil)
+}
+
+// SelectWithProgress adds request-local stage observations to chooser completion.
+func (a *CoverImporter) SelectWithProgress(ctx context.Context, workID int64, selectionDone func(), progress CoverProgress) (CoverImportResult, error) {
+	return a.change(ctx, workID, true, selectionDone, progress)
 }
 
 // Remove shares the commit, cleanup and release boundaries with Select, but
 // never opens a chooser or reads/generates a source image.
 func (a *CoverImporter) Remove(ctx context.Context, workID int64) (CoverImportResult, error) {
-	return a.change(ctx, workID, false, nil)
+	return a.RemoveWithProgress(ctx, workID, nil)
 }
 
-func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool, selectionDone func()) (result CoverImportResult, err error) {
+func (a *CoverImporter) RemoveWithProgress(ctx context.Context, workID int64, progress CoverProgress) (CoverImportResult, error) {
+	return a.change(ctx, workID, false, nil, progress)
+}
+
+func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool, selectionDone func(), progress CoverProgress) (result CoverImportResult, err error) {
 	result.Warnings = make([]string, 0)
 	op, err := a.operations.BeginChange(workID, selecting)
 	if err != nil {
@@ -82,16 +91,16 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 			unlockReferences()
 		}
 	}()
-	stage := func(fn func() error) error {
-		return a.stage(ctx, op, fn)
+	stage := func(code CoverProgressStage, fn func() error) error {
+		return a.progressStage(ctx, op, progress, code, fn)
 	}
-	if err = stage(func() error { _, err := a.repository.WorkByID(ctx, workID); return err }); err != nil {
+	if err = stage(CoverProgressChecking, func() error { _, err := a.repository.WorkByID(ctx, workID); return err }); err != nil {
 		return result, err
 	}
 	var path string
 	var png []byte
 	if selecting {
-		if err = stage(func() error {
+		if err = stage(CoverProgressChoosing, func() error {
 			var err error
 			path, err = a.choose(ctx)
 			op.SelectionDone()
@@ -106,12 +115,13 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 			result.Cancelled = true
 			return result, nil
 		}
-		if err = stage(func() (err error) {
+		if err = stage(CoverProgressGenerating, func() (err error) {
 			source, err := a.openSource(ctx, path)
 			if err != nil {
 				return err
 			}
 			defer func() {
+				progress.report(CoverProgressReleasing)
 				if closeErr := source.Close(); closeErr != nil {
 					err = errors.Join(err, platform.ErrCoverRelease, closeErr)
 				}
@@ -123,10 +133,11 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 		}
 	}
 	var guard io.Closer
-	if err = stage(func() error { var err error; guard, err = a.prepare(ctx, a.directory); return err }); err != nil {
+	if err = stage(CoverProgressPreparing, func() error { var err error; guard, err = a.prepare(ctx, a.directory); return err }); err != nil {
 		return result, err
 	}
 	defer func() {
+		progress.report(CoverProgressReleasing)
 		closeErr := guard.Close()
 		if closeErr != nil {
 			closeErr = errors.Join(platform.ErrCoverRelease, closeErr)
@@ -146,16 +157,16 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 			return result, err
 		}
 		id = hex.EncodeToString(random[:])
-		if err = stage(func() error { return a.repository.ReserveManagedCover(ctx, id) }); err != nil {
+		if err = stage(CoverProgressSaving, func() error { return a.repository.ReserveManagedCover(ctx, id) }); err != nil {
 			return result, err
 		}
 		var info platform.CoverFileInfo
-		if err = stage(func() error { var err error; info, err = a.write(ctx, a.directory, id, png); return err }); err != nil {
+		if err = stage(CoverProgressSaving, func() error { var err error; info, err = a.write(ctx, a.directory, id, png); return err }); err != nil {
 			return result, err
 		}
 		savedInfo = storage.ManagedCoverInfo{VolumeSerial: info.VolumeSerial, FileID: info.FileID, ByteSize: info.ByteSize, SHA256: info.SHA256}
 	}
-	if err = stage(func() error {
+	if err = stage(CoverProgressWaiting, func() error {
 		var err error
 		unlockReferences, err = a.operations.LockReferences(ctx)
 		return err
@@ -163,7 +174,7 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 		return result, err
 	}
 	if selecting {
-		if err = stage(func() error {
+		if err = stage(CoverProgressUpdating, func() error {
 			// The saved output is re-read by WriteNewCover before this boundary.
 			// Keep its identity until confirmation without exposing it to Wails.
 			return a.repository.ConfirmManagedCover(ctx, id, savedInfo)
@@ -173,7 +184,7 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 	}
 	var work manga.Work
 	var previous string
-	err = stage(func() error {
+	err = stage(CoverProgressUpdating, func() error {
 		var err error
 		if selecting {
 			work, previous, err = a.repository.SetWorkCover(ctx, workID, id, a.now())
@@ -195,7 +206,8 @@ func (a *CoverImporter) change(ctx context.Context, workID int64, selecting bool
 		return result, nil // Stopped after commit: never begin cleanup.
 	}
 	if previous != "" {
-		if cleanupErr := a.cleanupPrevious(ctx, previous, stage); cleanupErr != nil {
+		cleanupStage := func(fn func() error) error { return stage(CoverProgressCleaning, fn) }
+		if cleanupErr := a.cleanupPrevious(ctx, previous, cleanupStage); cleanupErr != nil {
 			result.warn("cover_cleanup_failed")
 			if errors.Is(cleanupErr, storage.ErrDBStopped) {
 				result.warn("database_stopped_after_commit")
