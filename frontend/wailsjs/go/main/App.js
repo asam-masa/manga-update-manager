@@ -10,6 +10,10 @@ export function ListWorks() {
   return window['go']['main']['App']['ListWorks']();
 }
 
+export function LoadCoverProgress() {
+  return window['go']['main']['App']['LoadCoverProgress']();
+}
+
 export function LoadCoverWarnings() {
   return window['go']['main']['App']['LoadCoverWarnings']();
 }
@@ -24,6 +28,10 @@ export function OpenWork(arg1) {
 
 export function RemoveWorkCover(arg1) {
   return window['go']['main']['App']['RemoveWorkCover'](arg1);
+}
+
+export function RemoveWorkCoverWithOperation(arg1, arg2) {
+  return window['go']['main']['App']['RemoveWorkCoverWithOperation'](arg1, arg2);
 }
 
 export function SelectWorkCover(arg1) {

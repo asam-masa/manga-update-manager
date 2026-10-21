@@ -1,5 +1,27 @@
 export namespace main {
 
+	export class CoverProgressDTO {
+	    operationID: string;
+	    workID: number;
+	    kind: string;
+	    stage: string;
+	    timed: boolean;
+	    elapsedMilliseconds: number;
+
+	    static createFrom(source: any = {}) {
+	        return new CoverProgressDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operationID = source["operationID"];
+	        this.workID = source["workID"];
+	        this.kind = source["kind"];
+	        this.stage = source["stage"];
+	        this.timed = source["timed"];
+	        this.elapsedMilliseconds = source["elapsedMilliseconds"];
+	    }
+	}
 	export class CoverWarningDTO {
 	    code: string;
 	    message: string;
