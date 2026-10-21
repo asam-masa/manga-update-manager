@@ -258,6 +258,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-21、基準main `7ac8d98603131d23773d45b04d0402dc44e4d1a6`で[保存・削除・復旧の検証根拠](../verification/cover-validation-audit.md)を照合した。生成・保存失敗の取り込み全体の保全（#192）、画像処理途中終了と次回整理（#193）、破損画像の実WebView2表示（#194）の根拠が不足している。これらを既知制約へ付け替えず、四項目の最終判断とVerifiedへの変更は後続とする。Validation StatusはPendingを維持する。
 
+## Issue #192の生成・保存失敗時の保全
+
+2026-10-21、実PNG・一時SQLiteの取り込みで生成・通常書込・容量不足相当・同期の失敗と解放失敗併発を確認し、旧作品情報・旧画像・元ファイル・旧管理記録を保持した。管理記録確定・参照更新・旧画像削除を始めず、再接続後の整理もreservedと未確認出力を保持する。[結果と注入境界の限界](../verification/cover-failure-preservation.md)を参照する。実OS故障ではなく、途中終了#193・破損実画面#194と最終判断は残るためPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

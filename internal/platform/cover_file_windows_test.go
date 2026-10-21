@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"unsafe"
 
@@ -156,6 +157,7 @@ func TestCoverWriteFailures(t *testing.T) {
 	}{
 		{"short", failingCoverWriter{short: true}, io.ErrShortWrite, false},
 		{"write", failingCoverWriter{writeErr: failure}, failure, false},
+		{"disk-full", failingCoverWriter{writeErr: syscall.ENOSPC}, syscall.ENOSPC, false},
 		{"sync", failingCoverWriter{errorSync: failure}, failure, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
