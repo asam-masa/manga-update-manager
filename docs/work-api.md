@@ -90,6 +90,8 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 ## 検証と制約
 
+Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。編集API・UIは未接続である。
+
 Issue #186で、画像操作の最新段階を返す`LoadCoverProgress`と、観測用操作IDを受け取る`RemoveWorkCoverWithOperation`を追加した。既存の操作ID付き設定・変更も観測状態へ接続する。状態はメモリだけに保持し、結果・警告は従来の操作APIで判断する。取得結果の欠落を完了と扱わない。[API契約](./verification/cover-progress-api.md)と[ADR-0017](./adr/0017-poll-cover-progress-snapshots.md)を参照する。後続#183で画面の定期取得と長時間案内を接続した。
 
 一時保存先でOS保存先の解決、初期化失敗、空一覧、登録、重複、ID順、日時、再オープン後の保持、終了後のAPI拒否をテストする。実利用者のDBはテストに使わない。

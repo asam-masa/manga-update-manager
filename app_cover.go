@@ -36,6 +36,11 @@ func (a *App) removeWorkCover(workID int64, progress application.CoverProgress) 
 	if a.covers == nil {
 		return RemoveWorkCoverResult{}, unavailableError()
 	}
+	end, err := a.workOperations.Begin(workID)
+	if err != nil {
+		return RemoveWorkCoverResult{}, workAdmissionCoverError(err)
+	}
+	defer end()
 	result, err := a.covers.RemoveWithProgress(a.ctx, workID, progress)
 	if err != nil {
 		apiErr := coverAPIError(err)
@@ -90,6 +95,11 @@ func (a *App) selectWorkCoverWithProgress(workID int64, selectionDone func(), pr
 	if a.covers == nil {
 		return SelectWorkCoverResult{}, unavailableError()
 	}
+	end, err := a.workOperations.Begin(workID)
+	if err != nil {
+		return SelectWorkCoverResult{}, workAdmissionCoverError(err)
+	}
+	defer end()
 	result, err := a.covers.SelectWithProgress(a.ctx, workID, selectionDone, progress)
 	if err != nil {
 		return SelectWorkCoverResult{}, coverAPIError(err)
@@ -101,6 +111,13 @@ func (a *App) selectWorkCoverWithProgress(workID int64, selectionDone func(), pr
 	}
 	dto.Warnings = coverWarnings(result.Warnings, "画像を設定しましたが、")
 	return dto, nil
+}
+
+func workAdmissionCoverError(err error) error {
+	if errors.Is(err, application.ErrWorkClosing) {
+		return coverAPIError(application.ErrCoverClosing)
+	}
+	return coverAPIError(application.ErrCoverBusy)
 }
 
 func coverWarnings(codes []string, prefix string) []CoverWarningDTO {
@@ -152,17 +169,28 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	a.mu.RLock()
 	// No cleanup has begun yet: closing can discard the pending startup ticket.
 	// Once claimed, normal close must not cancel or wait out the running cleanup.
-	if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {
-		_ = a.coverCleanupTicket.End()
-	}
-	done, err := a.coverOperations.RequestClose()
+	done, err := a.workOperations.RequestClose(func() (<-chan struct{}, error) {
+		if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {
+			_ = a.coverCleanupTicket.End()
+		}
+		return a.coverOperations.RequestClose()
+	})
 	a.mu.RUnlock()
 	if err != nil {
-		a.coverBusyNotice(ctx)
+		if errors.Is(err, application.ErrWorkBusy) {
+			// Only the future edit admission returns this close refusal.
+			a.workBusyNotice(ctx)
+		} else {
+			a.coverBusyNotice(ctx)
+		}
 		return true
 	}
 	<-done
 	return false
+}
+
+func workBusyNotice(ctx context.Context) {
+	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "作品情報を保存中です", Message: "作品情報の保存中は終了できません。処理結果を確認してから、もう一度閉じてください。"})
 }
 
 func coverBusyNotice(ctx context.Context) {

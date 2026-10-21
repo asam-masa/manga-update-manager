@@ -26,10 +26,12 @@ type App struct {
 	covers                 *application.CoverImporter
 	coverReader            coverHTTPReader
 	coverOperations        application.CoverOperations
+	workOperations         application.WorkOperations
 	coverProgress          coverProgressState
 	chooseCover            func(context.Context) (string, error)
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)
+	workBusyNotice         func(context.Context)
 	openURL                func(string) error
 	store                  *storage.Store
 	dataDirectory          func() (string, error)
@@ -44,7 +46,7 @@ type App struct {
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, startupFinished: make(chan struct{})}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, startupFinished: make(chan struct{})}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -211,6 +213,14 @@ func (a *App) OpenWork(id int64) (WorkDTO, error) {
 	if a.opener == nil {
 		return WorkDTO{}, unavailableError()
 	}
+	end, err := a.workOperations.Begin(id)
+	if err != nil {
+		if errors.Is(err, application.ErrWorkClosing) {
+			return WorkDTO{}, unavailableError()
+		}
+		return WorkDTO{}, workAPIError(application.ErrOpenInProgress)
+	}
+	defer end()
 	work, err := a.opener.OpenWork(a.ctx, id)
 	if err != nil {
 		a.coverOperations.ObserveError(err)
