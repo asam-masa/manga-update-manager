@@ -8,6 +8,7 @@
 - [安全設計](./安全設計.md)
 - [作品APIと起動・終了処理](./work-api.md)
 - [作品登録と一覧画面](./work-screen.md)
+- [作品の編集・削除（合意済み・未実装）](./work-edit-delete.md)
 - [作品一覧の拡張設計（合意済み・未実装）](./library-design.md)
 - [一覧用画像の生成](./thumbnail-processing.md)
 
