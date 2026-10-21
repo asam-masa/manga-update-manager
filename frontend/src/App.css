@@ -89,6 +89,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .message p { margin: 0; }
 .message p + p { margin-top: 8px; }
 .error-message { background: #fff0ed; color: #a33424; }
+.progress-message { background: #edf3f8; color: #183b56; }
+.progress-message h2 { font-size: 1rem; margin: 0 0 8px; }
 .success-message { color: #22664e; font-size: 0.875rem; line-height: 1.7; margin: 12px 0 0; }
 .success-message:empty { margin: 0; }
 .loading-message { color: #52606d; font-size: 0.875rem; margin: 20px 0 0; }

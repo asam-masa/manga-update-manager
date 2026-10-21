@@ -246,6 +246,10 @@ production exeと分離データで設定・変更・取消・解除・再読み
 
 2026-10-20、#186で[ADR-0017](./0017-poll-cover-progress-snapshots.md)の方式を採用し、段階・経過時間をメモリへ反映するWails APIを追加した。[契約と検証範囲](../verification/cover-progress-api.md)を参照する。約1秒の画面取得・10秒表示・実WebView2検証は未接続のため、長時間案内は未完了、Pendingを維持する。
 
+## Issue #183の長時間案内
+
+2026-10-21、#183で処理中だけの約1秒取得、10秒以上の段階・経過時間表示、検索非表示でも残る共通案内を接続した。古い応答・失敗・欠落を完了と扱わず、結果は操作APIで判断する。[自動テスト・実WebView2の結果と限界](../verification/cover-progress-ui.md)を参照する。定期取得契約のADR-0017はVerifiedとするが、処理中の終了拒否の全段階確認と保存・削除・復旧の最終照合は残り、本ADRはPendingを維持する。
+
 ## References
 
 - [ADR-0008](./0008-manage-imported-cover-images.md)

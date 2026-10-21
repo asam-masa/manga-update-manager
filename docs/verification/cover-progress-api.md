@@ -19,3 +19,5 @@ Issue #186、親#183。[ADR-0017](../adr/0017-poll-cover-progress-snapshots.md)�
 `TestCoverProgressAPICancelRejectAndLegacy`は実APIの取消・不在作品・不正ID・進行中IDの再使用・旧API・解除結果を確認する。`TestCoverProgressDuringRealReferenceUpdate`は実PNGと一時SQLiteの参照更新中に安全な状態だけを取得し、合成DB更新失敗後も記録を除くことを確認する。`TestCoverProgressConcurrentReadAndFinish`は並行更新・取得・終了を行う。既存の起動時整理テストでも、処理をチャネルで待機させて`cleanup`の取得と終了後の削除を確認する。race detectorを実行した結果とは扱わない。
 
 後続画面では処理中だけ約1秒ごとに取得し、要求を重ねず、古い応答を捨てる。作品IDと操作IDを照合し、最終結果後の遅い応答で案内を復活させない。取得失敗を成功・停止・フリーズと扱わず、確認できない状態を推測しない。画面と実WebView2の確認は親#183に残す。ADR-0013・0017はPendingを維持する。
+
+2026-10-21、親#183で画面へ接続し、自動テストと待機を制御した実WebView2を確認した。[結果と限界](./cover-progress-ui.md)を参照する。上記は#186時点の残件であり、現在のADR-0017はその定期取得・表示の契約に限定してVerified、ADR-0013全体はPendingである。

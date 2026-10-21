@@ -1,7 +1,7 @@
 # ADR-0017: 画像処理の観測状態を定期取得する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-20
 - Related: [#186](https://github.com/asam-masa/manga-update-manager/issues/186)、親[#183](https://github.com/asam-masa/manga-update-manager/issues/183)
 
@@ -39,7 +39,9 @@
 
 ## Validation
 
-#186で計測・コピー・重複ID・完了時削除・古いコールバック・並行取得・実参照更新中・起動時整理中の取得をテストする。生成バインディングとWindowsビルドを確認する。画面の約1秒取得、10秒表示、古い応答の破棄、検索非表示、完了遷移、取得失敗時の非断定は後続の#183で実装・実WebView2検証するため、本ADRはPendingとする。ADR-0013全体の完了とも別である。
+#186で計測・コピー・重複ID・完了時削除・古いコールバック・並行取得・実参照更新中・起動時整理中の取得をテストし、生成バインディングとWindowsビルドを確認した。画面の約1秒取得、10秒表示、古い応答の破棄、検索非表示、完了遷移、取得失敗時の非断定は後続の#183に残し、#186時点ではPendingとした。ADR-0013全体の完了とも別である。
+
+2026-10-21、#183で画面へ接続し、境界・単一取得・ID照合・古い応答・取得失敗・完了遷移を自動テストで確認した。分離した合成データと待機を制御した実WebView2で、起動時整理・選択待ちの除外・設定/解除・検索非表示・長時間案内の消去を確認した。この定期取得・表示契約の検証としてVerifiedとする。全競合と実故障を実機で再現したものではなく、失敗・遅延応答の反例は自動テストで補う。[結果と限界](../verification/cover-progress-ui.md)を参照する。ADR-0013全体はPendingを維持する。
 
 ## References
 
