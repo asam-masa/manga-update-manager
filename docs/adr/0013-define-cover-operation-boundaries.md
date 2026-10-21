@@ -1,7 +1,7 @@
 # ADR-0013: 画像操作と不要ファイル削除の成功境界を分ける
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-11
 - Related: [#42](https://github.com/asam-masa/manga-update-manager/issues/42)、[#43](https://github.com/asam-masa/manga-update-manager/issues/43)、[#56](https://github.com/asam-masa/manga-update-manager/issues/56)
 
@@ -129,7 +129,15 @@ DBの操作結果と削除の警告を区別する結果契約が必要になる
 
 ## Validation
 
+### 現在の検証結果（Issue #199）
+
+2026-10-21、基準main `0f38ab7ea6b7af0096968749d9938d5c429c988a`で、下記四項目と#191の不足三件を照合した。[最終判定の根拠と限界](../verification/cover-validation-final.md)の範囲で必須検証を完了したと判断し、Validation StatusをVerifiedとする。通常・独立レビューの対象版と結果、再実行したテスト・ビルド・CIは#199のPRへ記録する。以下の過去のPending記録は当時の状態であり、現在の未完了を示すものではない。
+
+#176の特殊な自動前面化による終了は未修正で継続する。通常操作で再現した場合、または保全・通常操作を阻害する新たな根拠が出た場合は必須条件として再評価する。Verifiedは実OS故障・電源断・全競合・全環境の安全性や、再起動の必ずの成功を保証しない。既存のDecision・保護範囲・停止と保全の契約は変更しない。
+
 ### 現在の完了判定（Issue #178）
+
+以下は2026-10-20に承認した判定条件と当時の状態である。現在の判定結果は上のIssue #199の節を参照する。
 
 次の四項目を完了判定に使う。過去の「未実装」「Pending維持」は当時の記録として残し、現在の実装・検証との対応を最終照合する。進捗管理はGitHub Issuesだけで行い、本節を完了済みの一覧とは扱わない。
 
