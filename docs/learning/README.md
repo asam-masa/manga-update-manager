@@ -55,6 +55,7 @@
 - [最低Go版とビルドするGo版を分ける](./go-version-boundaries.md)
 - [選択完了と取り込み完了を分ける](./cover-selection-notification.md)
 - [カードの寿命と操作の寿命を分ける](./cover-actions-state.md)
+- [入口の変更と作品の同一性を分ける](./work-edit-delete.md)
 
 ## クイズでの利用
 
