@@ -10,6 +10,8 @@ Issue #58で、Wails開始前に保存先を一度準備し、`.instance.lock`�
 
 Wailsの起動コールバックは非同期なので、同じAppの終了済み状態をmutexで保護する。終了後に遅延した起動コールバックが実行されてもDBを開かない。再起動時は新しいAppを作る。
 
+画像の起動時整理は初回描画後の`LoadCoverWarnings`から開始する。開始済みの整理・設定・変更・解除中の通常終了は案内して拒否し、取消や自動終了予約へ変えない。結果後に利用者が再度閉じる。表示用読み取りだけなら新規受付を止め、開始済み読み取りと解放を待つ。画像API・読み取りが使うDBもAppのロックで寿命を保護する。契約は[画像保存・配信](./cover-persistence.md#close失敗と通常終了)、確認範囲は[起動時整理](./verification/startup-cover-cleanup.md)・[終了拒否](./verification/cover-close.md)・[HTTPとDB寿命](./verification/cover-http-delivery.md)を参照する。
+
 保存先の準備・排他取得に失敗した場合は画面を起動せず、起動中または安全な起動失敗をWindowsの案内で示して終了する。排他取得後のDB初期化失敗では従来どおり画面を起動し、作品APIが`database_unavailable`を返す。その場合も画面終了まで排他を維持する。利用者へ内部パスやSQLiteの詳細を公開せず、保存先の空き容量・アクセス権限の確認と再起動を案内する。初期化と終了の失敗は、個人パスを含まないログにも記録する。実行中の復旧・再接続は対象外である。寿命と制約は[ADR-0014](./adr/0014-lock-storage-before-startup.md)を参照する。
 
 ## 責務
@@ -30,7 +32,24 @@ Applicationの`WorkRepository`は登録と一覧だけを定義する。時刻�
 | `ListWorks` | なし | ID昇順の作品DTO配列。未登録時は`[]` |
 | `OpenWork` | 作品ID | 起動要求と日時保存に成功した作品DTO |
 
-作品DTOは入力項目に加え、`id`, `createdAt`, `updatedAt`を持つ。日時は`Asia/Tokyo`のRFC 3339文字列（`+09:00`、小数秒は必要な桁数）で返す。DB保存は既存のUTC・小数秒固定9桁を維持する。IDと登録日時は利用者入力として受け取らない。サムネイルの相対パスは既存規則で検証するだけで、画像操作は行わない。
+作品DTOは入力項目に加え、`id`, `createdAt`, `updatedAt`を持つ。日時は`Asia/Tokyo`のRFC 3339文字列（`+09:00`、小数秒は必要な桁数）で返す。DB保存は既存のUTC・小数秒固定9桁を維持する。IDと登録日時は利用者入力として受け取らない。`CreateWork`のサムネイル相対パス入力は既存規則で検証し、登録API自身は画像を取り込まない。画像操作は下記の専用APIが担当する。
+
+### 画像APIの現在の接続範囲（Issue #146）
+
+2026-10-21、基準main `a84e0669c8ebff0057c26625e0205cb0c939f90a`で、設定・変更・解除、起動時整理と警告、限定HTTP配信、カードの画像操作UIまで接続済みである。以下は既存契約の参照用要約であり、新しいAPI・成功条件を定めるものではない。
+
+| API | 入力 | 正常結果と役割 |
+| --- | --- | --- |
+| `SelectWorkCover` | `workID` | Go側の選択・取り込み。`cancelled`, `work`, `warnings`。取消では作品を変更しない |
+| `SelectWorkCoverWithOperation` | `workID`, `operationID` | 同じ取り込みに選択完了通知と段階観測を対応付ける |
+| `RemoveWorkCover` | `workID` | 参照解除と後処理。`work`, `warnings` |
+| `RemoveWorkCoverWithOperation` | `workID`, `operationID` | 同じ解除に段階観測を対応付ける |
+| `LoadCoverWarnings` | なし | 初回の起動時整理を実行し、警告の配列を返す。後続要求は同じ実行結果を共有する |
+| `LoadCoverProgress` | なし | 実行中要求の最新段階。操作結果・警告の確定には使わない |
+
+画面から元画像パスを受け取らず、作品IDから処理する。操作IDは要求の対応付け用であり、保存先や取消権限ではない。DB参照確定を成功とし、その後の旧画像削除失敗は成功結果の警告へ分ける。Commit結果不明は成功や旧状態維持を断定せず、新旧を保持して再起動後の確認を案内する。詳細は[画像保存契約](./cover-persistence.md)、[取り込み](./verification/cover-import-api.md)、[解除](./verification/cover-remove-api.md)、[選択完了通知](./cover-persistence.md#選択完了通知)を正本とする。
+
+画像は`GET /__covers/works/<作品ID>`の専用経路で現在参照から取得する。任意パスは公開せず、限定形式の再取得用目印だけを許可する。未設定・欠損・破損は仮表示とし、DB参照を自動解除しない。[HTTP契約](./verification/cover-http-delivery.md)、[再取得](./verification/cover-image-refresh.md)、[画面設計](./work-screen.md#登録済み作品の画像操作issue-43)を参照する。
 
 エラーはWailsの`ErrorFormatter`から、`manga-update-manager:api-error:v1:`と安全な`{code,message}`のJSONを連結した文字列として返す。WailsがこれをError.messageへ包み、画面の共通処理が識別子・上限・既知コード・文言を確認して復元する。生のError.messageや未知形式は表示せず、DB停止判定も同じ検証を使う。生成TypeScriptの戻り値型は成功時の型だけである。[ADR-0016](./adr/0016-preserve-safe-api-errors-through-wails.md)を正本とする。成功DTOとDBの形式は変えない。
 
@@ -77,4 +96,6 @@ Issue #186で、画像操作の最新段階を返す`LoadCoverProgress`と、観
 
 Issue #21では登録フォームと一覧画面を対象外とし、Issue #23で追加した。ブラウザー起動と最終アクセスはIssue #25、フォーム開閉と検索はIssue #26、フォーム開閉設定の保存はIssue #27で追加した。Windows CIはIssue #46／[PR #47](https://github.com/asam-masa/manga-update-manager/pull/47)で導入し、PRとmainへのpushで成功を確認した。
 
-画像の生成処理はIssue #41で実装済みだが、保存・配信・設定UIは後続Issueの対象である。作品内容の編集・削除、更新予定、バックアップも未実装である。残る検証条件があるため、ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
+画像の生成・保存・配信・設定UIは接続済みであり、ADR-0013は#199／PR #200で`Verified`となった。[最終判定](./verification/cover-validation-final.md)に、各検証の版・範囲・合成故障と実OS故障の違いを記録している。#176の特殊な自動前面化による終了は未修正であり、通常操作で再現した場合などは完了判定を再評価する。今回の文書更新自体が新たな実機確認や検証状態の変更を行うものではない。
+
+作品内容の編集・削除、更新予定、バックアップは未実装である。画像機能の完了だけで他のADRの残条件を完了扱いにせず、ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
