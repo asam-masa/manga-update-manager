@@ -70,6 +70,51 @@ func TestCoverProgressDuringRealReferenceUpdate(t *testing.T) {
 	}
 }
 
+func TestBeforeCloseKeepsRunningCoverAPIAndDatabase(t *testing.T) {
+	for _, kind := range []string{"select", "remove", "failure"} {
+		t.Run(kind, func(t *testing.T) {
+			a, dir, _, work := coverStopFixture(t)
+			notices := 0
+			a.coverBusyNotice = func(context.Context) { notices++ }
+			a.coverSelectionFinished = func(context.Context, int64, string) {}
+			repository := progressRepository{a.store, func() error {
+				for range 2 {
+					if !a.beforeClose(context.Background()) {
+						t.Error("running update allowed close")
+					}
+				}
+				if _, err := a.ListWorks(); err != nil {
+					t.Error("close attempt stopped database", err)
+				}
+				if kind == "failure" {
+					return io.EOF
+				}
+				return nil
+			}}
+			a.covers = application.NewCoverImporter(repository, &a.coverOperations, dir, func(context.Context) (string, error) { return filepath.Join(dir, "source.png"), nil }, time.Now)
+			id := strings.Repeat("d", 32)
+			var err error
+			if kind == "remove" {
+				_, err = a.RemoveWorkCoverWithOperation(work.ID, id)
+			} else {
+				_, err = a.SelectWorkCoverWithOperation(work.ID, id)
+			}
+			if (kind == "failure") != (err != nil) || notices != 2 {
+				t.Fatal(err, notices)
+			}
+			if len(a.LoadCoverProgress()) != 0 {
+				t.Fatal("finished operation retained")
+			}
+			if _, err := a.ListWorks(); err != nil {
+				t.Fatal("result did not preserve database", err)
+			}
+			if a.beforeClose(context.Background()) || notices != 2 {
+				t.Fatal("completed operation still refuses close", notices)
+			}
+		})
+	}
+}
+
 func TestCoverProgressTimingIdentityAndCopies(t *testing.T) {
 	a := NewApp()
 	now := time.Now()
