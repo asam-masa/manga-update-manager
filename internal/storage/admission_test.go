@@ -35,6 +35,7 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 		"get":            func() error { _, err := s.WorkByID(ctx, 1); return err },
 		"list":           func() error { _, err := s.ListWorks(ctx); return err },
 		"access":         func() error { return s.RecordLastAccess(ctx, 1, time.Now()) },
+		"edit":           func() error { _, err := s.EditWork(ctx, w.ID, textOf(w), time.Now()); return err },
 		"settings-read":  func() error { _, err := s.DisplaySettings(ctx); return err },
 		"settings-write": func() error { return s.SetRegistrationFormVisible(ctx, false) },
 		"reserve":        func() error { return s.ReserveManagedCover(ctx, testCoverID) },
