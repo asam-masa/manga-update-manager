@@ -1,11 +1,11 @@
 import {useEffect, useRef, useState} from 'react';
-import {RemoveWorkCover, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
+import {RemoveWorkCoverWithOperation, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {apiErrorMessage} from './work-display';
 import type {WorkView} from './work-display';
 
 export type CoverNotice = {error?: string; success?: string; warnings?: string[]};
-export type CoverState = {pending: boolean; notice?: CoverNotice};
+export type CoverState = {pending: boolean; operationID?: string; kind?: 'select' | 'remove'; notice?: CoverNotice};
 
 const warningCodes = new Set(['cover_cleanup_failed', 'cover_unavailable_after_commit', 'cover_release_unconfirmed', 'database_stopped_after_commit']);
 
@@ -36,22 +36,22 @@ export function useCoverActions(ready: boolean, onSaved: (work: WorkView) => voi
         const current = generation.current;
         const operationID = Array.from(crypto.getRandomValues(new Uint8Array(16)), (value) => value.toString(16).padStart(2, '0')).join('');
         pending.current.add(id);
-        setStates((values) => ({...values, [id]: {pending: true}}));
+        setStates((values) => ({...values, [id]: {pending: true, operationID, kind: remove ? 'remove' : 'select'}}));
         if (!remove) { chooser.current = {workID: id, operationID}; setSelecting(true); }
         try {
-            const result = remove ? await RemoveWorkCover(id) : await SelectWorkCoverWithOperation(id, operationID);
+            const result = remove ? await RemoveWorkCoverWithOperation(id, operationID) : await SelectWorkCoverWithOperation(id, operationID);
             if (current !== generation.current) return;
             if ('cancelled' in result && result.cancelled) return;
             if (!result.work || result.work.id !== id) throw new Error('Invalid cover result');
             onSaved(result.work);
             const warnings = result.warnings.map((warning) => warningCodes.has(warning.code) ? warning.message
                 : '画像変更後の後処理を確認できませんでした。アプリを再起動して状態を確認してください。');
-            setStates((values) => ({...values, [id]: {pending: true, notice: {
+            setStates((values) => ({...values, [id]: {...values[id], pending: true, notice: {
                 success: remove ? '画像を外しました。' : '画像を設定しました。', warnings,
             }}}));
         } catch (cause: unknown) {
             if (current !== generation.current) return;
-            setStates((values) => ({...values, [id]: {pending: true, notice: {
+            setStates((values) => ({...values, [id]: {...values[id], pending: true, notice: {
                 error: apiErrorMessage(cause, '画像の操作結果を取得できませんでした。アプリを再起動して状態を確認してください。'),
             }}}));
         } finally {

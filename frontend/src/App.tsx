@@ -6,6 +6,8 @@ import {WorkList} from './WorkList';
 import {apiErrorMessage, isDatabaseStopped} from './work-display';
 import {titleMatches} from './work-search';
 import {useCoverActions} from './use-cover-actions';
+import {CoverProgressNotice} from './CoverProgressNotice';
+import type {CoverProgressTarget} from './CoverProgressNotice';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -26,6 +28,7 @@ function App() {
     const [coverWarnings, setCoverWarnings] = useState<{code: string; message: string}[]>([]);
     const [coversReady, setCoversReady] = useState(false);
     const [coverRevision, setCoverRevision] = useState(0);
+    const [cleanupPending, setCleanupPending] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -33,11 +36,12 @@ function App() {
         // Backend sync.Once also joins requests after remounts or reloads.
         let frame = requestAnimationFrame(() => {
             frame = requestAnimationFrame(() => {
+                setCleanupPending(true);
                 void LoadCoverWarnings().then((warnings) => {
                     if (active) { setCoverWarnings(warnings); setCoversReady(true); }
                 }).catch(() => {
                     if (active) setCoverWarnings([{code: 'cover_cleanup_unavailable', message: '画像整理の結果を取得できませんでした。アプリを再起動して状態を確認してください。'}]);
-                });
+                }).finally(() => { if (active) setCleanupPending(false); });
             });
         });
         return () => { active = false; cancelAnimationFrame(frame); };
@@ -182,6 +186,9 @@ function App() {
     }
 
     const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
+    const progressTargets: CoverProgressTarget[] = Object.entries(coverActions.states).flatMap(([id, state]) =>
+        state.pending && state.operationID && state.kind ? [{operationID: state.operationID, workID: Number(id), kind: state.kind}] : []);
+    if (cleanupPending) progressTargets.push({operationID: 'startup-cleanup', workID: 0, kind: 'cleanup'});
     const success = registeredTitle === null ? '' : titleMatches(registeredTitle, searchQuery)
         ? '作品を登録しました。' : '作品を登録しました。検索条件に一致しないため非表示です。';
 
@@ -201,6 +208,7 @@ function App() {
                     </button>
                 </div>
             </header>
+            <CoverProgressNotice targets={progressTargets} works={works} />
             {coverWarnings.length > 0 && <section className="message error-message" role="alert" aria-label="画像整理のお知らせ">
                 <h2>画像整理のお知らせ</h2>
                 {coverWarnings.map((warning) => <p key={warning.code}>{warning.message}</p>)}

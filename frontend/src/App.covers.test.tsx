@@ -2,13 +2,13 @@ import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import App from './App';
-import {ListWorks, OpenWork, RemoveWorkCover, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
+import {ListWorks, OpenWork, RemoveWorkCoverWithOperation, SelectWorkCoverWithOperation, LoadCoverProgress} from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {main} from '../wailsjs/go/models';
 
 vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn().mockResolvedValue([]), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCover: vi.fn()}));
+    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([]), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
 const base = {url: 'https://example.com/', siteName: '', notes: '', createdAt: '2026-10-19T00:00:00+09:00', updatedAt: '2026-10-19T00:00:00+09:00'};
 const first = {...base, id: 1, title: '一', thumbnailPath: 'covers/old.png'};
 const second = {...base, id: 2, title: '二', thumbnailPath: 'covers/second.png'};
@@ -19,14 +19,15 @@ beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(ListWorks).mockReset().mockResolvedValue([first, second, third]);
     vi.mocked(SelectWorkCoverWithOperation).mockReset();
-    vi.mocked(RemoveWorkCover).mockReset();
+    vi.mocked(RemoveWorkCoverWithOperation).mockReset();
     vi.mocked(OpenWork).mockReset();
+    vi.mocked(LoadCoverProgress).mockReset().mockResolvedValue([]);
     vi.mocked(EventsOn).mockImplementation((_name, callback) => {listener = callback; return vi.fn();});
     frames = [];
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {frames.push(callback); return frames.length;});
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() {
     let resolve!: (value: T) => void;
     let reject!: (cause: unknown) => void;
@@ -45,11 +46,42 @@ const select = (title: string, label = '画像を変更') => controls(title).get
 const remove = (title: string) => controls(title).getByRole('button', {name: '画像を外す'});
 const cancelled = {cancelled: true, work: null, warnings: []} as unknown as main.SelectWorkCoverResult;
 
+it.each(['success', 'failure', 'warning', 'cancel'])('長時間案内は検索非表示でも残り、操作完了 %s で消えて既存通知へ移る', async (outcome) => {
+    const operation = deferred<main.SelectWorkCoverResult>();
+    vi.mocked(SelectWorkCoverWithOperation).mockReturnValueOnce(operation.promise);
+    await boot();
+    vi.useFakeTimers();
+    act(() => fireEvent.click(select('一')));
+    const operationID = vi.mocked(SelectWorkCoverWithOperation).mock.calls[0][1];
+    vi.mocked(LoadCoverProgress).mockResolvedValue([{operationID, workID: 1, kind: 'select', stage: 'saving', timed: true, elapsedMilliseconds: 12000}]);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.getByRole('status', {name: '画像処理の状況'})).toBeTruthy();
+    const search = screen.getByRole('searchbox', {name: '漫画名で検索'});
+    act(() => {search.focus(); fireEvent.change(search, {target: {value: '二'}});});
+    expect(screen.queryByRole('heading', {name: '一'})).toBeNull();
+    expect(screen.getByText(/一：画像を保存/)).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    await act(async () => {
+        if (outcome === 'failure') operation.reject(new Error('private/internal'));
+        else operation.resolve(outcome === 'cancel' ? cancelled : new main.SelectWorkCoverResult({
+            cancelled: false, work: first, warnings: outcome === 'warning' ? [{code: 'cover_release_unconfirmed', message: '解放確認が必要です。'}] : [],
+        }));
+    });
+    expect(screen.queryByRole('status', {name: '画像処理の状況'})).toBeNull();
+    expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
+    act(() => fireEvent.change(search, {target: {value: ''}}));
+    if (outcome === 'success' || outcome === 'warning') expect(screen.getByText('画像を設定しました。')).toBeTruthy();
+    if (outcome === 'warning') expect(screen.getByText('解放確認が必要です。')).toBeTruthy();
+    if (outcome === 'failure') expect(screen.getByText(/画像の操作結果を取得できませんでした/)).toBeTruthy();
+    if (outcome === 'cancel') expect(screen.queryByText('画像を設定しました。')).toBeNull();
+    expect(document.body.textContent).not.toContain('private/internal');
+});
+
 it('選択枠と作品枠を分け、古い通知と同一tickの二重操作を無視する', async () => {
     const a = deferred<main.SelectWorkCoverResult>();
     const b = deferred<main.SelectWorkCoverResult>();
     vi.mocked(SelectWorkCoverWithOperation).mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise);
-    vi.mocked(RemoveWorkCover).mockResolvedValue(new main.RemoveWorkCoverResult({work: {...second, thumbnailPath: ''}, warnings: []}));
+    vi.mocked(RemoveWorkCoverWithOperation).mockResolvedValue(new main.RemoveWorkCoverResult({work: {...second, thumbnailPath: ''}, warnings: []}));
     await boot();
     act(() => {fireEvent.click(select('一')); fireEvent.click(select('一'));});
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
@@ -75,11 +107,11 @@ it('選択枠と作品枠を分け、古い通知と同一tickの二重操作を
 it('別作品の解除は選択中も可能で、成功と後処理警告を分ける', async () => {
     const a = deferred<main.SelectWorkCoverResult>();
     vi.mocked(SelectWorkCoverWithOperation).mockReturnValue(a.promise);
-    vi.mocked(RemoveWorkCover).mockResolvedValue(new main.RemoveWorkCoverResult({work: {...second, thumbnailPath: ''}, warnings: [{code: 'cover_cleanup_failed', message: '旧画像の後処理を確認できませんでした。'}]}));
+    vi.mocked(RemoveWorkCoverWithOperation).mockResolvedValue(new main.RemoveWorkCoverResult({work: {...second, thumbnailPath: ''}, warnings: [{code: 'cover_cleanup_failed', message: '旧画像の後処理を確認できませんでした。'}]}));
     await boot();
     await userEvent.click(select('一'));
     await userEvent.click(remove('二'));
-    expect(RemoveWorkCover).toHaveBeenCalledWith(2);
+    expect(RemoveWorkCoverWithOperation).toHaveBeenCalledWith(2, expect.stringMatching(/^[0-9a-f]{32}$/));
     expect(await screen.findByText('画像を外しました。')).toBeTruthy();
     expect(screen.getByText('旧画像の後処理を確認できませんでした。')).toBeTruthy();
     expect(select('二', '画像を設定').hasAttribute('disabled')).toBe(true);
@@ -116,13 +148,13 @@ it('検索で隠しても結果を保持し、検索とフォーカスを変え�
 });
 
 it('解除失敗では設定済み操作を維持し、生の内部エラーを表示しない', async () => {
-    vi.mocked(RemoveWorkCover).mockRejectedValue(new Error('C:\\secret\\source.png'));
+    vi.mocked(RemoveWorkCoverWithOperation).mockRejectedValue(new Error('C:\\secret\\source.png'));
     await boot();
     await userEvent.click(remove('一'));
     expect(await screen.findByText(/画像の操作結果を取得できませんでした/)).toBeTruthy();
     expect(remove('一')).toBeTruthy();
     expect(document.body.textContent).not.toContain('secret');
-    vi.mocked(RemoveWorkCover).mockRejectedValueOnce({code: 'cover_unavailable', message: '画像機能を利用できません。再起動してください。'});
+    vi.mocked(RemoveWorkCoverWithOperation).mockRejectedValueOnce({code: 'cover_unavailable', message: '画像機能を利用できません。再起動してください。'});
     await userEvent.click(remove('一'));
     expect(await screen.findByText('画像機能を利用できません。再起動してください。')).toBeTruthy();
     await userEvent.click(controls('一').getByRole('button', {name: '画像操作のお知らせを閉じる'}));
@@ -178,7 +210,7 @@ it.each(['cover_outcome_unknown', 'database_stopped', 'cover_unavailable'])('停
     expect((search as HTMLInputElement).value).toBe('一');
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
     expect(ListWorks).toHaveBeenCalledTimes(listCalls);
-    expect(RemoveWorkCover).not.toHaveBeenCalled();
+    expect(RemoveWorkCoverWithOperation).not.toHaveBeenCalled();
     expect(select('一').hasAttribute('disabled')).toBe(false);
 });
 
@@ -194,5 +226,5 @@ it.each(['cover_release_unconfirmed', 'database_stopped_after_commit'])('確定�
     expect(screen.getByText(message)).toBeTruthy();
     expect(view.container.querySelector('img')!.getAttribute('src')).not.toBe(oldSource);
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
-    expect(RemoveWorkCover).not.toHaveBeenCalled();
+    expect(RemoveWorkCoverWithOperation).not.toHaveBeenCalled();
 });

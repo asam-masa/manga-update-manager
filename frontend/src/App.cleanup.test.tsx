@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event';
 import {beforeEach, afterEach, expect, it, vi} from 'vitest';
 import {StrictMode} from 'react';
 import App from './App';
-import {LoadCoverWarnings, ListWorks} from '../wailsjs/go/main/App';
+import {LoadCoverWarnings, ListWorks, LoadCoverProgress} from '../wailsjs/go/main/App';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
 let frames: Map<number, FrameRequestCallback>;
 beforeEach(() => {
     frames = new Map();
@@ -13,9 +13,23 @@ beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => {frames.set(++id, fn); return id;});
     vi.stubGlobal('cancelAnimationFrame', (id: number) => {frames.delete(id);});
     vi.mocked(LoadCoverWarnings).mockReset();
+    vi.mocked(LoadCoverProgress).mockReset().mockResolvedValue([]);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals();});
 async function frame() {await act(async () => {const pending = [...frames.values()]; frames.clear(); pending.forEach((fn) => fn(0));});}
+
+it('開始済み整理の長時間案内を表示し、整理の完了後は案内を消して画像を利用できる', async () => {
+    let complete!: (warnings: []) => void;
+    vi.mocked(LoadCoverWarnings).mockReturnValue(new Promise((resolve) => {complete = resolve;}));
+    vi.useFakeTimers({toFake: ['setInterval', 'clearInterval']});
+    render(<App />);
+    await frame(); await frame();
+    vi.mocked(LoadCoverProgress).mockResolvedValue([{operationID: 'startup-cleanup', workID: 0, kind: 'cleanup', stage: 'checking', timed: true, elapsedMilliseconds: 15000}]);
+    await act(async () => {await vi.advanceTimersByTimeAsync(1000);});
+    expect(screen.getByText(/起動時の画像整理：情報を確認/)).toBeTruthy();
+    await act(async () => complete([]));
+    expect(screen.queryByRole('status', {name: '画像処理の状況'})).toBeNull();
+});
 
 it('初回描画機会の後に整理を要求し、StrictModeでも予約を一つにして警告を閉じられる', async () => {
     vi.mocked(LoadCoverWarnings).mockResolvedValue([{code: 'cover_cleanup_failed', message: '画像整理を完了できませんでした。'}]);
