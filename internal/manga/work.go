@@ -2,7 +2,6 @@ package manga
 
 import (
 	"errors"
-	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -60,17 +59,8 @@ func NewWork(input NewWorkInput, now time.Time) (Work, error) {
 
 // Validate verifies invariants shared by creation and persistence.
 func (w Work) Validate() error {
-	if w.URL == "" {
-		return ErrURLRequired
-	}
-
-	parsed, err := url.Parse(w.URL)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return ErrURLScheme
-	}
-
-	if w.Title == "" {
-		return ErrTitleRequired
+	if err := validateWorkText(w.URL, w.Title); err != nil {
+		return err
 	}
 	if w.ThumbnailPath != "" && !validThumbnailPath(w.ThumbnailPath) {
 		return ErrThumbnailPathInvalid
