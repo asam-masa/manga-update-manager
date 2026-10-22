@@ -31,6 +31,7 @@ Applicationの`WorkRepository`は登録と一覧だけを定義する。時刻�
 | `CreateWork` | `url`, `title`, `siteName`, `thumbnailPath`, `notes` | 採番済みの作品DTO |
 | `ListWorks` | なし | ID昇順の作品DTO配列。未登録時は`[]` |
 | `OpenWork` | 作品ID | 起動要求と日時保存に成功した作品DTO |
+| `EditWork` | 作品ID、`url`, `title`, `siteName`, `notes` | `work`と`warnings`。4項目だけを変更した作品DTO |
 
 作品DTOは入力項目に加え、`id`, `createdAt`, `updatedAt`を持つ。日時は`Asia/Tokyo`のRFC 3339文字列（`+09:00`、小数秒は必要な桁数）で返す。DB保存は既存のUTC・小数秒固定9桁を維持する。IDと登録日時は利用者入力として受け取らない。`CreateWork`のサムネイル相対パス入力は既存規則で検証し、登録API自身は画像を取り込まない。画像操作は下記の専用APIが担当する。
 
@@ -90,7 +91,15 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 ## 検証と制約
 
-Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。編集API・UIは未接続である。
+Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。#213で編集APIも接続した。編集UIは未接続である。
+
+### 編集API（Issue #213）
+
+`WorkEditor`は利用側の`WorkEditRepository`と時刻関数を受け取り、ドメインで入力を正規化・検証して保存へ渡す。登録用interfaceは拡大しない。AppはDB寿命ロック内で`BeginEdit`を取得し、Storeの後処理・エラー分類まで保持する。画像だけの停止は編集を止めない。同作品の競合は`work_busy`、通常終了は案内して拒否し、処理終了後に再要求できる。
+
+正規化後に変更がなければ更新日時も保持する。画像・登録日時・最終アクセスを入力として受け取らず、古い表示で上書きしない。不存在は`work_not_found`、不正入力・重複は既存コードで返す。
+
+Commit結果不明は`work_edit_outcome_unknown`で拒否し、DB停止を通知する。自動再試行・自動復旧しない。保存確定後の接続解放失敗は作品付きの成功結果と`database_stopped_after_commit`警告に分ける。通常成功の`warnings`は`[]`。警告の有無で保存成功を取り消さない。画面の共通エラー復元とDB停止判定に結果不明コードを追加するが、警告表示・入力保持などの編集画面は後続#205で実装する。[検証範囲](./verification/work-edit-api.md)を参照する。
 
 Issue #186で、画像操作の最新段階を返す`LoadCoverProgress`と、観測用操作IDを受け取る`RemoveWorkCoverWithOperation`を追加した。既存の操作ID付き設定・変更も観測状態へ接続する。状態はメモリだけに保持し、結果・警告は従来の操作APIで判断する。取得結果の欠落を完了と扱わない。[API契約](./verification/cover-progress-api.md)と[ADR-0017](./adr/0017-poll-cover-progress-snapshots.md)を参照する。後続#183で画面の定期取得と長時間案内を接続した。
 

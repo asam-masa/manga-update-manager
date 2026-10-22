@@ -75,6 +75,10 @@ Issue #209は[入力とSQLite更新の基盤](../verification/work-edit-storage.
 
 Pending。設計文書と承認内容の通常・独立レビューを行う。実装後は入力拒否・重複・保持項目・再接続、同作品の相互排他・別作品継続、削除のDB/後処理失敗・共有/不明画像保持、古い一覧応答とダイアログ・実WebView2操作を一時DB/合成画像で確認する。今回、利用者データの編集・削除やGUI試験は行わない。
 
+### 編集APIの接続（Issue #213）
+
+#213でApplicationのWorkEditorとWailsのEditWorkを共通受付へ接続する。4項目だけを保存し、通常成功と確定後解放失敗の警告、Commit結果不明の拒否を区別する。[API契約](../work-api.md#編集apiissue-213)と[検証範囲](../verification/work-edit-api.md)を参照する。前節の未接続は#211時点の範囲であり、現在の未接続は編集UIと削除である。実WebView2の保存・終了案内も後続へ残し、Pendingを維持する。
+
 ## References
 
 - [作品の編集・削除設計](../work-edit-delete.md)
