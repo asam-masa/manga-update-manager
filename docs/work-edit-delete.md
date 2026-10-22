@@ -12,7 +12,7 @@ Issue #204。重要な判断は[ADR-0018](./adr/0018-edit-and-delete-works.md)�
 | 同作品の受付と終了判断、編集APIと安全な結果分類 | #211の[共通受付](./verification/work-operation-admission.md)、#213の[編集API](./verification/work-edit-api.md) |
 | モーダル・入力保持・検索と通知・古い応答・キー操作 | #215の[編集ダイアログ](./verification/work-edit-dialog.md)。保存/キャンセル/検索条件外通知はUIA、Tab/Shift+Tab・Escと復帰・キャンセルは利用者が実WebView2で確認 |
 
-保存中の通常終了案内の実画面確認、物理Commit/Close故障と長時間の実OS障害、利用者データ試験は未実施である。合成境界の成功を実OS故障の検証済み根拠へ広げない。作品削除の確認・安全な後処理は#206で別に具体化・実装する。
+#219で[保存中の通常終了案内](./verification/work-edit-close.md)を計測用exeと実WebView2のUIAで確認し、解除後の実保存・再要求終了・通常ビルドの再起動保持を確認した。物理Commit/Close故障と長時間の実OS障害、利用者データ試験は未実施である。合成待機・境界の成功を実OS故障の検証済み根拠へ広げない。作品削除の確認・安全な後処理は#206で別に具体化・実装する。
 
 ## 合意済みの操作
 
