@@ -3,7 +3,9 @@ import {apiErrorMessage, registrationDate} from './work-display';
 import type {WorkView} from './work-display';
 import type {CoverActions} from './use-cover-actions';
 
-export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions}) {
+type Editing = {onEdit: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
+
+export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing}) {
     if (works.length === 0) {
         return showEmpty ? <div className="empty-state">
             <div className="empty-book" aria-hidden="true">本</div>
@@ -12,16 +14,16 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
         </div> : null;
     }
     return <ul className="work-list" aria-label="作品一覧">
-        {works.map((work) => <WorkCard key={work.id} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} />)}
+        {works.map((work) => <WorkCard key={work.id} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} />)}
     </ul>;
 }
 
-function WorkCard({work, onOpen, coversReady, coverRevision, coverActions}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions}) {
+function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editing}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing}) {
     const pending = useRef(false);
     const [opening, setOpening] = useState(false);
     const [error, setError] = useState('');
     async function open() {
-        if (pending.current) return;
+        if (pending.current || coverActions?.isPending(work.id)) return;
         pending.current = true;
         setOpening(true);
         setError('');
@@ -34,14 +36,16 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions}: {wor
             <div className="work-details">
                 <h3>{work.title}</h3>
                 {work.siteName && <p className="site-name">{work.siteName}</p>}
-                <button type="button" className="work-url" title={work.url} disabled={opening}
+                <button type="button" className="work-url" title={work.url} disabled={opening || coverActions?.states[work.id]?.pending}
                     aria-label={`${work.title}のURLを開く`} onClick={() => { void open(); }}>{work.url}</button>
                 {opening && <p role="status">ページを開いています…</p>}
                 {work.notes && <p className="work-notes">{work.notes}</p>}
                 <p className="registered-at">登録 <time dateTime={work.createdAt}>{registrationDate(work.createdAt)}</time>（日本時間）</p>
                 <p className="registered-at">最終アクセス {work.lastAccessedAt == null ? '未アクセス' :
                     <><time dateTime={work.lastAccessedAt}>{registrationDate(work.lastAccessedAt)}</time>（日本時間）</>}</p>
-                {coverActions && <CoverControls work={work} ready={coversReady} actions={coverActions} />}
+                {editing && <button type="button" className="secondary-button edit-button" disabled={opening || coverActions?.states[work.id]?.pending || editing.stopped}
+                    aria-label={`${work.title}を編集`} onClick={(event) => { if (!pending.current) editing.onEdit(work, event.currentTarget); }}>編集</button>}
+                {coverActions && <CoverControls work={work} ready={coversReady && !opening} actions={coverActions} />}
                 {error && <p className="message error-message" role="alert">{error}</p>}
             </div>
         </li>;

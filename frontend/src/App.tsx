@@ -8,6 +8,7 @@ import {titleMatches} from './work-search';
 import {useCoverActions} from './use-cover-actions';
 import {CoverProgressNotice} from './CoverProgressNotice';
 import type {CoverProgressTarget} from './CoverProgressNotice';
+import {EditWorkDialog} from './EditWorkDialog';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -29,6 +30,14 @@ function App() {
     const [coversReady, setCoversReady] = useState(false);
     const [coverRevision, setCoverRevision] = useState(0);
     const [cleanupPending, setCleanupPending] = useState(false);
+    const [editing, setEditing] = useState<WorkView | null>(null);
+    const [editStopped, setEditStopped] = useState(false);
+    const [editNotice, setEditNotice] = useState<{title: string; warnings: string[]} | null>(null);
+    const editOrigin = useRef<HTMLButtonElement | null>(null);
+    const searchElement = useRef<HTMLInputElement>(null);
+    const opening = useRef(new Set<number>());
+    const editRevision = useRef(0);
+    const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
 
     useEffect(() => {
         let active = true;
@@ -65,14 +74,15 @@ function App() {
     const coverActions = useCoverActions(coversReady, (updated) => {
         savedCovers.current.set(updated.id, {revision: ++coverChangeRevision.current, work: updated});
         setWorks((current) => current?.map((work) => work.id === updated.id
-            ? {...work, thumbnailPath: updated.thumbnailPath, updatedAt: updated.updatedAt} : work) ?? null);
+            ? {...work, thumbnailPath: updated.thumbnailPath, updatedAt: later(work.updatedAt, updated.updatedAt)} : work) ?? null);
         setCoverRevision((value) => value + 1);
-    });
+    }, (id) => opening.current.has(id));
 
     const loadWorks = useCallback(async () => {
         const current = ++request.current;
         const revision = accessRevision.current;
         const coverStart = coverChangeRevision.current;
+        const editStart = editRevision.current;
         setLoading(true);
         setListError('');
         setListStopped(false);
@@ -83,9 +93,13 @@ function App() {
                 setWorks(result.map((work) => {
                     const saved = savedAccess.current.get(work.id);
                     const cover = savedCovers.current.get(work.id);
+                    const edit = savedEdits.current.get(work.id);
+                    const edited = edit && edit.revision > editStart ? edit.work : null;
                     return {...work,
                         ...(saved && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
-                        ...(cover && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath, updatedAt: cover.work.updatedAt} : {})};
+                        ...(cover && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath} : {}),
+                        ...(edited ? {url: edited.url, title: edited.title, siteName: edited.siteName, notes: edited.notes} : {}),
+                        updatedAt: later(work.updatedAt, later(cover && cover.revision > coverStart ? cover.work.updatedAt : work.updatedAt, edited?.updatedAt ?? work.updatedAt))};
                 }));
             }
         } catch (error: unknown) {
@@ -179,10 +193,35 @@ function App() {
     }
 
     async function openWork(id: number) {
+        if (opening.current.has(id) || coverActions.isPending(id)) return;
+        opening.current.add(id);
+        try {
         const updated = await OpenWork(id);
         savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt});
         // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
         setWorks((current) => current?.map((work) => work.id === id ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
+        } finally { opening.current.delete(id); }
+    }
+
+    function startEdit(work: WorkView, button: HTMLButtonElement) {
+        if (editing || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        editOrigin.current = button;
+        setEditing({...work});
+    }
+    function closeEdit() {
+        setEditing(null);
+        requestAnimationFrame(() => {
+            const button = editOrigin.current;
+            if (button?.isConnected && !button.disabled) button.focus();
+            else searchElement.current?.focus();
+        });
+    }
+    function edited(work: WorkView, warnings: string[]) {
+        savedEdits.current.set(work.id, {revision: ++editRevision.current, work});
+        setWorks((current) => current?.map((value) => value.id === work.id ? {...value,
+            url: work.url, title: work.title, siteName: work.siteName, notes: work.notes,
+            updatedAt: later(value.updatedAt, work.updatedAt)} : value) ?? null);
+        setEditNotice({title: work.title, warnings});
     }
 
     const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
@@ -209,6 +248,13 @@ function App() {
                 </div>
             </header>
             <CoverProgressNotice targets={progressTargets} works={works} />
+            {editNotice && <section className="message cover-result" aria-label="編集結果">
+                <p role="status">「{editNotice.title}」を保存しました。{!titleMatches(editNotice.title, searchQuery) && '検索条件に一致しないため非表示です。'}</p>
+                {editNotice.warnings.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
+                <button type="button" className="secondary-button" onClick={(event) => { setEditNotice(null); searchElement.current?.focus(); event.preventDefault(); }}>編集結果を閉じる</button>
+            </section>}
+            {editStopped && <p className="message error-message" role="alert">編集の保存結果またはDBの安全性を確認できないため、追加の編集を停止しています。アプリを再起動して状態を確認してください。</p>}
+            {editing && <EditWorkDialog key={editing.id} work={editing} onSaved={edited} onClose={closeEdit} onStopped={() => setEditStopped(true)} />}
             {coverWarnings.length > 0 && <section className="message error-message" role="alert" aria-label="画像整理のお知らせ">
                 <h2>画像整理のお知らせ</h2>
                 {coverWarnings.map((warning) => <p key={warning.code}>{warning.message}</p>)}
@@ -255,7 +301,7 @@ function App() {
                     </div>
                     <div className="search-controls">
                         <label htmlFor="title-search">漫画名で検索</label>
-                        <input id="title-search" type="search" value={searchInput}
+                        <input ref={searchElement} id="title-search" type="search" value={searchInput}
                             onCompositionStart={() => { composingSearch.current = true; }}
                             onCompositionEnd={(event) => {
                                 composingSearch.current = false;
@@ -280,7 +326,7 @@ function App() {
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
                             <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork}
-                                coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} />
+                                coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped}} />
                         </>}
                     </div>
                 </section>
@@ -290,3 +336,5 @@ function App() {
 }
 
 export default App;
+
+function later(a: string, b: string): string { return Date.parse(a) >= Date.parse(b) ? a : b; }

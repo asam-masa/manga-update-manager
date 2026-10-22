@@ -24,6 +24,8 @@ export function isDatabaseStopped(error: unknown): boolean {
     return code === 'database_stopped' || code === 'work_edit_outcome_unknown';
 }
 
+export function apiErrorCode(error: unknown): string | undefined { return safeAPIError(error)?.code; }
+
 // Raw runtime errors may contain diagnostics; only the structured contract is shown.
 export function apiErrorMessage(error: unknown, fallback: string): string {
     return safeAPIError(error)?.message ?? fallback;
