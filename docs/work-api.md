@@ -91,7 +91,7 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 ## 検証と制約
 
-Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。#213で編集APIも接続した。編集UIは未接続である。
+Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。#213で編集API、#215で編集UIも接続した。[画面検証の範囲](./verification/work-edit-dialog.md)はAPIの自動試験と区別する。
 
 ### 編集API（Issue #213）
 
@@ -99,7 +99,7 @@ Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共
 
 正規化後に変更がなければ更新日時も保持する。画像・登録日時・最終アクセスを入力として受け取らず、古い表示で上書きしない。不存在は`work_not_found`、不正入力・重複は既存コードで返す。
 
-Commit結果不明は`work_edit_outcome_unknown`で拒否し、DB停止を通知する。自動再試行・自動復旧しない。保存確定後の接続解放失敗は作品付きの成功結果と`database_stopped_after_commit`警告に分ける。通常成功の`warnings`は`[]`。警告の有無で保存成功を取り消さない。画面の共通エラー復元とDB停止判定に結果不明コードを追加するが、警告表示・入力保持などの編集画面は後続#205で実装する。[検証範囲](./verification/work-edit-api.md)を参照する。
+Commit結果不明は`work_edit_outcome_unknown`で拒否し、DB停止を通知する。自動再試行・自動復旧しない。保存確定後の接続解放失敗は作品付きの成功結果と`database_stopped_after_commit`警告に分ける。通常成功の`warnings`は`[]`。警告の有無で保存成功を取り消さない。画面の共通エラー復元とDB停止判定に結果不明コードを追加し、#215で警告表示・入力保持・追加編集の停止を接続した。[API検証](./verification/work-edit-api.md)と[画面検証](./verification/work-edit-dialog.md)を参照する。
 
 Issue #186で、画像操作の最新段階を返す`LoadCoverProgress`と、観測用操作IDを受け取る`RemoveWorkCoverWithOperation`を追加した。既存の操作ID付き設定・変更も観測状態へ接続する。状態はメモリだけに保持し、結果・警告は従来の操作APIで判断する。取得結果の欠落を完了と扱わない。[API契約](./verification/cover-progress-api.md)と[ADR-0017](./adr/0017-poll-cover-progress-snapshots.md)を参照する。後続#183で画面の定期取得と長時間案内を接続した。
 
@@ -109,4 +109,4 @@ Issue #21では登録フォームと一覧画面を対象外とし、Issue #23�
 
 画像の生成・保存・配信・設定UIは接続済みであり、ADR-0013は#199／PR #200で`Verified`となった。[最終判定](./verification/cover-validation-final.md)に、各検証の版・範囲・合成故障と実OS故障の違いを記録している。#176の特殊な自動前面化による終了は未修正であり、通常操作で再現した場合などは完了判定を再評価する。今回の文書更新自体が新たな実機確認や検証状態の変更を行うものではない。
 
-作品内容の編集・削除、更新予定、バックアップは未実装である。画像機能の完了だけで他のADRの残条件を完了扱いにせず、ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。
+作品編集は#213/#215で接続した。作品削除、更新予定、バックアップは未実装である。画像機能の完了だけで他のADRの残条件を完了扱いにせず、ADR-0002とADR-0004のValidation Statusは`Pending`を維持する。

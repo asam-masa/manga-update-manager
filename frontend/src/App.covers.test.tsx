@@ -90,7 +90,7 @@ it('選択枠と作品枠を分け、古い通知と同一tickの二重操作を
     expect(select('二').hasAttribute('disabled')).toBe(true);
     expect(remove('一').hasAttribute('disabled')).toBe(true);
     expect(remove('二').hasAttribute('disabled')).toBe(false);
-    expect(screen.getByRole('button', {name: '一のURLを開く'}).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', {name: '一のURLを開く'}).hasAttribute('disabled')).toBe(true);
     await act(async () => listener({workID: 2, operationID: id}));
     expect(select('二').hasAttribute('disabled')).toBe(true);
     await act(async () => listener({workID: 1, operationID: id}));
@@ -130,6 +130,8 @@ it('検索で隠しても結果を保持し、検索とフォーカスを変え�
     vi.mocked(ListWorks).mockResolvedValue([unset, second, third]);
     const view = await boot();
     await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
+    expect(select('一', '画像を設定').hasAttribute('disabled')).toBe(true);
+    await act(async () => access.resolve({...unset, lastAccessedAt: '2026-10-19T10:00:00+09:00'}));
     vi.mocked(ListWorks).mockReturnValueOnce(list.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     await userEvent.click(select('一', '画像を設定'));
@@ -138,7 +140,7 @@ it('検索で隠しても結果を保持し、検索とフォーカスを変え�
     await act(async () => a.resolve(new main.SelectWorkCoverResult({cancelled: false, work: {...first, thumbnailPath: 'covers/new.png'}, warnings: []})));
     expect(screen.queryByRole('heading', {name: '一'})).toBeNull();
     expect(document.activeElement).toBe(search);
-    await act(async () => {list.resolve([unset, second, third]); access.resolve({...unset, lastAccessedAt: '2026-10-19T10:00:00+09:00'});});
+    await act(async () => {list.resolve([{...unset, lastAccessedAt: '2026-10-19T10:00:00+09:00'}, second, third]);});
     await userEvent.clear(search);
     expect(await screen.findByText('画像を設定しました。')).toBeTruthy();
     // Removing proves the saved path survived both stale responses.
@@ -186,8 +188,11 @@ it('画像変更の遅い応答で新しい最終アクセスを戻さず、次�
     vi.mocked(OpenWork).mockResolvedValue({...first, lastAccessedAt: '2026-10-19T12:00:00+09:00'});
     await boot();
     await userEvent.click(select('一'));
+    expect(screen.getByRole('button', {name: '一のURLを開く'}).hasAttribute('disabled')).toBe(true);
     await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
+    expect(OpenWork).not.toHaveBeenCalled();
     await act(async () => a.resolve(new main.SelectWorkCoverResult({cancelled: false, work: first, warnings: []})));
+    await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
     expect(screen.getByText('2026/10/19 12:00:00')).toBeTruthy();
     expect(screen.getByText('画像を設定しました。')).toBeTruthy();
     vi.mocked(SelectWorkCoverWithOperation).mockResolvedValueOnce(cancelled);

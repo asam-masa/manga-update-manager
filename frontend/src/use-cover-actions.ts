@@ -10,7 +10,7 @@ export type CoverState = {pending: boolean; operationID?: string; kind?: 'select
 const warningCodes = new Set(['cover_cleanup_failed', 'cover_unavailable_after_commit', 'cover_release_unconfirmed', 'database_stopped_after_commit']);
 
 // Owned by App, not by cards: filtering never cancels an operation or its notice.
-export function useCoverActions(ready: boolean, onSaved: (work: WorkView) => void) {
+export function useCoverActions(ready: boolean, onSaved: (work: WorkView) => void, blocked?: (id: number) => boolean) {
     const [states, setStates] = useState<Record<number, CoverState>>({});
     const [selecting, setSelecting] = useState(false);
     const pending = useRef(new Set<number>());
@@ -32,7 +32,7 @@ export function useCoverActions(ready: boolean, onSaved: (work: WorkView) => voi
 
     async function run(id: number, remove: boolean) {
         // Refs close the same-tick gap before disabled controls are rendered.
-        if (!ready || pending.current.has(id) || (!remove && chooser.current)) return;
+        if (!ready || blocked?.(id) || pending.current.has(id) || (!remove && chooser.current)) return;
         const current = generation.current;
         const operationID = Array.from(crypto.getRandomValues(new Uint8Array(16)), (value) => value.toString(16).padStart(2, '0')).join('');
         pending.current.add(id);
@@ -64,7 +64,7 @@ export function useCoverActions(ready: boolean, onSaved: (work: WorkView) => voi
             }
         }
     }
-    return {states, selecting, select: (id: number) => { void run(id, false); }, remove: (id: number) => { void run(id, true); },
+    return {states, selecting, isPending: (id: number) => pending.current.has(id), select: (id: number) => { void run(id, false); }, remove: (id: number) => { void run(id, true); },
         dismiss: (id: number) => setStates((values) => ({...values, [id]: {...values[id], notice: undefined}}))};
 }
 

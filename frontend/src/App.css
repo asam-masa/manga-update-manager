@@ -94,6 +94,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .success-message { color: #22664e; font-size: 0.875rem; line-height: 1.7; margin: 12px 0 0; }
 .success-message:empty { margin: 0; }
 .loading-message { color: #52606d; font-size: 0.875rem; margin: 20px 0 0; }
+.edit-button { margin-top: 12px; }
+.edit-dialog { background: #fff; color: #172b4d; border: 1px solid #acb8c4; border-radius: 12px; width: min(540px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 24px; overflow: auto; }
+.edit-dialog::backdrop { background: rgb(23 43 77 / 45%); }
+.edit-dialog form { margin-top: 20px; }
+.edit-cancel { margin-top: 16px; }
 
 @media (max-width: 760px) {
     .app-shell { padding: 20px; }
