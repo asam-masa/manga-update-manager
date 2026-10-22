@@ -21,6 +21,7 @@ type App struct {
 	mu                     sync.RWMutex
 	ctx                    context.Context
 	works                  *application.Works
+	editor                 *application.WorkEditor
 	display                *application.DisplaySettings
 	opener                 *application.WorkOpener
 	covers                 *application.CoverImporter
@@ -74,6 +75,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.store = store
 	a.works = application.NewWorks(store, time.Now)
+	a.editor = application.NewWorkEditor(store, time.Now)
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
@@ -96,6 +98,7 @@ func (a *App) shutdown(_ context.Context) {
 		_ = a.coverCleanupTicket.End()
 	}
 	a.works = nil
+	a.editor = nil
 	a.display = nil
 	a.opener = nil
 	a.covers = nil

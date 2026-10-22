@@ -116,6 +116,9 @@ func TestAppWorkOperationCrossExclusion(t *testing.T) {
 			if _, err := a.workOperations.BeginEdit(w.ID); !errors.Is(err, application.ErrWorkBusy) {
 				t.Fatal(err)
 			}
+			if _, err := a.EditWork(w.ID, EditWorkInput{URL: w.URL, Title: w.Title}); errorCode(t, err) != "work_busy" {
+				t.Fatal(err)
+			}
 			if _, err := a.OpenWork(other.ID); err != nil {
 				t.Fatal("other work blocked", err)
 			}

@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function CreateWork(arg1:main.CreateWorkInput):Promise<main.WorkDTO>;
 
+export function EditWork(arg1:number,arg2:main.EditWorkInput):Promise<main.EditWorkResult>;
+
 export function ListWorks():Promise<Array<main.WorkDTO>>;
 
 export function LoadCoverProgress():Promise<Array<main.CoverProgressDTO>>;
