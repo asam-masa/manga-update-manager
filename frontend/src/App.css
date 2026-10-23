@@ -99,6 +99,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .edit-dialog::backdrop { background: rgb(23 43 77 / 45%); }
 .edit-dialog form { margin-top: 20px; }
 .edit-cancel { margin-top: 16px; }
+.delete-dialog dd { margin: 6px 0 16px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.delete-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.danger-button { background: #a33424; color: #fff; }
+.danger-button:hover:not(:disabled) { background: #81291c; }
 
 @media (max-width: 760px) {
     .app-shell { padding: 20px; }

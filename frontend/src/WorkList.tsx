@@ -4,8 +4,9 @@ import type {WorkView} from './work-display';
 import type {CoverActions} from './use-cover-actions';
 
 type Editing = {onEdit: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
+type Deleting = {onDelete: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
 
-export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing}) {
+export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing, deleting}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting}) {
     if (works.length === 0) {
         return showEmpty ? <div className="empty-state">
             <div className="empty-book" aria-hidden="true">本</div>
@@ -14,11 +15,11 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
         </div> : null;
     }
     return <ul className="work-list" aria-label="作品一覧">
-        {works.map((work) => <WorkCard key={work.id} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} />)}
+        {works.map((work) => <WorkCard key={`${work.id}:${work.createdAt}`} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} deleting={deleting} />)}
     </ul>;
 }
 
-function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editing}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing}) {
+function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editing, deleting}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting}) {
     const pending = useRef(false);
     const [opening, setOpening] = useState(false);
     const [error, setError] = useState('');
@@ -45,6 +46,8 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editi
                     <><time dateTime={work.lastAccessedAt}>{registrationDate(work.lastAccessedAt)}</time>（日本時間）</>}</p>
                 {editing && <button type="button" className="secondary-button edit-button" disabled={opening || coverActions?.states[work.id]?.pending || editing.stopped}
                     aria-label={`${work.title}を編集`} onClick={(event) => { if (!pending.current) editing.onEdit(work, event.currentTarget); }}>編集</button>}
+                {deleting && <button type="button" className="secondary-button edit-button" disabled={opening || coverActions?.states[work.id]?.pending || deleting.stopped}
+                    aria-label={`${work.title}を削除`} onClick={(event) => { if (!pending.current) deleting.onDelete(work, event.currentTarget); }}>削除</button>}
                 {coverActions && <CoverControls work={work} ready={coversReady && !opening} actions={coverActions} />}
                 {error && <p className="message error-message" role="alert">{error}</p>}
             </div>
