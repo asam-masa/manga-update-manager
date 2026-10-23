@@ -6,6 +6,10 @@ export function CreateWork(arg1) {
   return window['go']['main']['App']['CreateWork'](arg1);
 }
 
+export function DeleteWork(arg1, arg2) {
+  return window['go']['main']['App']['DeleteWork'](arg1, arg2);
+}
+
 export function EditWork(arg1, arg2) {
   return window['go']['main']['App']['EditWork'](arg1, arg2);
 }

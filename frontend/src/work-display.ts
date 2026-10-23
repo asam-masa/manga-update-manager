@@ -1,6 +1,6 @@
 import type {main} from '../wailsjs/go/models';
 export type WorkView = Omit<main.WorkDTO, 'lastAccessedAt'> & {lastAccessedAt?: string | null};
-const knownCodes = new Set(['database_stopped', 'database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error', 'browser_open_failed', 'access_save_failed', 'work_not_found', 'work_open_in_progress', 'work_busy', 'work_edit_outcome_unknown', 'settings_read_failed', 'settings_save_failed', 'cover_outcome_unknown', 'cover_busy', 'cover_unavailable', 'invalid_cover', 'cover_import_failed', 'cover_remove_failed']);
+const knownCodes = new Set(['database_stopped', 'database_unavailable', 'invalid_input', 'duplicate_url', 'storage_error', 'internal_error', 'browser_open_failed', 'access_save_failed', 'work_not_found', 'work_open_in_progress', 'work_busy', 'work_edit_outcome_unknown', 'work_changed', 'work_delete_outcome_unknown', 'settings_read_failed', 'settings_save_failed', 'cover_outcome_unknown', 'cover_busy', 'cover_unavailable', 'invalid_cover', 'cover_import_failed', 'cover_remove_failed']);
 
 const apiErrorWirePrefix = 'manga-update-manager:api-error:v1:';
 
@@ -21,7 +21,7 @@ function safeAPIError(error: unknown): {code: string; message: string} | null {
 
 export function isDatabaseStopped(error: unknown): boolean {
     const code = safeAPIError(error)?.code;
-    return code === 'database_stopped' || code === 'work_edit_outcome_unknown';
+    return code === 'database_stopped' || code === 'work_edit_outcome_unknown' || code === 'work_delete_outcome_unknown';
 }
 
 export function apiErrorCode(error: unknown): string | undefined { return safeAPIError(error)?.code; }

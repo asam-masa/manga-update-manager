@@ -2,6 +2,11 @@ import {describe, expect, it} from 'vitest';
 import {apiErrorMessage, isDatabaseStopped, registrationDate} from './work-display';
 
 describe('表示境界', () => {
+    it.each(['work_changed', 'work_delete_outcome_unknown'])('削除APIのエラー %s を包装後も判別する', (code) => {
+        const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message: '削除結果を確認してください。'}));
+        expect(apiErrorMessage(error, '案内')).toBe('削除結果を確認してください。');
+        expect(isDatabaseStopped(error)).toBe(code === 'work_delete_outcome_unknown');
+    });
     it.each(['work_busy', 'work_edit_outcome_unknown'])('編集APIのエラー %s を包装後も判別する', (code) => {
         const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message: '保存結果を確認してください。'}));
         expect(apiErrorMessage(error, '案内')).toBe('保存結果を確認してください。');

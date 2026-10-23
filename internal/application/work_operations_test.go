@@ -81,3 +81,31 @@ func TestWorkOperationsEditVersusClose(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkOperationsDeleteVersusClose(t *testing.T) {
+	for range 100 {
+		var g WorkOperations
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(2)
+		var deleteErr, closeErr error
+		var end func()
+		go func() { defer wg.Done(); <-start; end, deleteErr = g.BeginDelete(1) }()
+		go func() {
+			defer wg.Done()
+			<-start
+			_, closeErr = g.RequestClose(func() (<-chan struct{}, error) { ready := make(chan struct{}); close(ready); return ready, nil })
+		}()
+		close(start)
+		wg.Wait()
+		if deleteErr == nil {
+			if !errors.Is(closeErr, ErrWorkDeleting) {
+				t.Fatal(deleteErr, closeErr)
+			}
+			end()
+			end()
+		} else if !errors.Is(deleteErr, ErrWorkClosing) || closeErr != nil {
+			t.Fatal(deleteErr, closeErr)
+		}
+	}
+}

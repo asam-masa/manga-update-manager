@@ -177,8 +177,9 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	})
 	a.mu.RUnlock()
 	if err != nil {
-		if errors.Is(err, application.ErrWorkBusy) {
-			// Only the future edit admission returns this close refusal.
+		if errors.Is(err, application.ErrWorkDeleting) {
+			a.deleteBusyNotice(ctx)
+		} else if errors.Is(err, application.ErrWorkBusy) {
 			a.workBusyNotice(ctx)
 		} else {
 			a.coverBusyNotice(ctx)
@@ -191,6 +192,10 @@ func (a *App) beforeClose(ctx context.Context) bool {
 
 func workBusyNotice(ctx context.Context) {
 	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "作品情報を保存中です", Message: "作品情報の保存中は終了できません。処理結果を確認してから、もう一度閉じてください。"})
+}
+
+func deleteBusyNotice(ctx context.Context) {
+	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "作品を削除中です", Message: "作品の削除・画像の後処理中は終了できません。処理結果を確認してから、もう一度閉じてください。"})
 }
 
 func coverBusyNotice(ctx context.Context) {
