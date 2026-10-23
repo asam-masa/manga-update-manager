@@ -9,6 +9,7 @@ import {useCoverActions} from './use-cover-actions';
 import {CoverProgressNotice} from './CoverProgressNotice';
 import type {CoverProgressTarget} from './CoverProgressNotice';
 import {EditWorkDialog} from './EditWorkDialog';
+import {DeleteWorkDialog} from './DeleteWorkDialog';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -38,6 +39,14 @@ function App() {
     const opening = useRef(new Set<number>());
     const editRevision = useRef(0);
     const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
+    const [deleting, setDeleting] = useState<WorkView | null>(null);
+    const [deleteStopped, setDeleteStopped] = useState(false);
+    const [deleteNotice, setDeleteNotice] = useState<{title: string; missing: boolean; warnings: string[]} | null>(null);
+    const deleteOrigin = useRef<HTMLButtonElement | null>(null);
+    const modal = useRef(false);
+    // SQLite can reuse IDs. Tombstones identify the deleted registration, not
+    // every future work that receives the same numeric ID.
+    const removedWorks = useRef(new Set<string>());
 
     useEffect(() => {
         let active = true;
@@ -68,17 +77,17 @@ function App() {
     const submitting = useRef(false);
     const request = useRef(0);
     const accessRevision = useRef(0);
-    const savedAccess = useRef(new Map<number, {revision: number; value: WorkView['lastAccessedAt']}>());
+    const savedAccess = useRef(new Map<number, {revision: number; value: WorkView['lastAccessedAt']; createdAt: string}>());
     const coverChangeRevision = useRef(0);
     const savedCovers = useRef(new Map<number, {revision: number; work: WorkView}>());
     const coverActions = useCoverActions(coversReady, (updated) => {
         savedCovers.current.set(updated.id, {revision: ++coverChangeRevision.current, work: updated});
-        setWorks((current) => current?.map((work) => work.id === updated.id
+        setWorks((current) => current?.map((work) => identity(work) === identity(updated)
             ? {...work, thumbnailPath: updated.thumbnailPath, updatedAt: later(work.updatedAt, updated.updatedAt)} : work) ?? null);
         setCoverRevision((value) => value + 1);
-    }, (id) => opening.current.has(id));
+    }, (id) => modal.current || opening.current.has(id));
 
-    const loadWorks = useCallback(async () => {
+    const loadWorks = useCallback(async (throwOnError = false) => {
         const current = ++request.current;
         const revision = accessRevision.current;
         const coverStart = coverChangeRevision.current;
@@ -90,24 +99,28 @@ function App() {
             const result = await ListWorks();
             if (current === request.current) {
                 setCoverRevision((value) => value + 1);
-                setWorks(result.map((work) => {
+                const values = result.filter((work) => !removedWorks.current.has(identity(work))).map((work) => {
                     const saved = savedAccess.current.get(work.id);
                     const cover = savedCovers.current.get(work.id);
                     const edit = savedEdits.current.get(work.id);
-                    const edited = edit && edit.revision > editStart ? edit.work : null;
+                    const edited = edit && edit.work.createdAt === work.createdAt && edit.revision > editStart ? edit.work : null;
                     return {...work,
-                        ...(saved && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
-                        ...(cover && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath} : {}),
+                        ...(saved && saved.createdAt === work.createdAt && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
+                        ...(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath} : {}),
                         ...(edited ? {url: edited.url, title: edited.title, siteName: edited.siteName, notes: edited.notes} : {}),
-                        updatedAt: later(work.updatedAt, later(cover && cover.revision > coverStart ? cover.work.updatedAt : work.updatedAt, edited?.updatedAt ?? work.updatedAt))};
-                }));
+                        updatedAt: later(work.updatedAt, later(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? cover.work.updatedAt : work.updatedAt, edited?.updatedAt ?? work.updatedAt))};
+                });
+                setWorks(values);
+                return values;
             }
+            if (throwOnError) throw new Error('Superseded confirmation read');
         } catch (error: unknown) {
             if (current === request.current) {
                 const stopped = isDatabaseStopped(error);
                 setListError(apiErrorMessage(error, stopped ? 'データの読み書きを停止しています。アプリを再起動して状態を確認してください。' : '作品一覧を取得できません。再読み込みをお試しください。'));
                 setListStopped(stopped);
             }
+            if (throwOnError) throw error;
         } finally {
             if (current === request.current) setLoading(false);
         }
@@ -173,7 +186,7 @@ function App() {
     async function register(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         // Close the gap before React renders the disabled submit button.
-        if (submitting.current || !settingsReady || !formVisible) return;
+        if (modal.current || submitting.current || !settingsReady || !formVisible) return;
         submitting.current = true;
         setSaving(true);
         setSaveError('');
@@ -193,22 +206,24 @@ function App() {
     }
 
     async function openWork(id: number) {
-        if (opening.current.has(id) || coverActions.isPending(id)) return;
+        if (modal.current || opening.current.has(id) || coverActions.isPending(id)) return;
         opening.current.add(id);
         try {
         const updated = await OpenWork(id);
-        savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt});
+        savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt, createdAt: updated.createdAt});
         // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
-        setWorks((current) => current?.map((work) => work.id === id ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
+        setWorks((current) => current?.map((work) => identity(work) === identity(updated) ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
         } finally { opening.current.delete(id); }
     }
 
     function startEdit(work: WorkView, button: HTMLButtonElement) {
-        if (editing || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        if (modal.current || editStopped || deleteStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        modal.current = true;
         editOrigin.current = button;
         setEditing({...work});
     }
     function closeEdit() {
+        modal.current = false;
         setEditing(null);
         requestAnimationFrame(() => {
             const button = editOrigin.current;
@@ -218,10 +233,30 @@ function App() {
     }
     function edited(work: WorkView, warnings: string[]) {
         savedEdits.current.set(work.id, {revision: ++editRevision.current, work});
-        setWorks((current) => current?.map((value) => value.id === work.id ? {...value,
+        setWorks((current) => current?.map((value) => identity(value) === identity(work) ? {...value,
             url: work.url, title: work.title, siteName: work.siteName, notes: work.notes,
             updatedAt: later(value.updatedAt, work.updatedAt)} : value) ?? null);
         setEditNotice({title: work.title, warnings});
+    }
+    function startDelete(work: WorkView, button: HTMLButtonElement) {
+        if (modal.current || deleteStopped || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        modal.current = true; deleteOrigin.current = button; setDeleting({...work});
+    }
+    function closeDelete() {
+        modal.current = false; setDeleting(null);
+        requestAnimationFrame(() => {
+            const button = deleteOrigin.current;
+            // Do not steal focus if the user already moved to another control.
+            if (document.activeElement !== document.body && document.activeElement !== button) return;
+            if (button?.isConnected && !button.disabled) button.focus();
+            else searchElement.current?.focus();
+        });
+    }
+    function removed(work: WorkView, missing: boolean, warnings: string[]) {
+        removedWorks.current.add(identity(work));
+        savedAccess.current.delete(work.id); savedCovers.current.delete(work.id); savedEdits.current.delete(work.id);
+        setWorks((current) => current?.filter((value) => identity(value) !== identity(work)) ?? null);
+        setDeleteNotice({title: work.title, missing, warnings});
     }
 
     const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
@@ -248,6 +283,14 @@ function App() {
                 </div>
             </header>
             <CoverProgressNotice targets={progressTargets} works={works} />
+            {deleteNotice && <section className="message cover-result" aria-label="削除結果">
+                <p role="status">{deleteNotice.missing ? `「${deleteNotice.title}」は既に存在しません。` : `「${deleteNotice.title}」を削除しました。`}</p>
+                {deleteNotice.warnings.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
+                <button type="button" className="secondary-button" onClick={() => { setDeleteNotice(null); searchElement.current?.focus(); }}>削除結果を閉じる</button>
+            </section>}
+            {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
+            {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
+                onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} />}
             {editNotice && <section className="message cover-result" aria-label="編集結果">
                 <p role="status">「{editNotice.title}」を保存しました。{!titleMatches(editNotice.title, searchQuery) && '検索条件に一致しないため非表示です。'}</p>
                 {editNotice.warnings.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
@@ -326,7 +369,8 @@ function App() {
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
                             <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork}
-                                coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped}} />
+                                coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
+                                deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
                         </>}
                     </div>
                 </section>
@@ -338,3 +382,4 @@ function App() {
 export default App;
 
 function later(a: string, b: string): string { return Date.parse(a) >= Date.parse(b) ? a : b; }
+function identity(work: WorkView): string { return JSON.stringify([work.id, work.createdAt]); }
