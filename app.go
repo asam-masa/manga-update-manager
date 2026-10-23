@@ -22,6 +22,7 @@ type App struct {
 	ctx                    context.Context
 	works                  *application.Works
 	editor                 *application.WorkEditor
+	deleter                *application.WorkDeleter
 	display                *application.DisplaySettings
 	opener                 *application.WorkOpener
 	covers                 *application.CoverImporter
@@ -33,6 +34,7 @@ type App struct {
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)
 	workBusyNotice         func(context.Context)
+	deleteBusyNotice       func(context.Context)
 	openURL                func(string) error
 	store                  *storage.Store
 	dataDirectory          func() (string, error)
@@ -47,7 +49,7 @@ type App struct {
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, startupFinished: make(chan struct{})}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, deleteBusyNotice: deleteBusyNotice, startupFinished: make(chan struct{})}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -79,6 +81,7 @@ func (a *App) startup(ctx context.Context) {
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
 	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
+	a.deleter = application.NewWorkDeleter(store, a.covers)
 	a.coverReader = application.NewCoverReader(store, &a.coverOperations, directory)
 	a.coverCleanupTicket, err = a.coverOperations.BeginCleanup()
 	if err != nil {
@@ -99,6 +102,7 @@ func (a *App) shutdown(_ context.Context) {
 	}
 	a.works = nil
 	a.editor = nil
+	a.deleter = nil
 	a.display = nil
 	a.opener = nil
 	a.covers = nil
