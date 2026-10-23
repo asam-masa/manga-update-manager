@@ -1,7 +1,7 @@
 # ADR-0018: 作品の編集範囲と確認後の完全削除を決める
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-21
 - Related: [#204](https://github.com/asam-masa/manga-update-manager/issues/204)
 
@@ -54,6 +54,12 @@ URL・タイトル・サイト名・メモを一つの操作で修正できる�
 これは利用者向け方針の決定であり、API・SQL・受付部品・画面の非同期反映は未実装である。編集を先行し、削除は別Issueで実装する。[実装前の具体化事項](../work-edit-delete.md#実装前に具体化する契約)を満たすまで、実装IssueをDoR達成として扱わない。既存のADR-0013のVerifiedを、新しい作品削除の検証済み根拠として流用しない。
 
 ## Validation
+
+### 現在の検証状態（2026-10-23、親Issue #205/#206）
+
+基準main `9b4913c92dbd831cd64c84ae485872f94c85b66c`で、編集と削除の全受け入れ条件を実装・一時SQLite/合成画像・UI自動テスト・実WebView2の記録と照合した。[条件別の根拠・マージ版・CI・限界](../verification/work-edit-delete-completion.md)に基づき、初回の範囲の検証完了をVerifiedとして記録する。物理OS故障・電源断・全競合順序の保証へ広げず、合成故障と計測待機の区別を維持する。親#206の完了は本記録のPRレビュー・CI・マージも条件とする。
+
+以下は各子Issue時点の追加合意と段階的な検証の履歴であり、未接続・Pendingの記述を現在の状態と混同しない。Decisionは変更しない。
 
 ### 編集保存の追加合意（Issue #209、2026-10-21）
 
