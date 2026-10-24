@@ -4,8 +4,8 @@ import {EditWork} from '../wailsjs/go/main/App';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped} from './work-display';
 import type {WorkView} from './work-display';
 
-export function EditWorkDialog({work, onSaved, onClose, onStopped}: {
-    work: WorkView; onSaved: (work: WorkView, warnings: string[]) => void; onClose: () => void; onStopped: () => void;
+export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
+    work: WorkView; onSaved: (work: WorkView, warnings: string[]) => void; onClose: () => void; onStopped: () => void; onStart: (work: WorkView) => void;
 }) {
     // Snapshot only once per opening: background responses must never replace input.
     const [form, setForm] = useState(() => ({url: work.url, title: work.title, siteName: work.siteName, notes: work.notes}));
@@ -28,6 +28,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped}: {
         event.preventDefault();
         if (pending.current || blocked.current) return;
         pending.current = true;
+        onStart(work);
         setSaving(true); setError('');
         try {
             const result = await EditWork(work.id, {...form});

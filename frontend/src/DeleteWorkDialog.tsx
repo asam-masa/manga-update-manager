@@ -5,10 +5,10 @@ import type {WorkView} from './work-display';
 
 const warningCodes = new Set(['cover_cleanup_failed', 'cover_release_unconfirmed', 'cover_unavailable_after_commit', 'database_stopped_after_commit']);
 
-export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped, onImagesStopped}: {
+export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped, onImagesStopped, onStart}: {
     work: WorkView; onReload: () => Promise<WorkView | undefined>;
     onRemoved: (work: WorkView, missing: boolean, warnings: string[]) => void;
-    onClose: () => void; onStopped: () => void; onImagesStopped: () => void;
+    onClose: () => void; onStopped: () => void; onImagesStopped: () => void; onStart: (work: WorkView) => void;
 }) {
     const [snapshot, setSnapshot] = useState(work);
     const [busy, setBusy] = useState(false);
@@ -49,6 +49,7 @@ export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped,
     async function remove() {
         if (pending.current || blocked.current || !fresh.current) return;
         pending.current = true; setBusy(true); setMessage('');
+        onStart(snapshot);
         try {
             const result = await DeleteWork(snapshot.id, {url: snapshot.url, title: snapshot.title, siteName: snapshot.siteName, notes: snapshot.notes, thumbnailPath: snapshot.thumbnailPath});
             if (!active.current) return;

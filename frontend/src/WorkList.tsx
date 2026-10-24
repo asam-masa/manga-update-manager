@@ -31,7 +31,7 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editi
             <div className="work-details">
                 <h3>{work.title}</h3>
                 {work.siteName && <p className="site-name">{work.siteName}</p>}
-                <button id={`work-url-${JSON.stringify([work.id, work.createdAt])}`} type="button" className="work-url" title={work.url} disabled={opening || coverActions?.states[work.id]?.pending}
+                <button id={`work-url-${JSON.stringify([work.id, work.createdAt])}`} type="button" className="work-url" title={work.url} disabled={opening || coverActions?.stateFor(work)?.pending}
                     aria-label={`${work.title}のURLを開く`} onClick={() => { void onOpen(work.id); }}>{work.url}</button>
                 {work.notes && <p className="work-notes">{work.notes}</p>}
                 <p className="registered-at">登録 <time dateTime={work.createdAt}>{registrationDate(work.createdAt)}</time>（日本時間）</p>
@@ -39,42 +39,20 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editi
                     <><time dateTime={work.lastAccessedAt}>{registrationDate(work.lastAccessedAt)}</time>（日本時間）</>}</p>
                 {(editing || deleting || coverActions) && <WorkActionsMenu identity={JSON.stringify([work.id, work.createdAt])} title={work.title} open={menuOpen} onChange={onMenuChange}>
                     {(run) => <>
-                        {editing && <button type="button" disabled={opening || coverActions?.states[work.id]?.pending || editing.stopped}
+                        {editing && <button type="button" disabled={opening || coverActions?.stateFor(work)?.pending || editing.stopped}
                             aria-label={`${work.title}を編集`} onClick={() => run((origin) => editing.onEdit(work, origin))}>編集</button>}
-                        {deleting && <button type="button" disabled={opening || coverActions?.states[work.id]?.pending || deleting.stopped}
+                        {deleting && <button type="button" disabled={opening || coverActions?.stateFor(work)?.pending || deleting.stopped}
                             aria-label={`${work.title}を削除`} onClick={() => run((origin) => deleting.onDelete(work, origin))}>削除</button>}
                         {coverActions && <>
-                            <button type="button" disabled={!coversReady || opening || coverActions.states[work.id]?.pending || coverActions.selecting}
-                                onClick={() => run(() => coverActions.select(work.id))}>{work.thumbnailPath ? '画像を変更' : '画像を設定'}</button>
-                            {work.thumbnailPath && <button type="button" disabled={!coversReady || opening || coverActions.states[work.id]?.pending}
-                                onClick={() => run(() => coverActions.remove(work.id))}>画像を外す</button>}
+                            <button type="button" disabled={!coversReady || opening || coverActions.stateFor(work)?.pending || coverActions.selecting}
+                                onClick={() => run(() => coverActions.select(work))}>{work.thumbnailPath ? '画像を変更' : '画像を設定'}</button>
+                            {work.thumbnailPath && <button type="button" disabled={!coversReady || opening || coverActions.stateFor(work)?.pending}
+                                onClick={() => run(() => coverActions.remove(work))}>画像を外す</button>}
                         </>}
                     </>}
                 </WorkActionsMenu>}
-                {coverActions && <CoverControls work={work} actions={coverActions} />}
             </div>
         </li>;
-}
-
-function CoverControls({work, actions}: {work: WorkView; actions: CoverActions}) {
-    const state = actions.states[work.id];
-    const notice = state?.notice;
-    if (!state?.pending && !notice) return null;
-    return <div className="cover-controls" role="group" tabIndex={-1} aria-label={`${work.title}の画像操作`}>
-        {state?.pending && <p role="status">画像を処理しています…</p>}
-        {notice && <div className={`message ${notice.error ? 'error-message' : 'cover-result'}`}>
-            {notice.error && <p role="alert">{notice.error}</p>}
-            {notice.success && <p role="status">{notice.success}</p>}
-            {notice.warnings?.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
-            <button type="button" className="secondary-button" onClick={(event) => {
-                // The notice button is about to disappear; keep keyboard position in this card.
-                const group = event.currentTarget.closest<HTMLElement>('.cover-controls');
-                actions.dismiss(work.id);
-                const target = group?.parentElement?.querySelector<HTMLButtonElement>('.work-actions-trigger') ?? group;
-                target?.focus();
-            }}>画像操作のお知らせを閉じる</button>
-        </div>}
-    </div>;
 }
 
 function WorkCover({id, enabled}: {id: number; enabled: boolean}) {

@@ -28,6 +28,40 @@ async function boot() { render(<StrictMode><App /></StrictMode>); await screen.f
 async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'})); await userEvent.click(screen.getByRole('button', {name: '漫画を編集'})); return screen.getByRole('dialog'); }
 const field = (dialog: HTMLElement, label: RegExp) => within(dialog).getByLabelText(label) as HTMLInputElement;
 
+it('別作品の保存結果を保持し、開閉だけでは消さず次の保存で対象通知だけ更新する', async () => {
+    const other = {...work, id: 2, title: '別作品'};
+    vi.mocked(ListWorks).mockResolvedValue([work, other]);
+    vi.mocked(EditWork).mockImplementation(async (id) => new main.EditWorkResult({work: id === 1 ? work : other, warnings: []}));
+    await boot();
+    let dialog = await open();
+    await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
+    await userEvent.click(screen.getByRole('button', {name: '別作品の作品操作'}));
+    await userEvent.click(screen.getByRole('button', {name: '別作品を編集'}));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '別作品の作品操作'})));
+    expect(screen.getByRole('region', {name: '漫画の編集結果'})).toBeTruthy();
+    expect(screen.getByRole('region', {name: '別作品の編集結果'})).toBeTruthy();
+    dialog = await open();
+    await userEvent.click(within(dialog).getByRole('button', {name: 'キャンセル'}));
+    expect(screen.getByRole('region', {name: '漫画の編集結果'})).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
+    const pending = deferred<main.EditWorkResult>();
+    vi.mocked(EditWork).mockReturnValue(pending.promise);
+    dialog = await open();
+    await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
+    expect(screen.queryByRole('region', {name: '漫画の編集結果'})).toBeNull();
+    expect(screen.getByRole('region', {name: '別作品の編集結果'})).toBeTruthy();
+    const scheduled: FrameRequestCallback[] = [];
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {scheduled.push(callback); return scheduled.length;});
+    try {
+        await act(async () => pending.resolve(new main.EditWorkResult({work, warnings: []})));
+        await userEvent.click(within(screen.getByRole('region', {name: '別作品の編集結果'})).getByRole('button'));
+        act(() => scheduled.splice(0).forEach((callback) => callback(0)));
+        expect(document.activeElement).toBe(screen.getByRole('button', {name: '別作品の作品操作'}));
+    } finally { frame.mockRestore(); }
+});
+
 it('キャンセルは保存せず入力を破棄し、再度開くと保存済みの値になる', async () => {
     await boot(); const dialog = await open();
     await userEvent.type(field(dialog, /タイトル/), '入力');

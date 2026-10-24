@@ -10,6 +10,8 @@ import {CoverProgressNotice} from './CoverProgressNotice';
 import type {CoverProgressTarget} from './CoverProgressNotice';
 import {EditWorkDialog} from './EditWorkDialog';
 import {DeleteWorkDialog} from './DeleteWorkDialog';
+import {WorkNotices} from './WorkNotices';
+import type {WorkNotice} from './WorkNotices';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -33,7 +35,7 @@ function App() {
     const [cleanupPending, setCleanupPending] = useState(false);
     const [editing, setEditing] = useState<WorkView | null>(null);
     const [editStopped, setEditStopped] = useState(false);
-    const [editNotice, setEditNotice] = useState<{title: string; warnings: string[]} | null>(null);
+    const [editNotices, setEditNotices] = useState<Record<string, {work: WorkView; warnings: string[]}>>({});
     const editOrigin = useRef<HTMLButtonElement | null>(null);
     const searchElement = useRef<HTMLInputElement>(null);
     const opening = useRef(new Set<number>());
@@ -42,7 +44,7 @@ function App() {
     const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
     const [deleting, setDeleting] = useState<WorkView | null>(null);
     const [deleteStopped, setDeleteStopped] = useState(false);
-    const [deleteNotice, setDeleteNotice] = useState<{title: string; missing: boolean; warnings: string[]} | null>(null);
+    const [deleteNotices, setDeleteNotices] = useState<Record<string, {work: WorkView; missing: boolean; warnings: string[]}>>({});
     const deleteOrigin = useRef<HTMLButtonElement | null>(null);
     const modal = useRef(false);
     // SQLite can reuse IDs. Tombstones identify the deleted registration, not
@@ -225,8 +227,16 @@ function App() {
         } finally { opening.current.delete(id); }
     }
 
-    function dismissAccess(key: string) {
-        setAccessStates((current) => { const next = {...current}; delete next[key]; return next; });
+    function clearResult(kind: 'edit' | 'delete', work: WorkView) {
+        // Both maps delete an entry without rewriting any other operation.
+        if (kind === 'edit') setEditNotices((current) => {const next = {...current}; delete next[identity(work)]; return next;});
+        else setDeleteNotices((current) => {const next = {...current}; delete next[identity(work)]; return next;});
+    }
+    function dismissNotice(notice: WorkNotice) {
+        const key = identity(notice.work);
+        if (notice.kind === 'access') setAccessStates((current) => {const next = {...current}; delete next[key]; return next;});
+        else if (notice.kind === 'cover') coverActions.dismiss(notice.work);
+        else clearResult(notice.kind, notice.work);
         const target = document.getElementById(`work-actions-${key}`);
         if (target instanceof HTMLButtonElement && !target.disabled) target.focus();
         else searchElement.current?.focus();
@@ -243,6 +253,8 @@ function App() {
         setEditing(null);
         requestAnimationFrame(() => {
             const button = editOrigin.current;
+            // A notice may have already moved focus to another work or search.
+            if (document.activeElement !== document.body && document.activeElement !== button) return;
             if (button?.isConnected && !button.disabled) button.focus();
             else searchElement.current?.focus();
         });
@@ -252,7 +264,7 @@ function App() {
         setWorks((current) => current?.map((value) => identity(value) === identity(work) ? {...value,
             url: work.url, title: work.title, siteName: work.siteName, notes: work.notes,
             updatedAt: later(value.updatedAt, work.updatedAt)} : value) ?? null);
-        setEditNotice({title: work.title, warnings});
+        setEditNotices((current) => ({...current, [identity(work)]: {work: {...work}, warnings}}));
     }
     function startDelete(work: WorkView, button: HTMLButtonElement) {
         if (modal.current || deleteStopped || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
@@ -272,15 +284,24 @@ function App() {
         removedWorks.current.add(identity(work));
         savedAccess.current.delete(work.id); savedCovers.current.delete(work.id); savedEdits.current.delete(work.id);
         setWorks((current) => current?.filter((value) => identity(value) !== identity(work)) ?? null);
-        setDeleteNotice({title: work.title, missing, warnings});
+        setDeleteNotices((current) => ({...current, [identity(work)]: {work: {...work}, missing, warnings}}));
     }
 
     const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
-    const progressTargets: CoverProgressTarget[] = Object.entries(coverActions.states).flatMap(([id, state]) =>
-        state.pending && state.operationID && state.kind ? [{operationID: state.operationID, workID: Number(id), kind: state.kind}] : []);
+    const progressTargets: CoverProgressTarget[] = Object.values(coverActions.states).flatMap((state) =>
+        state.pending && state.operationID && state.kind ? [{operationID: state.operationID, workID: state.work.id, kind: state.kind, title: state.work.title}] : []);
     if (cleanupPending) progressTargets.push({operationID: 'startup-cleanup', workID: 0, kind: 'cleanup'});
     const success = registeredTitle === null ? '' : titleMatches(registeredTitle, searchQuery)
         ? '作品を登録しました。' : '作品を登録しました。検索条件に一致しないため非表示です。';
+    const notices: WorkNotice[] = [
+        ...Object.entries(accessStates).map(([key, state]): WorkNotice => ({key: `access:${key}`, work: state.work, kind: 'access', pending: state.pending, error: state.error})),
+        ...Object.entries(coverActions.states).filter(([, state]) => state.pending || state.notice).map(([key, state]): WorkNotice =>
+            ({key: `cover:${key}`, work: state.work, kind: 'cover', pending: state.pending, ...state.notice})),
+        ...Object.entries(editNotices).map(([key, state]): WorkNotice => ({key: `edit:${key}`, work: state.work, kind: 'edit', warnings: state.warnings,
+            success: `「${state.work.title}」を保存しました。${!titleMatches(state.work.title, searchQuery) ? '検索条件に一致しないため非表示です。' : ''}`})),
+        ...Object.entries(deleteNotices).map(([key, state]): WorkNotice => ({key: `delete:${key}`, work: state.work, kind: 'delete', warnings: state.warnings,
+            success: state.missing ? `「${state.work.title}」は既に存在しません。` : `「${state.work.title}」を削除しました。`})),
+    ];
 
     return (
         <main className="app-shell">
@@ -298,22 +319,11 @@ function App() {
                     </button>
                 </div>
             </header>
-            <CoverProgressNotice targets={progressTargets} works={works} />
-            {deleteNotice && <section className="message cover-result" aria-label="削除結果">
-                <p role="status">{deleteNotice.missing ? `「${deleteNotice.title}」は既に存在しません。` : `「${deleteNotice.title}」を削除しました。`}</p>
-                {deleteNotice.warnings.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
-                <button type="button" className="secondary-button" onClick={() => { setDeleteNotice(null); searchElement.current?.focus(); }}>削除結果を閉じる</button>
-            </section>}
             {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
             {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
-                onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} />}
-            {editNotice && <section className="message cover-result" aria-label="編集結果">
-                <p role="status">「{editNotice.title}」を保存しました。{!titleMatches(editNotice.title, searchQuery) && '検索条件に一致しないため非表示です。'}</p>
-                {editNotice.warnings.map((warning, index) => <p role="alert" key={index}>{warning}</p>)}
-                <button type="button" className="secondary-button" onClick={(event) => { setEditNotice(null); searchElement.current?.focus(); event.preventDefault(); }}>編集結果を閉じる</button>
-            </section>}
+                onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} onStart={(work) => clearResult('delete', work)} />}
             {editStopped && <p className="message error-message" role="alert">編集の保存結果またはDBの安全性を確認できないため、追加の編集を停止しています。アプリを再起動して状態を確認してください。</p>}
-            {editing && <EditWorkDialog key={editing.id} work={editing} onSaved={edited} onClose={closeEdit} onStopped={() => setEditStopped(true)} />}
+            {editing && <EditWorkDialog key={editing.id} work={editing} onSaved={edited} onClose={closeEdit} onStopped={() => setEditStopped(true)} onStart={(work) => clearResult('edit', work)} />}
             {coverWarnings.length > 0 && <section className="message error-message" role="alert" aria-label="画像整理のお知らせ">
                 <h2>画像整理のお知らせ</h2>
                 {coverWarnings.map((warning) => <p key={warning.code}>{warning.message}</p>)}
@@ -372,12 +382,8 @@ function App() {
                                 if (!composingSearch.current) setSearchQuery(event.target.value);
                             }} />
                     </div>
-                    {Object.entries(accessStates).map(([key, state]) => <section key={key} className={`message ${state.pending ? 'progress-message' : 'error-message'}`} aria-label={`${state.work.title}のURL操作`}>
-                        {state.pending ? <p role="status">「{state.work.title}」のページを開いています…</p> : <>
-                            <p role="alert">「{state.work.title}」：{state.error}</p>
-                            <button type="button" className="secondary-button" onClick={() => dismissAccess(key)}>「{state.work.title}」のURL操作のお知らせを閉じる</button>
-                        </>}
-                    </section>)}
+                    <CoverProgressNotice targets={progressTargets} works={works} />
+                    <WorkNotices notices={notices} onDismiss={dismissNotice} />
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
                     {listError && <div className="message error-message" role="alert">
                         <p>{listError}</p>
