@@ -2,7 +2,7 @@
     margin: 0 auto;
     max-width: 1400px;
     min-height: 100vh;
-    padding: 32px;
+    padding: 16px;
 }
 
 .registration-panel, .list-panel {
@@ -12,39 +12,19 @@
     padding: 24px;
 }
 
-.eyebrow {
-    color: #52606d;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    margin: 0 0 12px;
-    text-transform: uppercase;
-}
-
-h1 {
-    color: #172b4d;
-    font-size: clamp(1.6rem, 3vw, 2rem);
-    line-height: 1.25;
-    margin: 0;
-}
-
-.description {
-    color: #52606d;
-    line-height: 1.8;
-    font-size: 0.875rem;
-    margin: 8px 0 0;
-}
-
-.app-header, .list-heading { align-items: center; display: flex; gap: 16px; justify-content: space-between; }
-.app-header { margin-bottom: 28px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.list-heading { align-items: center; display: grid; grid-template-columns: minmax(20px, 1fr) auto auto auto; gap: 6px; }
+.mode-switch { display: flex; gap: 2px; }
+.mode-switch button, .registration-toggle { min-height: 36px; padding: 6px 8px; }
+.mode-switch button[aria-pressed="true"], .mode-switch button[aria-pressed="true"]:hover:not(:disabled) { background: #235b77; color: #fff; }
+.reload-button { width: 28px; padding: 6px 0; min-height: 36px; }
 h2 { font-size: 1.15rem; margin: 0; }
 h3 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
 .section-description { color: #52606d; font-size: 0.875rem; line-height: 1.7; margin: 8px 0 0; }
-.local-badge { background: #e6f2ee; border-radius: 20px; color: #22664e; font-size: 0.75rem; padding: 8px 12px; white-space: nowrap; }
 .workspace { align-items: start; display: grid; gap: 24px; grid-template-columns: 300px minmax(0, 1fr); }
 .workspace.registration-hidden { grid-template-columns: minmax(0, 1fr); }
-.header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.search-controls { margin-top: 20px; }
+.search-controls { margin-top: 12px; }
+.search-controls input { margin-bottom: 0; }
 .registration-panel form { margin-top: 24px; }
 fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
@@ -61,7 +41,7 @@ button { border: 1px solid transparent; border-radius: 6px; cursor: pointer; fon
 button:disabled, fieldset:disabled input, fieldset:disabled textarea { cursor: wait; opacity: 0.65; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #418bac; outline-offset: 3px; }
 .list-panel { min-width: 0; }
-.work-count { background: #edf2f6; border-radius: 6px; color: #52606d; display: inline-block; font-size: 0.75rem; font-weight: 400; margin-left: 10px; padding: 4px 8px; }
+.work-count { background: #edf2f6; border-radius: 6px; color: #52606d; display: block; font-size: 0.75rem; font-weight: 400; padding: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .work-list { display: grid; gap: 12px; list-style: none; margin: 16px 0 0; padding: 0; }
 .work-list-cards { grid-template-columns: repeat(var(--card-columns, 1), minmax(0, 1fr)); }
 .work-card { align-items: start; border: 1px solid #dfe3e8; border-radius: 8px; display: grid; grid-template-columns: 100px minmax(0, 1fr) 40px; gap: 12px; padding: 12px; min-height: 164px; }
@@ -126,11 +106,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
     .app-shell { padding: 20px; }
     .workspace { grid-template-columns: minmax(0, 1fr); }
     .registration-panel, .list-panel { padding: 20px; }
-    .local-badge { display: none; }
 }
 
 @media (max-width: 400px) {
     .app-shell { padding: 12px; }
-    .list-heading { align-items: start; flex-direction: column; }
+    .registration-panel, .list-panel { padding: 12px; }
+    .list-heading { gap: 4px; }
+    .mode-switch button, .registration-toggle { font-size: 0.75rem; padding: 6px 4px; }
     .work-card:not(.work-compact) { grid-template-columns: 80px minmax(0, 1fr) 40px; gap: 8px; }
 }

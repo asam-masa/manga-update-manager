@@ -6,7 +6,7 @@ import App from './App';
 import {CreateWork, ListWorks, LoadDisplaySettings, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
 const list = vi.mocked(ListWorks);
 const create = vi.mocked(CreateWork);
 const work: main.WorkDTO = {
@@ -67,13 +67,13 @@ describe('作品管理画面', () => {
         await screen.findByText('まだ作品が登録されていません');
         const user = await fillRequired();
         await user.type(screen.getByLabelText(/サイト名/), '漫画サイト');
-        await user.type(screen.getByLabelText(/メモ/), 'メモ');
+        await user.type(screen.getByRole('textbox', {name: /^メモ/}), 'メモ');
         list.mockResolvedValue([work]);
         await user.click(screen.getByRole('button', {name: '登録する'}));
         await screen.findByRole('heading', {name: work.title});
         expect(create).toHaveBeenCalledExactlyOnceWith({url: work.url, title: work.title, siteName: '漫画サイト', notes: 'メモ', thumbnailPath: ''});
         for (const label of [/作品URL/, /タイトル/, /サイト名/, /メモ/]) {
-            expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe('');
+            expect((screen.getByRole('textbox', {name: label}) as HTMLInputElement).value).toBe('');
         }
         expect(screen.getByText('作品を登録しました。')).toBeTruthy();
         expect(list).toHaveBeenCalledTimes(2);
@@ -162,8 +162,6 @@ describe('作品管理画面', () => {
         render(<App />);
         await screen.findByText('まだ作品が登録されていません');
         const user = userEvent.setup();
-        await user.tab();
-        expect(document.activeElement).toBe(screen.getByRole('button', {name: '登録フォームを閉じる'}));
         await user.tab();
         expect(document.activeElement).toBe(screen.getByLabelText(/作品URL/));
         await user.type(document.activeElement as HTMLElement, work.url);
