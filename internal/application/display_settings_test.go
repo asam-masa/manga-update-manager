@@ -12,10 +12,22 @@ type displaySettingsFake struct {
 	value settings.Display
 	err   error
 	saves int
+	mode  settings.WorkListMode
 }
 
 func (f *displaySettingsFake) DisplaySettings(context.Context) (settings.Display, error) {
 	return f.value, f.err
+}
+func (f *displaySettingsFake) WorkListMode(context.Context) (settings.WorkListMode, error) {
+	return f.mode, f.err
+}
+func (f *displaySettingsFake) SetWorkListMode(_ context.Context, mode settings.WorkListMode) error {
+	f.saves++
+	if f.err != nil {
+		return f.err
+	}
+	f.mode = mode
+	return nil
 }
 func (f *displaySettingsFake) SetRegistrationFormVisible(_ context.Context, visible bool) error {
 	f.saves++
@@ -49,5 +61,27 @@ func TestDisplaySettingsDelegatesWithoutImplicitSave(t *testing.T) {
 	}
 	if repo.value.RegistrationFormVisible {
 		t.Fatal("failed save changed stored value")
+	}
+}
+
+func TestWorkListModeDelegatesAndRejectsBeforeSave(t *testing.T) {
+	ctx := context.Background()
+	repo := &displaySettingsFake{mode: settings.Cards}
+	app := NewDisplaySettings(repo)
+	if mode, err := app.LoadWorkListMode(ctx); err != nil || mode != settings.Cards || repo.saves != 0 {
+		t.Fatal(mode, err)
+	}
+	if err := app.SetWorkListMode(ctx, settings.WorkListMode("invalid")); !errors.Is(err, settings.ErrWorkListMode) || repo.saves != 0 {
+		t.Fatal(err)
+	}
+	if err := app.SetWorkListMode(ctx, settings.Rows); err != nil || repo.saves != 1 || repo.mode != settings.Rows {
+		t.Fatal(err)
+	}
+	repo.err = errors.New("failure")
+	if _, err := app.LoadWorkListMode(ctx); !errors.Is(err, repo.err) {
+		t.Fatal(err)
+	}
+	if err := app.SetWorkListMode(ctx, settings.Cards); !errors.Is(err, repo.err) || repo.mode != settings.Rows {
+		t.Fatal(err)
 	}
 }

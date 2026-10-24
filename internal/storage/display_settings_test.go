@@ -56,7 +56,7 @@ func TestInvalidDisplaySettingsAreNotRepaired(t *testing.T) {
 	}
 	defer store.Close()
 	// Simulate damaged data in an isolated test database, bypassing its CHECK only here.
-	if _, err := store.db.Exec("PRAGMA ignore_check_constraints = ON; INSERT INTO display_settings VALUES (1, 2); PRAGMA ignore_check_constraints = OFF;"); err != nil {
+	if _, err := store.db.Exec("PRAGMA ignore_check_constraints = ON; INSERT INTO display_settings(id,registration_form_visible) VALUES (1, 2); PRAGMA ignore_check_constraints = OFF;"); err != nil {
 		t.Fatal(err)
 	}
 	value, err := store.DisplaySettings(ctx)
@@ -73,7 +73,7 @@ func TestInvalidDisplaySettingsAreNotRepaired(t *testing.T) {
 	if _, err := store.db.Exec("UPDATE display_settings SET registration_form_visible = 2"); err == nil {
 		t.Fatal("CHECK must reject unknown values")
 	}
-	if _, err := store.db.Exec("INSERT INTO display_settings VALUES (2, 1)"); err == nil {
+	if _, err := store.db.Exec("INSERT INTO display_settings(id,registration_form_visible) VALUES (2, 1)"); err == nil {
 		t.Fatal("only singleton row is allowed")
 	}
 }
@@ -135,7 +135,7 @@ func TestDisplaySettingsMigrationPreservesExistingWorks(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Restore this temporary fixture to the two-migration schema used before #27.
-	if _, err := store.db.Exec("DROP TABLE display_settings; DROP TABLE managed_covers; DELETE FROM schema_migrations WHERE version IN ('003_display_settings.sql', '004_managed_covers.sql');"); err != nil {
+	if _, err := store.db.Exec("DROP TABLE display_settings; DROP TABLE managed_covers; DELETE FROM schema_migrations WHERE version IN ('003_display_settings.sql', '004_managed_covers.sql', '005_work_list_mode.sql');"); err != nil {
 		t.Fatal(err)
 	}
 	store.Close()
