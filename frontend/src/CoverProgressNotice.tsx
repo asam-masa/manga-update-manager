@@ -3,7 +3,7 @@ import {LoadCoverProgress} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import type {WorkView} from './work-display';
 
-export type CoverProgressTarget = {operationID: string; workID: number; kind: 'select' | 'remove' | 'cleanup'};
+export type CoverProgressTarget = {operationID: string; workID: number; kind: 'select' | 'remove' | 'cleanup'; title?: string};
 type Observation = {sample?: main.CoverProgressDTO; unavailable: boolean};
 const stages: Record<string, string> = {checking: '情報を確認', choosing: '画像を選択', generating: '画像を読取・生成',
     preparing: '保存領域を準備', saving: '画像を保存', waiting: '参照更新の順番待ち', updating: '保存情報を更新',
@@ -72,7 +72,7 @@ export function CoverProgressNotice({targets, works}: {targets: CoverProgressTar
         <p>画像処理の完了を待っています。処理中は終了できません。完了後にもう一度閉じてください。</p>
         {unavailable && <p>現在の処理状況を確認できません。操作の結果をお待ちください。表示がある場合は前回確認した情報です。</p>}
         <ul>{rows.map(({target, sample}) => <li key={key(target)}>
-            {target.kind === 'cleanup' ? '起動時の画像整理' : works?.find((work) => work.id === target.workID)?.title ?? `作品ID ${target.workID}`}：
+            {target.kind === 'cleanup' ? '起動時の画像整理' : target.title ?? works?.find((work) => work.id === target.workID)?.title ?? `作品ID ${target.workID}`}：
             {stages[sample.stage]}（最終確認時の経過 {Math.floor(sample.elapsedMilliseconds / 1000)}秒）
         </li>)}</ul>
         <p>処理段階は最後に確認した状態です。正常動作やフリーズの有無を保証するものではありません。</p>

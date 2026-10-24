@@ -71,9 +71,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .cover-placeholder img.cover-loading { visibility: hidden; }
 .cover-error { color: #a33424; font-size: 0.7rem; line-height: 1.5; margin: 6px 0 0; overflow-wrap: anywhere; }
 .work-details { min-width: 0; flex: 1; }
-.cover-controls { margin-top: 12px; font-size: 0.8rem; }
-.cover-controls:focus-visible { outline: 3px solid #418bac; outline-offset: 3px; }
-.cover-controls button { white-space: normal; }
 .cover-result { background: #edf7f2; color: #22664e; }
 .cover-result button { margin-top: 8px; }
 .site-name { color: #334e68; font-size: 0.8rem; margin: 6px 0 0; overflow-wrap: anywhere; }

@@ -24,6 +24,24 @@ afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLDialogElement.prototype,
 async function boot() { render(<StrictMode><App /></StrictMode>); await screen.findByRole('heading', {name: '漫画'}); }
 async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'})); await userEvent.click(screen.getByRole('button', {name: '漫画を削除'})); return screen.getByRole('dialog'); }
 
+it('複数作品の削除結果を保持し、消えた作品の通知を閉じると検索へ戻る', async () => {
+    const other = {...work, id: 2, title: '別作品'};
+    vi.mocked(ListWorks).mockResolvedValue([work, other]);
+    vi.mocked(DeleteWork).mockImplementation(async (id) => new main.DeleteWorkResult({workID: id, warnings: []}));
+    await boot();
+    const dialog = await open();
+    await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('searchbox')));
+    await userEvent.click(screen.getByRole('button', {name: '別作品の作品操作'}));
+    await userEvent.click(screen.getByRole('button', {name: '別作品を削除'}));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
+    expect(screen.getByRole('region', {name: '漫画の削除結果'})).toBeTruthy();
+    expect(screen.getByRole('region', {name: '別作品の削除結果'})).toBeTruthy();
+    await userEvent.click(within(screen.getByRole('region', {name: '漫画の削除結果'})).getByRole('button'));
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+    expect(screen.getByRole('region', {name: '別作品の削除結果'})).toBeTruthy();
+});
+
 it('対象名とURLを表示し、初期キャンセルとEscは削除せず復帰する', async () => {
     await boot(); const dialog = await open();
     expect(within(dialog).getByText(work.url)).toBeTruthy();

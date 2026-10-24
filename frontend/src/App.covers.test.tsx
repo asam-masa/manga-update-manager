@@ -75,12 +75,64 @@ it.each(['success', 'failure', 'warning', 'cancel'])('長時間案内は検索�
     });
     expect(screen.queryByRole('status', {name: '画像処理の状況'})).toBeNull();
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
+    if (outcome !== 'cancel') {
+        const notice = screen.getByRole('group', {name: '一の画像操作'});
+        expect(notice.closest('.work-list')).toBeNull();
+        expect(within(notice).getByRole('heading').textContent).toContain('一');
+    } else expect(screen.queryByRole('group', {name: '一の画像操作'})).toBeNull();
     act(() => fireEvent.change(search, {target: {value: ''}}));
     if (outcome === 'success' || outcome === 'warning') expect(screen.getByText('画像を設定しました。')).toBeTruthy();
     if (outcome === 'warning') expect(screen.getByText('解放確認が必要です。')).toBeTruthy();
     if (outcome === 'failure') expect(screen.getByText(/画像の操作結果を取得できませんでした/)).toBeTruthy();
     if (outcome === 'cancel') expect(screen.queryByText('画像を設定しました。')).toBeNull();
     expect(document.body.textContent).not.toContain('private/internal');
+});
+
+it('画像通知は別作品を操作しても保持し、非表示作品の通知を閉じると検索へ戻る', async () => {
+    vi.mocked(RemoveWorkCoverWithOperation).mockImplementation(async (id) => new main.RemoveWorkCoverResult({work: {...(id === 1 ? first : second), thumbnailPath: ''}, warnings: []}));
+    await boot();
+    await userEvent.click(remove('一'));
+    await screen.findByRole('group', {name: '一の画像操作'});
+    await userEvent.click(remove('二'));
+    await screen.findByRole('group', {name: '二の画像操作'});
+    const search = screen.getByRole('searchbox');
+    await userEvent.type(search, '二');
+    await userEvent.click(controls('一').getByRole('button'));
+    expect(document.activeElement).toBe(search);
+    expect(screen.queryByRole('group', {name: '一の画像操作'})).toBeNull();
+    expect(screen.getByRole('group', {name: '二の画像操作'})).toBeTruthy();
+    await userEvent.click(controls('二').getByRole('button'));
+    expect(screen.queryByRole('group', {name: '二の画像操作'})).toBeNull();
+    expect(document.querySelector('.work-notices')).toBeNull();
+});
+
+it('ID再利用後の遅い画像結果を別登録へ混ぜず、旧通知の復帰先を検索にする', async () => {
+    const pending = deferred<main.RemoveWorkCoverResult>();
+    vi.mocked(RemoveWorkCoverWithOperation).mockReturnValue(pending.promise);
+    const view = await boot();
+    expect(view.container.querySelector('.work-notices')).toBeNull();
+    await userEvent.click(remove('一'));
+    vi.mocked(ListWorks).mockResolvedValue([{...first, title: '別登録', createdAt: '2026-10-24T00:00:00+09:00', thumbnailPath: 'covers/replacement.png'}]);
+    await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
+    await screen.findByRole('heading', {name: '別登録'});
+    await act(async () => pending.resolve(new main.RemoveWorkCoverResult({work: {...first, thumbnailPath: ''}, warnings: []})));
+    expect(screen.getByRole('heading', {name: '別登録'})).toBeTruthy();
+    // Successful operations refresh image elements; the reference must remain set.
+    expect(view.container.querySelector('img')).not.toBeNull();
+    expect(select('別登録', '画像を変更')).toBeTruthy();
+    await userEvent.click(controls('一').getByRole('button'));
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+});
+
+it('画像APIが同じIDの別登録を返したら成功や一覧更新に使わない', async () => {
+    vi.mocked(SelectWorkCoverWithOperation).mockResolvedValue(new main.SelectWorkCoverResult({cancelled: false,
+        work: {...first, createdAt: '2026-10-24T00:00:00+09:00', thumbnailPath: 'covers/other.png'}, warnings: []}));
+    const view = await boot();
+    const image = view.container.querySelector('img');
+    await userEvent.click(select('一'));
+    expect(await screen.findByText(/画像の操作結果を取得できませんでした/)).toBeTruthy();
+    expect(screen.queryByText('画像を設定しました。')).toBeNull();
+    expect(view.container.querySelector('img')).toBe(image);
 });
 
 it('選択枠と作品枠を分け、古い通知と同一tickの二重操作を無視する', async () => {
