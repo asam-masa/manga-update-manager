@@ -1,6 +1,6 @@
 # 作品一覧の拡張設計
 
-grillingで合意した機能の振る舞いを記録する。ページ起動と最終アクセスの契約は[作品API](./work-api.md)、実装済みの登録フォーム開閉・検索・3形式の切替と復元は[画面設計](./work-screen.md)、フォーム開閉設定の保存は[ADR-0006](./adr/0006-persist-display-settings.md)を参照する。表示形式の保存APIは#235、画面の切替・復元は#252で実装する。実WebView2の一体確認は#237へ残る。タグ・並び順・更新予定と、それらの設定保持は未実装である。
+grillingで合意した機能の振る舞いを記録する。ページ起動と最終アクセスの契約は[作品API](./work-api.md)、実装済みの登録フォーム開閉・検索・3形式の切替と復元は[画面設計](./work-screen.md)、フォーム開閉設定の保存は[ADR-0006](./adr/0006-persist-display-settings.md)を参照する。表示形式の保存APIは#235、画面の切替・復元は#252、実WebView2の確認は[#237の検証記録](./verification/library-layouts.md)を参照する。タグ・並び順・更新予定と、それらの設定保持は未実装である。
 
 重要な判断の背景と選択肢は[ADR-0005](./adr/0005-define-library-behavior.md)へ分離する。作業状態と受け入れ条件はGitHub Issuesで管理し、この文書へ進捗を重複記録しない。
 
@@ -54,6 +54,10 @@ URLは1行で省略し、押すと省略前の登録URLを開く。全文確認�
 [画面サンプル](../tools/mockups/library-layout/index.html)は合成作品だけを使うHTMLで、保存・API・画像操作を接続しない。ブラウザーは比較用であり、製品を通常ブラウザーで動かす方式へ変更しない。サンプルのページ切替やメニューは製品機能の検証根拠ではない。子Issueごとに具体的な契約・依存・テストを確認してDoRを満たしてから着手し、親#44は実装・自動テスト・実WebView2確認を揃えるまで完了扱いにしない。
 
 実装は設定保存/API [#235](https://github.com/asam-masa/manga-update-manager/issues/235)、共通メニュー/通知 [#236](https://github.com/asam-masa/manga-update-manager/issues/236)、両者に依存する3形式の画面接続 [#237](https://github.com/asam-masa/manga-update-manager/issues/237)へ分ける。ページ切替 [#238](https://github.com/asam-masa/manga-update-manager/issues/238)は#44完了後の別作業とする。各Issueの進捗・追加分割はGitHubを正本とする。
+
+### 実画面での追加合意（Issue #237、2026-10-24）
+
+利用者は画像と文字の大きさを保ち、一覧の実幅に応じて列数を減らす現在の挙動を承認した。確認環境のWindows文字サイズ110%では、小型はウィンドウ幅1200pxで5列、1024pxで4列、640pxで2列だった。上記1024px横5件は比較時の基準案とし、拡大時にも固定5列を強制しない。100%との実機比較は未実施であり、110%だけを全倍率の保証としない。OS設定は変更しない。測定方法と配置・保存・処理中操作の結果は[実WebView2確認](./verification/library-layouts.md)を参照する。
 
 ## 利用者画像の取り込み
 
