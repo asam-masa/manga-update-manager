@@ -12,6 +12,8 @@ import {EditWorkDialog} from './EditWorkDialog';
 import {DeleteWorkDialog} from './DeleteWorkDialog';
 import {WorkNotices} from './WorkNotices';
 import type {WorkNotice} from './WorkNotices';
+import {useWorkListMode} from './use-work-list-mode';
+import type {WorkListMode} from './WorkList';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -71,6 +73,8 @@ function App() {
     const settingsRequest = useRef(0);
     const settingsRevision = useRef(0);
     const settingsQueue = useRef<Promise<void>>(Promise.resolve());
+    const displayMode = useWorkListMode(settingsQueue);
+    const listPanel = useRef<HTMLElement>(null);
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const composingSearch = useRef(false);
@@ -184,6 +188,11 @@ function App() {
                 if (current === settingsRequest.current && revision === settingsRevision.current) setSettingsSaving(false);
             }
         });
+    }
+
+    function changeMode(mode: WorkListMode) {
+        if (modal.current) return;
+        if (displayMode.select(mode)) listPanel.current?.scrollIntoView?.({block: 'start'});
     }
 
     async function register(event: FormEvent<HTMLFormElement>) {
@@ -305,20 +314,6 @@ function App() {
 
     return (
         <main className="app-shell">
-            <header className="app-header">
-                <div>
-                    <p className="eyebrow">Manga Update Manager</p>
-                    <h1>作品を管理</h1>
-                    <p className="description">漫画を登録して、自分の一覧にまとめましょう。</p>
-                </div>
-                <div className="header-actions">
-                    <span className="local-badge">端末内に保存</span>
-                    <button ref={toggleButton} type="button" className="secondary-button" disabled={saving || !settingsReady}
-                        aria-expanded={settingsReady && formVisible} aria-controls="registration-panel" onClick={toggleForm}>
-                        {!settingsReady ? '表示設定を読み込み中…' : formVisible ? '登録フォームを閉じる' : '作品を登録'}
-                    </button>
-                </div>
-            </header>
             {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
             {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
                 onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} onStart={(work) => clearResult('delete', work)} />}
@@ -359,18 +354,26 @@ function App() {
                         <p className="success-message" role="status">{success}</p>
                     </form>
                 </section>
-                <section className="list-panel" aria-labelledby="list-heading">
+                <section ref={listPanel} className="list-panel" aria-labelledby="list-heading">
                     <div className="list-heading">
-                        <div>
-                            <h2 id="list-heading">登録した作品{works !== null && <span className="work-count">{visibleWorks?.length}件 / 全{works.length}件</span>}</h2>
-                            <p className="section-description">登録順に表示しています。</p>
+                        <h2 id="list-heading" className="visually-hidden">登録した作品</h2>
+                        <span className="work-count" title={works === null ? '一覧を読み込み中' : `${visibleWorks?.length}件 / 全${works.length}件`}>{works === null ? '…' : `${visibleWorks?.length}件 / 全${works.length}件`}</span>
+                        <div className="mode-switch" role="group" aria-label="一覧の表示形式">
+                            {([['compact', '小型', '小型表示'], ['rows', '行一覧', '行一覧'], ['cards', 'カード', 'メモなしカード']] as const).map(([mode, label, name]) =>
+                                <button key={mode} type="button" className="secondary-button" aria-label={name} aria-pressed={displayMode.mode === mode}
+                                    disabled={!displayMode.ready} onClick={() => changeMode(mode)}>{label}</button>)}
                         </div>
-                        <button className="secondary-button" disabled={loading || saving}
-                            onClick={() => { void loadWorks(); }}>再読み込み</button>
+                        <button ref={toggleButton} type="button" className="secondary-button registration-toggle" disabled={saving || !settingsReady}
+                            aria-label={!settingsReady ? '表示設定を読み込み中…' : formVisible ? '登録フォームを閉じる' : '作品を登録'}
+                            aria-expanded={settingsReady && formVisible} aria-controls="registration-panel" onClick={toggleForm}>
+                            {!settingsReady ? '登録…' : formVisible ? '閉じる' : '登録'}
+                        </button>
+                        <button type="button" className="secondary-button reload-button" aria-label="再読み込み" title="再読み込み" disabled={loading || saving}
+                            onClick={() => { void loadWorks(); }}>↻</button>
                     </div>
                     <div className="search-controls">
-                        <label htmlFor="title-search">漫画名で検索</label>
-                        <input ref={searchElement} id="title-search" type="search" value={searchInput}
+                        <label htmlFor="title-search" className="visually-hidden">漫画名で検索</label>
+                        <input ref={searchElement} id="title-search" type="search" placeholder="漫画名で検索" value={searchInput}
                             onCompositionStart={() => { composingSearch.current = true; }}
                             onCompositionEnd={(event) => {
                                 composingSearch.current = false;
@@ -382,6 +385,9 @@ function App() {
                                 if (!composingSearch.current) setSearchQuery(event.target.value);
                             }} />
                     </div>
+                    {!displayMode.ready && <p role="status">表示形式を読み込んでいます…</p>}
+                    {displayMode.saving && <p role="status">表示形式を保存しています…</p>}
+                    {displayMode.warning && <p className="message error-message" role="alert">{displayMode.warning}</p>}
                     <CoverProgressNotice targets={progressTargets} works={works} />
                     <WorkNotices notices={notices} onDismiss={dismissNotice} />
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
@@ -396,7 +402,7 @@ function App() {
                                     <h3>検索条件に一致する作品がありません</h3>
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
-                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
+                            <WorkList mode={displayMode.mode} works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
                                 coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
                                 deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
                         </>}
