@@ -35,6 +35,7 @@
 
 ## 検証
 
+- [一覧ページ切替の検証](./verification/work-pagination.md)
 - [3形式と表示設定の実WebView2確認](./verification/library-layouts.md)
 - [公開リポジトリ監査](./verification/public-repository-audit.md)
 - [実WailsアプリへのPlaywright接続調査](./verification/webview2-playwright-spike.md)

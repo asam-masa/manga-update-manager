@@ -25,6 +25,11 @@ h3 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
 .workspace.registration-hidden { grid-template-columns: minmax(0, 1fr); }
 .search-controls { margin-top: 12px; }
 .search-controls input { margin-bottom: 0; }
+.work-pagination { margin-top: 12px; }
+.page-summary { color: #52606d; font-size: 0.75rem; margin: 0 0 6px; }
+.page-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.page-buttons button { min-width: 36px; min-height: 36px; padding: 6px 8px; }
+.page-buttons button[aria-current="page"], .page-buttons button[aria-current="page"]:hover:not(:disabled) { background: #235b77; color: #fff; }
 .registration-panel form { margin-top: 24px; }
 fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
