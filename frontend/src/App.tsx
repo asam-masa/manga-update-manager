@@ -37,6 +37,7 @@ function App() {
     const editOrigin = useRef<HTMLButtonElement | null>(null);
     const searchElement = useRef<HTMLInputElement>(null);
     const opening = useRef(new Set<number>());
+    const [accessStates, setAccessStates] = useState<Record<string, {work: WorkView; pending: boolean; error?: string}>>({});
     const editRevision = useRef(0);
     const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
     const [deleting, setDeleting] = useState<WorkView | null>(null);
@@ -207,13 +208,29 @@ function App() {
 
     async function openWork(id: number) {
         if (modal.current || opening.current.has(id) || coverActions.isPending(id)) return;
+        const work = works?.find((value) => value.id === id);
+        if (!work) return;
+        const key = identity(work);
         opening.current.add(id);
+        setAccessStates((current) => ({...current, [key]: {work, pending: true}}));
         try {
         const updated = await OpenWork(id);
         savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt, createdAt: updated.createdAt});
         // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
         setWorks((current) => current?.map((work) => identity(work) === identity(updated) ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
+        setAccessStates((current) => { const next = {...current}; delete next[key]; return next; });
+        } catch (cause: unknown) {
+            setAccessStates((current) => ({...current, [key]: {work, pending: false,
+                error: apiErrorMessage(cause, '作品を開く処理に失敗しました。再度お試しください。')}}));
         } finally { opening.current.delete(id); }
+    }
+
+    function dismissAccess(key: string) {
+        setAccessStates((current) => { const next = {...current}; delete next[key]; return next; });
+        // The menu integration in #236 will replace this temporary URL target.
+        const target = document.getElementById(`work-url-${key}`);
+        if (target instanceof HTMLButtonElement && !target.disabled) target.focus();
+        else searchElement.current?.focus();
     }
 
     function startEdit(work: WorkView, button: HTMLButtonElement) {
@@ -356,6 +373,12 @@ function App() {
                                 if (!composingSearch.current) setSearchQuery(event.target.value);
                             }} />
                     </div>
+                    {Object.entries(accessStates).map(([key, state]) => <section key={key} className={`message ${state.pending ? 'progress-message' : 'error-message'}`} aria-label={`${state.work.title}のURL操作`}>
+                        {state.pending ? <p role="status">「{state.work.title}」のページを開いています…</p> : <>
+                            <p role="alert">「{state.work.title}」：{state.error}</p>
+                            <button type="button" className="secondary-button" onClick={() => dismissAccess(key)}>「{state.work.title}」のURL操作のお知らせを閉じる</button>
+                        </>}
+                    </section>)}
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
                     {listError && <div className="message error-message" role="alert">
                         <p>{listError}</p>
@@ -368,7 +391,7 @@ function App() {
                                     <h3>検索条件に一致する作品がありません</h3>
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
-                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork}
+                            <WorkList works={visibleWorks} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
                                 coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
                                 deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
                         </>}
