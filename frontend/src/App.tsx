@@ -227,8 +227,7 @@ function App() {
 
     function dismissAccess(key: string) {
         setAccessStates((current) => { const next = {...current}; delete next[key]; return next; });
-        // The menu integration in #236 will replace this temporary URL target.
-        const target = document.getElementById(`work-url-${key}`);
+        const target = document.getElementById(`work-actions-${key}`);
         if (target instanceof HTMLButtonElement && !target.disabled) target.focus();
         else searchElement.current?.focus();
     }

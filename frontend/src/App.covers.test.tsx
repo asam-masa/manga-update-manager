@@ -1,4 +1,5 @@
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
+import {flushSync} from 'react-dom';
 import userEvent from '@testing-library/user-event';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import App from './App';
@@ -42,8 +43,13 @@ async function boot() {
     return view;
 }
 const controls = (title: string) => within(screen.getByRole('group', {name: `${title}の画像操作`}));
-const select = (title: string, label = '画像を変更') => controls(title).getByRole('button', {name: label});
-const remove = (title: string) => controls(title).getByRole('button', {name: '画像を外す'});
+const action = (title: string, label: string) => {
+    const trigger = screen.getByRole('button', {name: `${title}の作品操作`});
+    if (trigger.getAttribute('aria-expanded') !== 'true') flushSync(() => fireEvent.click(trigger));
+    return within(screen.getByRole('group', {name: `${title}の作品操作一覧`})).getByRole('button', {name: label});
+};
+const select = (title: string, label = '画像を変更') => action(title, label);
+const remove = (title: string) => action(title, '画像を外す');
 const cancelled = {cancelled: true, work: null, warnings: []} as unknown as main.SelectWorkCoverResult;
 
 it.each(['success', 'failure', 'warning', 'cancel'])('長時間案内は検索非表示でも残り、操作完了 %s で消えて既存通知へ移る', async (outcome) => {
@@ -116,7 +122,7 @@ it('別作品の解除は選択中も可能で、成功と後処理警告を分�
     expect(screen.getByText('旧画像の後処理を確認できませんでした。')).toBeTruthy();
     expect(select('二', '画像を設定').hasAttribute('disabled')).toBe(true);
     await userEvent.click(controls('二').getByRole('button', {name: '画像操作のお知らせを閉じる'}));
-    expect(document.activeElement).toBe(screen.getByRole('group', {name: '二の画像操作'}));
+    expect(document.activeElement).toBe(screen.getByRole('button', {name: '二の作品操作'}));
     await act(async () => a.resolve(cancelled));
 });
 
@@ -160,7 +166,7 @@ it('解除失敗では設定済み操作を維持し、生の内部エラーを�
     await userEvent.click(remove('一'));
     expect(await screen.findByText('画像機能を利用できません。再起動してください。')).toBeTruthy();
     await userEvent.click(controls('一').getByRole('button', {name: '画像操作のお知らせを閉じる'}));
-    expect(document.activeElement).toBe(select('一'));
+    expect(document.activeElement).toBe(screen.getByRole('button', {name: '一の作品操作'}));
 });
 
 it('同作品の次の選択を前回の遅延通知では解除せず、アンマウント時に購読を解除する', async () => {

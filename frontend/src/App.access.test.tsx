@@ -78,7 +78,7 @@ it('別作品の失敗通知を保持し、同じ作品の再操作だけで更�
     expect(screen.queryByRole('region', {name: '作品のURL操作'})).toBeNull();
     const remaining = screen.getByRole('region', {name: '別作品のURL操作'});
     await userEvent.click(within(remaining).getByRole('button'));
-    expect(document.activeElement).toBe(screen.getByRole('button', {name: '別作品のURLを開く'}));
+    expect(document.activeElement).toBe(screen.getByRole('button', {name: '別作品の作品操作'}));
 });
 
 it('再利用されたIDの新しい登録へ処理状態と遅い日時応答を混ぜない', async () => {

@@ -18,11 +18,12 @@ describe('作品URL操作', () => {
         expect(open).toHaveBeenCalledExactlyOnceWith(1);
         expect(screen.getByRole('heading').tagName).toBe('H3');
     });
-    it('Appから渡された処理状態でカード再表示直後もURLと編集・削除を無効にする', () => {
+    it('Appから渡された処理状態でカード再表示直後もURLと編集・削除を無効にする', async () => {
         const props = {works: [work], showEmpty: true, onOpen: vi.fn(), coversReady: true, coverRevision: 0,
             editing: {onEdit: vi.fn(), stopped: false}, deleting: {onDelete: vi.fn(), stopped: false}};
         const view = render(<WorkList {...props} isOpening={() => true} />);
-        expect(screen.getAllByRole('button').every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+        await userEvent.click(screen.getByRole('button', {name: '作品の作品操作'}));
+        expect(['作品のURLを開く', '作品を編集', '作品を削除'].every((name) => (screen.getByRole('button', {name}) as HTMLButtonElement).disabled)).toBe(true);
         expect(screen.queryByRole('status')).toBeNull();
         view.rerender(<WorkList {...props} isOpening={() => false} />);
         expect(screen.getAllByRole('button').every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
