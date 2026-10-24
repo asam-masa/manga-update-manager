@@ -1,12 +1,12 @@
-import {useRef, useState} from 'react';
-import {apiErrorMessage, registrationDate} from './work-display';
+import {useState} from 'react';
+import {registrationDate} from './work-display';
 import type {WorkView} from './work-display';
 import type {CoverActions} from './use-cover-actions';
 
 type Editing = {onEdit: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
 type Deleting = {onDelete: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
 
-export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing, deleting}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting}) {
+export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing, deleting, isOpening}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting; isOpening?: (work: WorkView) => boolean}) {
     if (works.length === 0) {
         return showEmpty ? <div className="empty-state">
             <div className="empty-book" aria-hidden="true">本</div>
@@ -15,41 +15,27 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
         </div> : null;
     }
     return <ul className="work-list" aria-label="作品一覧">
-        {works.map((work) => <WorkCard key={`${work.id}:${work.createdAt}`} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} deleting={deleting} />)}
+        {works.map((work) => <WorkCard key={`${work.id}:${work.createdAt}`} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} deleting={deleting} opening={isOpening?.(work) ?? false} />)}
     </ul>;
 }
 
-function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editing, deleting}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting}) {
-    const pending = useRef(false);
-    const [opening, setOpening] = useState(false);
-    const [error, setError] = useState('');
-    async function open() {
-        if (pending.current || coverActions?.isPending(work.id)) return;
-        pending.current = true;
-        setOpening(true);
-        setError('');
-        try { await onOpen(work.id); }
-        catch (cause: unknown) { setError(apiErrorMessage(cause, '作品を開く処理に失敗しました。再度お試しください。')); }
-        finally { pending.current = false; setOpening(false); }
-    }
+function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editing, deleting, opening}: {work: WorkView; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting; opening: boolean}) {
     return <li className="work-card">
             <WorkCover key={`${work.thumbnailPath}:${coverRevision}`} id={work.id} enabled={coversReady && work.thumbnailPath !== ''} />
             <div className="work-details">
                 <h3>{work.title}</h3>
                 {work.siteName && <p className="site-name">{work.siteName}</p>}
-                <button type="button" className="work-url" title={work.url} disabled={opening || coverActions?.states[work.id]?.pending}
-                    aria-label={`${work.title}のURLを開く`} onClick={() => { void open(); }}>{work.url}</button>
-                {opening && <p role="status">ページを開いています…</p>}
+                <button id={`work-url-${JSON.stringify([work.id, work.createdAt])}`} type="button" className="work-url" title={work.url} disabled={opening || coverActions?.states[work.id]?.pending}
+                    aria-label={`${work.title}のURLを開く`} onClick={() => { void onOpen(work.id); }}>{work.url}</button>
                 {work.notes && <p className="work-notes">{work.notes}</p>}
                 <p className="registered-at">登録 <time dateTime={work.createdAt}>{registrationDate(work.createdAt)}</time>（日本時間）</p>
                 <p className="registered-at">最終アクセス {work.lastAccessedAt == null ? '未アクセス' :
                     <><time dateTime={work.lastAccessedAt}>{registrationDate(work.lastAccessedAt)}</time>（日本時間）</>}</p>
                 {editing && <button type="button" className="secondary-button edit-button" disabled={opening || coverActions?.states[work.id]?.pending || editing.stopped}
-                    aria-label={`${work.title}を編集`} onClick={(event) => { if (!pending.current) editing.onEdit(work, event.currentTarget); }}>編集</button>}
+                    aria-label={`${work.title}を編集`} onClick={(event) => { if (!opening) editing.onEdit(work, event.currentTarget); }}>編集</button>}
                 {deleting && <button type="button" className="secondary-button edit-button" disabled={opening || coverActions?.states[work.id]?.pending || deleting.stopped}
-                    aria-label={`${work.title}を削除`} onClick={(event) => { if (!pending.current) deleting.onDelete(work, event.currentTarget); }}>削除</button>}
+                    aria-label={`${work.title}を削除`} onClick={(event) => { if (!opening) deleting.onDelete(work, event.currentTarget); }}>削除</button>}
                 {coverActions && <CoverControls work={work} ready={coversReady && !opening} actions={coverActions} />}
-                {error && <p className="message error-message" role="alert">{error}</p>}
             </div>
         </li>;
 }

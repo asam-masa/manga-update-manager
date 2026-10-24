@@ -1,4 +1,4 @@
-import {act, fireEvent, render, screen} from '@testing-library/react';
+import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi} from 'vitest';
 import {WorkList} from './WorkList';
@@ -18,31 +18,13 @@ describe('作品URL操作', () => {
         expect(open).toHaveBeenCalledExactlyOnceWith(1);
         expect(screen.getByRole('heading').tagName).toBe('H3');
     });
-    it.each(['browser_open_failed', 'access_save_failed', 'database_stopped'])('失敗 %s で既存日時を残す', async (code) => {
-        render(<WorkList works={[{...work, lastAccessedAt: '2026-10-08T12:34:56+09:00'}]} showEmpty coversReady coverRevision={0}
-            onOpen={vi.fn().mockRejectedValue({code, message: '起動または保存を確認してください'})} />);
-        await userEvent.click(screen.getByRole('button'));
-        expect((await screen.findByRole('alert')).textContent).toContain('確認してください');
-        expect(screen.getByText('2026/10/08 12:34:56')).toBeTruthy();
-    });
-    it('起動後のDB停止はページを開いた案内と旧日時を残し、自動再起動しない', async () => {
-        const open = vi.fn().mockRejectedValue({code: 'access_save_failed', message: 'ページを開きましたが、最終アクセス日時の保存を確認できません。アプリを再起動して状態を確認してください。'});
-        render(<WorkList works={[work]} showEmpty onOpen={open} coversReady coverRevision={0} />);
-        await userEvent.click(screen.getByRole('button'));
-        expect((await screen.findByRole('alert')).textContent).toContain('ページを開きました');
-        expect(screen.getByText(/未アクセス/)).toBeTruthy();
-        expect(open).toHaveBeenCalledTimes(1);
-    });
-
-    it('処理中は同じ作品を二重起動しない', async () => {
-        let done!: () => void;
-        const open = vi.fn(() => new Promise<void>((resolve) => { done = resolve; }));
-        render(<WorkList works={[work]} showEmpty onOpen={open} coversReady coverRevision={0} />);
-        fireEvent.click(screen.getByRole('button'));
-        fireEvent.click(screen.getByRole('button'));
-        expect(open).toHaveBeenCalledTimes(1);
-        expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(true);
-        await act(async () => { done(); });
-        expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(false);
+    it('Appから渡された処理状態でカード再表示直後もURLと編集・削除を無効にする', () => {
+        const props = {works: [work], showEmpty: true, onOpen: vi.fn(), coversReady: true, coverRevision: 0,
+            editing: {onEdit: vi.fn(), stopped: false}, deleting: {onDelete: vi.fn(), stopped: false}};
+        const view = render(<WorkList {...props} isOpening={() => true} />);
+        expect(screen.getAllByRole('button').every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+        expect(screen.queryByRole('status')).toBeNull();
+        view.rerender(<WorkList {...props} isOpening={() => false} />);
+        expect(screen.getAllByRole('button').every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
     });
 });
