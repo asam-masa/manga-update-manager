@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/manga"
+	"github.com/asam-masa/manga-update-manager/internal/settings"
 	"modernc.org/sqlite"
 )
 
@@ -39,6 +40,8 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 		"delete":         func() error { _, err := s.DeleteWork(ctx, w.ID, deleteInput(w)); return err },
 		"settings-read":  func() error { _, err := s.DisplaySettings(ctx); return err },
 		"settings-write": func() error { return s.SetRegistrationFormVisible(ctx, false) },
+		"mode-read":      func() error { _, err := s.WorkListMode(ctx); return err },
+		"mode-write":     func() error { return s.SetWorkListMode(ctx, settings.Rows) },
 		"reserve":        func() error { return s.ReserveManagedCover(ctx, testCoverID) },
 		"confirm":        func() error { return s.ConfirmManagedCover(ctx, testCoverID, ManagedCoverInfo{ByteSize: 1}) },
 		"managed-get":    func() error { _, err := s.ManagedCoverByID(ctx, testCoverID); return err },
@@ -155,7 +158,7 @@ func TestCloseDrainsExistingLease(t *testing.T) {
 		t.Fatalf("closed with active lease: %v", err)
 	default:
 	}
-	if _, err := conn.ExecContext(ctx, "INSERT INTO display_settings VALUES(1,1)"); err != nil {
+	if _, err := conn.ExecContext(ctx, "INSERT INTO display_settings(id,registration_form_visible) VALUES(1,1)"); err != nil {
 		t.Fatal(err)
 	}
 	finish(&err)

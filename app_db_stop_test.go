@@ -52,6 +52,12 @@ func (r failedDisplayRepository) DisplaySettings(context.Context) (settings.Disp
 func (r failedDisplayRepository) SetRegistrationFormVisible(context.Context, bool) error {
 	return r.failure
 }
+func (r failedDisplayRepository) WorkListMode(context.Context) (settings.WorkListMode, error) {
+	return settings.Cards, r.failure
+}
+func (r failedDisplayRepository) SetWorkListMode(context.Context, settings.WorkListMode) error {
+	return r.failure
+}
 
 func TestDisplayFailureCodesDistinguishStop(t *testing.T) {
 	for _, stopped := range []bool{false, true} {

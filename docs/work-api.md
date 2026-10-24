@@ -91,6 +91,19 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 ## 検証と制約
 
+### 表示形式の専用API（Issue #235）
+
+| API | 入力 | 正常結果 |
+| --- | --- | --- |
+| `LoadWorkListMode` | なし | `compact`/`rows`/`cards`の文字列。未登録は`cards` |
+| `SetWorkListMode` | 同じ3値の文字列 | void。変更した表示形式だけを保存 |
+
+フォーム専用の既存`LoadDisplaySettings`とDTOは維持し、未知の表示形式でフォームの読込まで失敗させない。読取の未知値・利用不能・失敗は`settings_read_failed`でrejectし、通常の案内はメモなしカードでの続行を示す。保存失敗・利用不能は`settings_save_failed`、不正な入力形式は`invalid_input`。両操作ともStoreの`ErrDBStopped`は`database_stopped`を優先し画像側にも停止を通知する。内部診断は返さない。失敗時のAPI戻り値は保存済み値として使わない。
+
+既存SQLiteの設定列追加と項目単位UPSERTを使い、全設定の一括更新や自動修復は追加しない。画面は#237で切替を即反映し、保存要求を操作順に一つずつ送る。APIは同時到着した要求をUI操作順に並べ替えるものではない。フォームの開閉と表示形式が互いを上書きしないことと、同じ形式の連続保存の順序は別の責務である。
+
+一時SQLiteで未登録・3値保存・双方向の項目保持・旧4移行からの追加・再接続・未知値の非修復・CHECK・書込拒否・読取不能・取消・DB停止を確認する。ApplicationとAppで不正入力、再起動相当の再接続、安全なコード/メッセージを確認する。画面はまだ専用APIを呼ばず、初期復元・警告UI・連続操作の順序・実WebView2の検証は#237へ残す。ADR-0005のPendingを維持し、既存ADR-0006のVerifiedを新しい表示形式の検証へ流用しない。
+
 Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。#213で編集API、#215で編集UIも接続した。[画面検証の範囲](./verification/work-edit-dialog.md)はAPIの自動試験と区別する。
 
 ### 編集API（Issue #213）
