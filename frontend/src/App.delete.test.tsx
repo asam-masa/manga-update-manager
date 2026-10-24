@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal'); Reflect.deleteProperty(HTMLDialogElement.prototype, 'close'); });
 async function boot() { render(<StrictMode><App /></StrictMode>); await screen.findByRole('heading', {name: '漫画'}); }
-async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画を削除'})); return screen.getByRole('dialog'); }
+async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'})); await userEvent.click(screen.getByRole('button', {name: '漫画を削除'})); return screen.getByRole('dialog'); }
 
 it('対象名とURLを表示し、初期キャンセルとEscは削除せず復帰する', async () => {
     await boot(); const dialog = await open();
@@ -30,7 +30,7 @@ it('対象名とURLを表示し、初期キャンセルとEscは削除せず復�
     expect(document.activeElement).toBe(within(dialog).getByRole('button', {name: 'キャンセル'}));
     fireEvent(dialog, new Event('cancel', {cancelable: true}));
     expect(DeleteWork).not.toHaveBeenCalled(); expect(screen.queryByRole('dialog')).toBeNull();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画を削除'})));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
 });
 
 it('5項目だけを一度送信し処理中の連打・Escを防ぎ、検索保持と警告・フォーカスを残す', async () => {
@@ -105,6 +105,7 @@ it.each(['work_delete_outcome_unknown', 'transport', 'invalid-result'])('結果�
     fireEvent.click(within(dialog).getByRole('button', {name:'削除する'})); expect(DeleteWork).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).not.toContain('private diagnostic');
     await userEvent.click(within(dialog).getByRole('button', {name:'閉じる'}));
+    await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'}));
     expect((screen.getByRole('button', {name:'漫画を削除'}) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', {name:'漫画を編集'}) as HTMLButtonElement).disabled).toBe(true);
 });

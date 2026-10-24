@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal'); Reflect.deleteProperty(HTMLDialogElement.prototype, 'close'); });
 async function boot() { render(<StrictMode><App /></StrictMode>); await screen.findByRole('heading', {name: '漫画'}); }
-async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画を編集'})); return screen.getByRole('dialog'); }
+async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'})); await userEvent.click(screen.getByRole('button', {name: '漫画を編集'})); return screen.getByRole('dialog'); }
 const field = (dialog: HTMLElement, label: RegExp) => within(dialog).getByLabelText(label) as HTMLInputElement;
 
 it('キャンセルは保存せず入力を破棄し、再度開くと保存済みの値になる', async () => {
@@ -33,7 +33,7 @@ it('キャンセルは保存せず入力を破棄し、再度開くと保存済�
     await userEvent.type(field(dialog, /タイトル/), '入力');
     await userEvent.click(within(dialog).getByRole('button', {name: 'キャンセル'}));
     expect(screen.queryByRole('dialog')).toBeNull(); expect(EditWork).not.toHaveBeenCalled();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画を編集'})));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
     expect(field(await open(), /タイトル/).value).toBe('漫画');
 });
 
@@ -69,6 +69,7 @@ it('結果不明は入力を残して再保存を止め、閉じた後も編集�
     expect(field(dialog, /作品URL/).value).toBe(work.url);
     fireEvent.submit(dialog.querySelector('form')!); expect(EditWork).toHaveBeenCalledTimes(1);
     await userEvent.click(within(dialog).getByRole('button', {name: '閉じる'}));
+    await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'}));
     expect((screen.getByRole('button', {name: '漫画を編集'}) as HTMLButtonElement).disabled).toBe(true);
 });
 
