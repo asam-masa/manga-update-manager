@@ -57,7 +57,8 @@ describe('作品管理画面', () => {
         expect(within(items[0]).getByRole('heading').textContent).toBe(work.title);
         expect(within(items[1]).getByRole('heading').textContent).toContain('<img');
         expect(items[1].querySelector('img, script, a')).toBeNull();
-        expect(screen.getAllByText('2026/10/06 03:30:00')).toHaveLength(2);
+        expect(screen.queryByText('2026/10/06 03:30:00')).toBeNull();
+        expect(screen.getAllByText(/未アクセス/)).toHaveLength(2);
         expect(within(items[0]).getByText('漫画サイト')).toBeTruthy();
     });
 
