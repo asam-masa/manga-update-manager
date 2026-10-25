@@ -5,7 +5,7 @@ import {StrictMode} from 'react';
 import App from './App';
 import {LoadCoverWarnings, ListWorks, LoadCoverProgress} from '../wailsjs/go/main/App';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
 let frames: Map<number, FrameRequestCallback>;
 beforeEach(() => {
     frames = new Map();

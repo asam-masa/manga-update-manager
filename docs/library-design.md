@@ -1,6 +1,6 @@
 # 作品一覧の拡張設計
 
-grillingで合意した機能の振る舞いを記録する。ページ起動と最終アクセスの契約は[作品API](./work-api.md)、実装済みの登録フォーム開閉・検索・3形式の切替と復元は[画面設計](./work-screen.md)、フォーム開閉設定の保存は[ADR-0006](./adr/0006-persist-display-settings.md)を参照する。表示形式の保存APIは#235、画面の切替・復元は#252、実WebView2の確認は[#237の検証記録](./verification/library-layouts.md)を参照する。並び順の保存APIは#257で追加したが、画面の選択・復元・整列は未接続である。タグ・更新予定と、それらの設定保持は未実装である。
+grillingで合意した機能の振る舞いを記録する。ページ起動と最終アクセスの契約は[作品API](./work-api.md)、実装済みの登録フォーム開閉・検索・3形式の切替と復元は[画面設計](./work-screen.md)、フォーム開閉設定の保存は[ADR-0006](./adr/0006-persist-display-settings.md)を参照する。表示形式の保存APIは#235、画面の切替・復元は#252、実WebView2の確認は[#237の検証記録](./verification/library-layouts.md)を参照する。並び順は#257の保存APIを#258で画面へ接続する。タグ・更新予定と、それらの設定保持は未実装である。
 
 重要な判断の背景と選択肢は[ADR-0005](./adr/0005-define-library-behavior.md)へ分離する。作業状態と受け入れ条件はGitHub Issuesで管理し、この文書へ進捗を重複記録しない。
 
@@ -119,7 +119,7 @@ Issue #26のgrillingで、次を合意した。
 
 ### 基本並び順の合意（Issue #29、2026-10-25）
 
-以下は利用者が承認した仕様である。設計記録は[#256](https://github.com/asam-masa/manga-update-manager/issues/256)、保存APIは[#257](https://github.com/asam-masa/manga-update-manager/issues/257)、画面接続と実機確認は[#258](https://github.com/asam-masa/manga-update-manager/issues/258)へ分ける。#257で[専用の保存・取得API](./work-api.md#並び順の専用apiissue-257)を追加したが、画面の選択・復元・整列はまだ未接続である。
+以下は利用者が承認した仕様である。設計記録は[#256](https://github.com/asam-masa/manga-update-manager/issues/256)、保存APIは[#257](https://github.com/asam-masa/manga-update-manager/issues/257)、画面接続と実機確認は[#258](https://github.com/asam-masa/manga-update-manager/issues/258)へ分ける。[専用の保存・取得API](./work-api.md#並び順の専用apiissue-257)と、#258の[画面接続](./work-screen.md#基本並び順の画面接続issue-258)は別の検証範囲とする。
 
 | 種類 | 昇順 | 降順 |
 | --- | --- | --- |

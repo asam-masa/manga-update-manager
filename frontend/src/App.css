@@ -23,8 +23,9 @@ h3 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
 .section-description { color: #52606d; font-size: 0.875rem; line-height: 1.7; margin: 8px 0 0; }
 .workspace { align-items: start; display: grid; gap: 24px; grid-template-columns: 300px minmax(0, 1fr); }
 .workspace.registration-hidden { grid-template-columns: minmax(0, 1fr); }
-.search-controls { margin-top: 12px; }
-.search-controls input { margin-bottom: 0; }
+.search-controls { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.search-controls input { margin-bottom: 0; flex: 1 1 180px; min-width: 0; }
+.search-controls select { background: #fff; border: 1px solid #acb8c4; border-radius: 6px; color: inherit; padding: 10px; min-height: 40px; max-width: 100%; }
 .work-pagination { margin-top: 12px; }
 .page-summary { color: #52606d; font-size: 0.75rem; margin: 0 0 6px; }
 .page-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
