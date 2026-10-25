@@ -18,6 +18,8 @@ export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
 export function LoadWorkListMode():Promise<string>;
 
+export function LoadWorkSort():Promise<string>;
+
 export function OpenWork(arg1:number):Promise<main.WorkDTO>;
 
 export function RemoveWorkCover(arg1:number):Promise<main.RemoveWorkCoverResult>;
@@ -31,5 +33,7 @@ export function SelectWorkCoverWithOperation(arg1:number,arg2:string):Promise<ma
 export function SetRegistrationFormVisible(arg1:boolean):Promise<void>;
 
 export function SetWorkListMode(arg1:string):Promise<void>;
+
+export function SetWorkSort(arg1:string):Promise<void>;
 
 export function Status():Promise<string>;

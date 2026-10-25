@@ -13,10 +13,23 @@ type displaySettingsFake struct {
 	err   error
 	saves int
 	mode  settings.WorkListMode
+	order settings.WorkSort
 }
 
 func (f *displaySettingsFake) DisplaySettings(context.Context) (settings.Display, error) {
 	return f.value, f.err
+}
+
+func (f *displaySettingsFake) WorkSort(context.Context) (settings.WorkSort, error) {
+	return f.order, f.err
+}
+func (f *displaySettingsFake) SetWorkSort(_ context.Context, order settings.WorkSort) error {
+	f.saves++
+	if f.err != nil {
+		return f.err
+	}
+	f.order = order
+	return nil
 }
 func (f *displaySettingsFake) WorkListMode(context.Context) (settings.WorkListMode, error) {
 	return f.mode, f.err
@@ -82,6 +95,28 @@ func TestWorkListModeDelegatesAndRejectsBeforeSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := app.SetWorkListMode(ctx, settings.Cards); !errors.Is(err, repo.err) || repo.mode != settings.Rows {
+		t.Fatal(err)
+	}
+}
+
+func TestWorkSortDelegatesAndRejectsBeforeSave(t *testing.T) {
+	ctx := context.Background()
+	repo := &displaySettingsFake{order: settings.RegistrationAsc}
+	app := NewDisplaySettings(repo)
+	if got, err := app.LoadWorkSort(ctx); err != nil || got != settings.RegistrationAsc || repo.saves != 0 {
+		t.Fatal(got, err)
+	}
+	if err := app.SetWorkSort(ctx, settings.WorkSort("invalid")); !errors.Is(err, settings.ErrWorkSort) || repo.saves != 0 {
+		t.Fatal(err)
+	}
+	if err := app.SetWorkSort(ctx, settings.TitleAsc); err != nil || repo.saves != 1 || repo.order != settings.TitleAsc {
+		t.Fatal(err)
+	}
+	repo.err = errors.New("failure")
+	if _, err := app.LoadWorkSort(ctx); !errors.Is(err, repo.err) {
+		t.Fatal(err)
+	}
+	if err := app.SetWorkSort(ctx, settings.TitleDesc); !errors.Is(err, repo.err) || repo.order != settings.TitleAsc {
 		t.Fatal(err)
 	}
 }

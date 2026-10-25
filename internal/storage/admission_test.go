@@ -42,6 +42,8 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 		"settings-write": func() error { return s.SetRegistrationFormVisible(ctx, false) },
 		"mode-read":      func() error { _, err := s.WorkListMode(ctx); return err },
 		"mode-write":     func() error { return s.SetWorkListMode(ctx, settings.Rows) },
+		"sort-read":      func() error { _, err := s.WorkSort(ctx); return err },
+		"sort-write":     func() error { return s.SetWorkSort(ctx, settings.TitleAsc) },
 		"reserve":        func() error { return s.ReserveManagedCover(ctx, testCoverID) },
 		"confirm":        func() error { return s.ConfirmManagedCover(ctx, testCoverID, ManagedCoverInfo{ByteSize: 1}) },
 		"managed-get":    func() error { _, err := s.ManagedCoverByID(ctx, testCoverID); return err },

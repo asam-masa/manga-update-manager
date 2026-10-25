@@ -77,7 +77,7 @@ func TestManagedCoverMigrationPreservesExistingData(t *testing.T) {
 	if err := store.db.QueryRow("SELECT count(*) FROM managed_covers").Scan(&count); err != nil || count != 0 {
 		t.Fatalf("legacy paths enrolled: %d %v", count, err)
 	}
-	if err := store.db.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 5 {
+	if err := store.db.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 6 {
 		t.Fatalf("migration count: %d %v", count, err)
 	}
 	var integrity string
