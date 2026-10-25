@@ -62,6 +62,7 @@ export namespace main {
 	    siteName: string;
 	    notes: string;
 	    thumbnailPath: string;
+	    scheduledDate: string;
 
 	    static createFrom(source: any = {}) {
 	        return new DeleteWorkInput(source);
@@ -74,6 +75,7 @@ export namespace main {
 	        this.siteName = source["siteName"];
 	        this.notes = source["notes"];
 	        this.thumbnailPath = source["thumbnailPath"];
+	        this.scheduledDate = source["scheduledDate"];
 	    }
 	}
 	export class WorkWarningDTO {
@@ -139,6 +141,7 @@ export namespace main {
 	    title: string;
 	    siteName: string;
 	    notes: string;
+	    scheduledDate?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new EditWorkInput(source);
@@ -150,6 +153,7 @@ export namespace main {
 	        this.title = source["title"];
 	        this.siteName = source["siteName"];
 	        this.notes = source["notes"];
+	        this.scheduledDate = source["scheduledDate"];
 	    }
 	}
 	export class WorkDTO {
@@ -162,6 +166,7 @@ export namespace main {
 	    createdAt: string;
 	    updatedAt: string;
 	    lastAccessedAt?: string;
+	    scheduledDate?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new WorkDTO(source);
@@ -178,6 +183,7 @@ export namespace main {
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	        this.lastAccessedAt = source["lastAccessedAt"];
+	        this.scheduledDate = source["scheduledDate"];
 	    }
 	}
 	export class EditWorkResult {

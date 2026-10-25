@@ -13,6 +13,8 @@ type EditWorkInput struct {
 	Title    string `json:"title"`
 	SiteName string `json:"siteName"`
 	Notes    string `json:"notes"`
+	// nil (including JSON null) preserves the date; an explicit empty string clears it.
+	ScheduledDate *string `json:"scheduledDate"`
 }
 
 type WorkWarningDTO struct {
@@ -39,7 +41,15 @@ func (a *App) EditWork(id int64, input EditWorkInput) (EditWorkResult, error) {
 		return EditWorkResult{}, &APIError{Code: "work_busy", Message: "この作品は処理中です。処理が終わってから、もう一度保存してください。"}
 	}
 	defer end()
-	work, err := a.editor.EditWork(a.ctx, id, manga.EditWorkInput{URL: input.URL, Title: input.Title, SiteName: input.SiteName, Notes: input.Notes})
+	edit := manga.EditWorkInput{URL: input.URL, Title: input.Title, SiteName: input.SiteName, Notes: input.Notes}
+	if input.ScheduledDate != nil {
+		date := manga.ScheduledDate(*input.ScheduledDate)
+		if err := date.Validate(); err != nil {
+			return EditWorkResult{}, &APIError{Code: "invalid_input", Message: err.Error()}
+		}
+		edit.ScheduledDate = &date
+	}
+	work, err := a.editor.EditWork(a.ctx, id, edit)
 	a.coverOperations.ObserveError(err)
 	if errors.Is(err, storage.ErrWorkEditOutcomeUnknown) {
 		return EditWorkResult{}, &APIError{Code: "work_edit_outcome_unknown", Message: "作品情報の保存結果を確認できません。入力を控え、アプリを再起動して状態を確認してください。新たなデータの読み書きを停止しています。"}

@@ -14,7 +14,11 @@ import (
 )
 
 func deleteSnapshot(w WorkDTO) DeleteWorkInput {
-	return DeleteWorkInput{URL: w.URL, Title: w.Title, SiteName: w.SiteName, Notes: w.Notes, ThumbnailPath: w.ThumbnailPath}
+	date := ""
+	if w.ScheduledDate != nil {
+		date = *w.ScheduledDate
+	}
+	return DeleteWorkInput{URL: w.URL, Title: w.Title, SiteName: w.SiteName, Notes: w.Notes, ThumbnailPath: w.ThumbnailPath, ScheduledDate: date}
 }
 
 func TestAppDeleteWorkLifecycle(t *testing.T) {

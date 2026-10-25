@@ -51,18 +51,40 @@ it('対象名とURLを表示し、初期キャンセルとEscは削除せず復�
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
 });
 
-it('5項目だけを一度送信し処理中の連打・Escを防ぎ、検索保持と警告・フォーカスを残す', async () => {
+it('予定日を含む確認項目を一度送信し処理中の連打・Escを防ぎ、検索保持と警告・フォーカスを残す', async () => {
     const pending = deferred<main.DeleteWorkResult>(); vi.mocked(DeleteWork).mockReturnValue(pending.promise);
     await boot(); const search = screen.getByRole('searchbox'); await userEvent.type(search, '漫画');
     const dialog = await open(); const remove = within(dialog).getByRole('button', {name: '削除する'});
     act(() => { fireEvent.click(remove); fireEvent.click(remove); fireEvent(dialog, new Event('cancel', {cancelable: true})); });
-    expect(DeleteWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, thumbnailPath: ''});
+    expect(DeleteWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, thumbnailPath: '', scheduledDate: ''});
     expect((within(dialog).getByRole('button', {name: 'キャンセル'}) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => pending.resolve(new main.DeleteWorkResult({workID: 1, warnings: [{code: 'cover_cleanup_failed', message: '画像整理は未完了です。'}]})));
     expect(screen.queryByRole('dialog')).toBeNull(); expect(screen.queryByRole('heading', {name: '漫画'})).toBeNull();
     expect(screen.getByText('「漫画」を削除しました。')).toBeTruthy(); expect(screen.getByText('画像整理は未完了です。')).toBeTruthy();
     expect((search as HTMLInputElement).value).toBe('漫画');
     await waitFor(() => expect(document.activeElement).toBe(search));
+});
+
+it('予定日だけが変わった削除確認も再読み込みし、最新の日付で明示的に再確認する', async () => {
+    vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: '2026-10-30'}]); await boot();
+    const dialog = await open(); vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: '2026-11-01'}]);
+    vi.mocked(DeleteWork).mockRejectedValueOnce({code: 'work_changed', message: '確認後の変更'})
+        .mockResolvedValueOnce(new main.DeleteWorkResult({workID: 1, warnings: []}));
+    await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    await within(dialog).findByText(/作品情報が変わりました/);
+    expect(DeleteWork).toHaveBeenCalledTimes(1); expect(vi.mocked(DeleteWork).mock.calls[0][1].scheduledDate).toBe('2026-10-30');
+    await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    expect(vi.mocked(DeleteWork).mock.calls[1][1].scheduledDate).toBe('2026-11-01');
+});
+
+it('再確認応答の予定日が不正な型なら削除を再送しない', async () => {
+    await boot(); const dialog = await open();
+    vi.mocked(DeleteWork).mockRejectedValueOnce({code: 'work_changed', message: '確認後の変更'});
+    vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: 123} as unknown as main.WorkDTO]);
+    await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    await within(dialog).findByText(/最新の作品情報を取得できません/);
+    fireEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    expect(DeleteWork).toHaveBeenCalledTimes(1);
 });
 
 it('削除前の一覧応答が遅れても作品が再出現しない', async () => {
@@ -92,7 +114,7 @@ it('対象変更では最新名とURLへ更新し、自動再送せず再確認�
     const dialog = await open(); await userEvent.click(within(dialog).getByRole('button', {name:'削除する'}));
     expect(await within(dialog).findByText(latest.url)).toBeTruthy(); expect(DeleteWork).toHaveBeenCalledTimes(1);
     await userEvent.click(within(dialog).getByRole('button', {name:'削除する'}));
-    expect(vi.mocked(DeleteWork).mock.calls[1][1]).toEqual({url:latest.url, title:latest.title, siteName:work.siteName, notes:work.notes, thumbnailPath:''});
+    expect(vi.mocked(DeleteWork).mock.calls[1][1]).toEqual({url:latest.url, title:latest.title, siteName:work.siteName, notes:work.notes, thumbnailPath:'', scheduledDate:''});
 });
 
 it('再確認の取得失敗では削除不可とし、再読込またはキャンセルできる', async () => {

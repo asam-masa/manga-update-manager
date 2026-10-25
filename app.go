@@ -197,10 +197,16 @@ type WorkDTO struct {
 	CreatedAt      string  `json:"createdAt"`
 	UpdatedAt      string  `json:"updatedAt"`
 	LastAccessedAt *string `json:"lastAccessedAt"`
+	ScheduledDate  *string `json:"scheduledDate"`
 }
 
 func workDTO(work manga.Work) WorkDTO {
 	var accessed *string
+	var scheduled *string
+	if work.ScheduledDate != "" {
+		value := string(work.ScheduledDate)
+		scheduled = &value
+	}
 	if work.LastAccessedAt != nil {
 		value := platform.InJapan(*work.LastAccessedAt).Format(time.RFC3339Nano)
 		accessed = &value
@@ -211,6 +217,7 @@ func workDTO(work manga.Work) WorkDTO {
 		CreatedAt:      platform.InJapan(work.CreatedAt).Format(time.RFC3339Nano),
 		UpdatedAt:      platform.InJapan(work.UpdatedAt).Format(time.RFC3339Nano),
 		LastAccessedAt: accessed,
+		ScheduledDate:  scheduled,
 	}
 }
 

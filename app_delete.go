@@ -15,6 +15,7 @@ type DeleteWorkInput struct {
 	SiteName      string `json:"siteName"`
 	Notes         string `json:"notes"`
 	ThumbnailPath string `json:"thumbnailPath"`
+	ScheduledDate string `json:"scheduledDate"`
 }
 
 type DeleteWorkResult struct {
@@ -36,7 +37,7 @@ func (a *App) DeleteWork(id int64, expected DeleteWorkInput) (DeleteWorkResult, 
 		return DeleteWorkResult{}, &APIError{Code: "work_busy", Message: "この作品は処理中です。処理が終わってから、内容を確認して再度操作してください。"}
 	}
 	defer end()
-	result, err := a.deleter.DeleteWork(a.ctx, id, manga.WorkDeleteInput{URL: expected.URL, Title: expected.Title, SiteName: expected.SiteName, Notes: expected.Notes, ThumbnailPath: expected.ThumbnailPath})
+	result, err := a.deleter.DeleteWork(a.ctx, id, manga.WorkDeleteInput{URL: expected.URL, Title: expected.Title, SiteName: expected.SiteName, Notes: expected.Notes, ThumbnailPath: expected.ThumbnailPath, ScheduledDate: manga.ScheduledDate(expected.ScheduledDate)})
 	if errors.Is(err, storage.ErrWorkDeleteOutcomeUnknown) {
 		return DeleteWorkResult{}, &APIError{Code: "work_delete_outcome_unknown", Message: "作品の削除結果を確認できません。新たなデータの読み書きを停止しています。削除を繰り返さず、アプリを再起動して状態を確認してください。"}
 	}

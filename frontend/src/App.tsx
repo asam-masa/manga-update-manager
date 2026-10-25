@@ -126,7 +126,7 @@ function App() {
                     return {...work,
                         ...(saved && saved.createdAt === work.createdAt && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
                         ...(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath} : {}),
-                        ...(edited ? {url: edited.url, title: edited.title, siteName: edited.siteName, notes: edited.notes} : {}),
+                        ...(edited ? {url: edited.url, title: edited.title, siteName: edited.siteName, notes: edited.notes, scheduledDate: edited.scheduledDate} : {}),
                         updatedAt: later(work.updatedAt, later(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? cover.work.updatedAt : work.updatedAt, edited?.updatedAt ?? work.updatedAt))};
                 });
                 setWorks(values);
@@ -318,7 +318,7 @@ function App() {
     function edited(work: WorkView, warnings: string[]) {
         savedEdits.current.set(work.id, {revision: ++editRevision.current, work});
         setWorks((current) => current?.map((value) => identity(value) === identity(work) ? {...value,
-            url: work.url, title: work.title, siteName: work.siteName, notes: work.notes,
+            url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, scheduledDate: work.scheduledDate,
             updatedAt: later(value.updatedAt, work.updatedAt)} : value) ?? null);
         setEditNotices((current) => ({...current, [identity(work)]: {work: {...work}, warnings}}));
     }
