@@ -24,4 +24,5 @@
 | [0016](./0016-preserve-safe-api-errors-through-wails.md) | Wailsのエラー包装を越えて安全なAPI情報を保持する | Accepted | Verified | 2026-10-20 | [#181](https://github.com/asam-masa/manga-update-manager/issues/181)、[#180](https://github.com/asam-masa/manga-update-manager/issues/180) |
 | [0017](./0017-poll-cover-progress-snapshots.md) | 画像処理の観測状態を定期取得する | Accepted | Verified | 2026-10-20 | [#186](https://github.com/asam-masa/manga-update-manager/issues/186)、[#183](https://github.com/asam-masa/manga-update-manager/issues/183) |
 | [0018](./0018-edit-and-delete-works.md) | 作品の編集範囲と確認後の完全削除を決める | Accepted | Verified | 2026-10-21 | [#204](https://github.com/asam-masa/manga-update-manager/issues/204) |
+| [0019](./0019-use-manual-japan-schedule-dates.md) | 更新予定を日本の暦日として手入力する | Accepted | Pending | 2026-10-25 | [#31](https://github.com/asam-masa/manga-update-manager/issues/31)、[#262](https://github.com/asam-masa/manga-update-manager/issues/262) |
 
