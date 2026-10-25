@@ -13,14 +13,14 @@ export function pageNumbers(page: number, total: number): (number | 'gap')[] {
 }
 
 // The position belongs to the current filter and layout, never to persistence.
-export function useWorkPagination(mode: WorkListMode, query: string, count: number) {
+export function useWorkPagination(mode: WorkListMode, query: string, count: number, order = 'registration_asc') {
     const size = worksPerPage[mode];
     const total = Math.ceil(count / size);
-    const [position, setPosition] = useState({mode, query, page: 1});
-    const page = Math.min(position.mode === mode && position.query === query ? position.page : 1, Math.max(1, total));
+    const [position, setPosition] = useState({mode, query, order, page: 1});
+    const page = Math.min(position.mode === mode && position.query === query && position.order === order ? position.page : 1, Math.max(1, total));
     // Adjust this component's state before rendering children. Remember a clamp
     // so a later count increase cannot resurrect an abandoned last page.
-    if (position.mode !== mode || position.query !== query || position.page !== page) setPosition({mode, query, page});
+    if (position.mode !== mode || position.query !== query || position.order !== order || position.page !== page) setPosition({mode, query, order, page});
     return {page, total, size, start: (page - 1) * size,
-        setPage: (page: number) => setPosition({mode, query, page})};
+        setPage: (page: number) => setPosition({mode, query, order, page})};
 }

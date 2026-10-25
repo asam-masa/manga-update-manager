@@ -6,7 +6,7 @@ import App from './App';
 import {ListWorks, LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
 const load = vi.mocked(LoadDisplaySettings);
 const save = vi.mocked(SetRegistrationFormVisible);
 const work: main.WorkDTO = {id: 1, title: '作品', url: 'https://example.com/1', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-10T00:00:00+09:00', updatedAt: '2026-10-10T00:00:00+09:00'};

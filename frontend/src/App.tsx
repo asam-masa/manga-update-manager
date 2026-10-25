@@ -16,6 +16,9 @@ import {useWorkListMode} from './use-work-list-mode';
 import type {WorkListMode} from './WorkList';
 import {useWorkPagination} from './use-work-pagination';
 import {WorkPagination} from './WorkPagination';
+import {useWorkSort} from './use-work-sort';
+import {isWorkSort, sortWorks, workSortOptions} from './work-sort';
+import type {WorkSort} from './work-sort';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -43,7 +46,7 @@ function App() {
     const editOrigin = useRef<HTMLButtonElement | null>(null);
     const searchElement = useRef<HTMLInputElement>(null);
     const opening = useRef(new Set<number>());
-    const [accessStates, setAccessStates] = useState<Record<string, {work: WorkView; pending: boolean; error?: string}>>({});
+    const [accessStates, setAccessStates] = useState<Record<string, {work: WorkView; pending: boolean; error?: string; success?: string}>>({});
     const editRevision = useRef(0);
     const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
     const [deleting, setDeleting] = useState<WorkView | null>(null);
@@ -76,6 +79,9 @@ function App() {
     const settingsRevision = useRef(0);
     const settingsQueue = useRef<Promise<void>>(Promise.resolve());
     const displayMode = useWorkListMode(settingsQueue);
+    const workSort = useWorkSort(settingsQueue);
+    const currentSort = useRef(workSort.order);
+    currentSort.current = workSort.order;
     const listPanel = useRef<HTMLElement>(null);
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -210,10 +216,18 @@ function App() {
     }
 
     function changePage(page: number) {
-        if (modal.current || !displayMode.ready || page === pagination.page || page < 1 || page > pagination.total) return;
+        if (modal.current || !displayMode.ready || !workSort.ready || page === pagination.page || page < 1 || page > pagination.total) return;
         ++navigationRevision.current;
         pageFocusPending.current = true;
         pagination.setPage(page);
+    }
+
+    function changeSort(order: WorkSort) {
+        if (modal.current) return;
+        if (workSort.select(order)) {
+            ++navigationRevision.current;
+            listPanel.current?.scrollIntoView?.({block: 'start'});
+        }
     }
 
     async function register(event: FormEvent<HTMLFormElement>) {
@@ -256,7 +270,12 @@ function App() {
         savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt, createdAt: updated.createdAt});
         // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
         setWorks((current) => current?.map((work) => identity(work) === identity(updated) ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
-        setAccessStates((current) => { const next = {...current}; delete next[key]; return next; });
+        setAccessStates((current) => {
+            const next = {...current};
+            if (currentSort.current.startsWith('last_access_')) next[key] = {work, pending: false, success: `「${work.title}」のページを開き、最終アクセス日時を保存しました。`};
+            else delete next[key];
+            return next;
+        });
         } catch (cause: unknown) {
             setAccessStates((current) => ({...current, [key]: {work, pending: false,
                 error: apiErrorMessage(cause, '作品を開く処理に失敗しました。再度お試しください。')}}));
@@ -325,14 +344,14 @@ function App() {
         setDeleteNotices((current) => ({...current, [identity(work)]: {work: {...work}, missing, warnings}}));
     }
 
-    const visibleWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
-    const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0);
+    const visibleWorks = works ? sortWorks(works.filter((work) => titleMatches(work.title, searchQuery)), workSort.order) : undefined;
+    const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0, workSort.order);
     const pageWorks = visibleWorks?.slice(pagination.start, pagination.start + pagination.size);
     useLayoutEffect(() => {
         const target = registrationPage.current;
         // Resolve against the committed layout/filter, including a late initial
         // settings restore, rather than the register handler's older snapshot.
-        if (target && displayMode.ready) {
+        if (target && displayMode.ready && workSort.ready) {
             registrationPage.current = null;
             if (target.revision === navigationRevision.current && !modal.current) {
                 const index = visibleWorks?.findIndex((work) => identity(work) === target.key) ?? -1;
@@ -355,7 +374,7 @@ function App() {
     const success = registeredTitle === null ? '' : titleMatches(registeredTitle, searchQuery)
         ? '作品を登録しました。' : '作品を登録しました。検索条件に一致しないため非表示です。';
     const notices: WorkNotice[] = [
-        ...Object.entries(accessStates).map(([key, state]): WorkNotice => ({key: `access:${key}`, work: state.work, kind: 'access', pending: state.pending, error: state.error})),
+        ...Object.entries(accessStates).map(([key, state]): WorkNotice => ({key: `access:${key}`, work: state.work, kind: 'access', pending: state.pending, error: state.error, success: state.success})),
         ...Object.entries(coverActions.states).filter(([, state]) => state.pending || state.notice).map(([key, state]): WorkNotice =>
             ({key: `cover:${key}`, work: state.work, kind: 'cover', pending: state.pending, ...state.notice})),
         ...Object.entries(editNotices).map(([key, state]): WorkNotice => ({key: `edit:${key}`, work: state.work, kind: 'edit', warnings: state.warnings,
@@ -436,11 +455,18 @@ function App() {
                                 setSearchInput(event.target.value);
                                 if (!composingSearch.current) changeSearch(event.target.value);
                             }} />
+                        <label htmlFor="work-sort" className="visually-hidden">並び順</label>
+                        <select id="work-sort" value={workSort.order} disabled={!workSort.ready} onChange={(event) => {
+                            if (isWorkSort(event.target.value)) changeSort(event.target.value);
+                        }}>{workSortOptions.map(([order, label]) => <option key={order} value={order}>{label}</option>)}</select>
                     </div>
                     {!displayMode.ready && <p role="status">表示形式を読み込んでいます…</p>}
                     {displayMode.saving && <p role="status">表示形式を保存しています…</p>}
                     {displayMode.warning && <p className="message error-message" role="alert">{displayMode.warning}</p>}
-                    <WorkPagination {...pagination} count={visibleWorks?.length ?? 0} position="top" disabled={!displayMode.ready}
+                    {!workSort.ready && <p role="status">並び順を読み込んでいます…</p>}
+                    {workSort.saving && <p role="status">並び順を保存しています…</p>}
+                    {workSort.warning && <p className="message error-message" role="alert">{workSort.warning}</p>}
+                    <WorkPagination {...pagination} count={visibleWorks?.length ?? 0} position="top" disabled={!displayMode.ready || !workSort.ready}
                         onChange={changePage} currentRef={currentPageButton} />
                     <CoverProgressNotice targets={progressTargets} works={works} />
                     <WorkNotices notices={notices} onDismiss={dismissNotice} />
@@ -456,10 +482,10 @@ function App() {
                                     <h3>検索条件に一致する作品がありません</h3>
                                     <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
                                 </div>}
-                            <WorkList mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
+                            <WorkList key={workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
                                 coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
                                 deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
-                            <WorkPagination {...pagination} count={visibleWorks.length} position="bottom" disabled={!displayMode.ready} onChange={changePage} />
+                            <WorkPagination {...pagination} count={visibleWorks.length} position="bottom" disabled={!displayMode.ready || !workSort.ready} onChange={changePage} />
                         </>}
                     </div>
                 </section>
