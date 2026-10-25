@@ -109,6 +109,7 @@ func TestAppEditWorkOutcomes(t *testing.T) {
 				t.Fatal(err)
 			}
 			w.ID = 1
+			w.ScheduledDate = "2026-10-30"
 			a.editor = application.NewWorkEditor(appEditRepositoryFunc(func(context.Context, int64, manga.EditWorkInput, time.Time) (manga.Work, error) {
 				calls++
 				return w, tc.cause
@@ -117,6 +118,9 @@ func TestAppEditWorkOutcomes(t *testing.T) {
 			if tc.committed {
 				if err != nil || result.Work.ID != 1 || len(result.Warnings) != 1 || result.Warnings[0].Code != "database_stopped_after_commit" {
 					t.Fatalf("committed: %+v %v", result, err)
+				}
+				if result.Work.ScheduledDate == nil || *result.Work.ScheduledDate != "2026-10-30" {
+					t.Fatal("committed date missing", result)
 				}
 			} else {
 				editCode(t, err, tc.code)

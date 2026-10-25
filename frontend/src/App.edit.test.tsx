@@ -3,10 +3,10 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing
 import userEvent from '@testing-library/user-event';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import App from './App';
-import {EditWork, ListWorks} from '../wailsjs/go/main/App';
+import {EditWork, ListWorks, DeleteWork} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
     LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
 const work = {id: 1, url: 'https://example.com/old', title: '漫画', siteName: 'Site', notes: 'Note', thumbnailPath: '', createdAt: '2026-10-22T00:00:00+09:00', updatedAt: '2026-10-22T00:00:00+09:00'};
@@ -156,4 +156,22 @@ it('未保存のEscは保存せず閉じる', async () => {
     await boot(); const dialog = await open();
     fireEvent(dialog, new Event('cancel', {cancelable: true}));
     expect(screen.queryByRole('dialog')).toBeNull(); expect(EditWork).not.toHaveBeenCalled();
+});
+
+it('編集結果と古い一覧応答をまたいで最新の予定日を保ち、削除確認へ渡す', async () => {
+    const original = {...work, scheduledDate: '2026-10-30'};
+    const saved = {...updated, scheduledDate: '2026-11-01'};
+    vi.mocked(ListWorks).mockResolvedValue([original]); await boot();
+    const stale = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(stale.promise);
+    await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
+    const dialog = await open(); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: saved, warnings: []}));
+    await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
+    await screen.findByRole('heading', {name: '新作'});
+    await act(async () => {stale.resolve([original]);});
+    await userEvent.click(screen.getByRole('button', {name: '新作の作品操作'}));
+    await userEvent.click(screen.getByRole('button', {name: '新作を削除'}));
+    vi.mocked(DeleteWork).mockResolvedValue(new main.DeleteWorkResult({workID: 1, warnings: []}));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
+    expect(vi.mocked(DeleteWork).mock.calls.at(-1)?.[1].scheduledDate).toBe('2026-11-01');
+    expect(vi.mocked(EditWork).mock.calls.at(-1)?.[1]).not.toHaveProperty('scheduledDate');
 });

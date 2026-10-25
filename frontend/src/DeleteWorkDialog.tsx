@@ -36,7 +36,8 @@ export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped,
             const current = await onReload();
             if (!active.current) return;
             if (!current) { onRemoved(snapshot, true, []); onClose(); return; }
-            if (current.id !== work.id || !['url', 'title', 'siteName', 'notes', 'thumbnailPath', 'createdAt'].every((key) => typeof current[key as keyof WorkView] === 'string')) throw new Error('Invalid confirmation');
+            if (current.id !== work.id || !['url', 'title', 'siteName', 'notes', 'thumbnailPath', 'createdAt'].every((key) => typeof current[key as keyof WorkView] === 'string')
+                || (current.scheduledDate != null && typeof current.scheduledDate !== 'string')) throw new Error('Invalid confirmation');
             setSnapshot({...current}); fresh.current = true; setNeedsReload(false);
             setMessage('作品情報が変わりました。最新の作品名とURLを確認し、削除する場合はもう一度「削除する」を押してください。');
             cancelButton.current?.focus();
@@ -51,7 +52,7 @@ export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped,
         pending.current = true; setBusy(true); setMessage('');
         onStart(snapshot);
         try {
-            const result = await DeleteWork(snapshot.id, {url: snapshot.url, title: snapshot.title, siteName: snapshot.siteName, notes: snapshot.notes, thumbnailPath: snapshot.thumbnailPath});
+            const result = await DeleteWork(snapshot.id, {url: snapshot.url, title: snapshot.title, siteName: snapshot.siteName, notes: snapshot.notes, thumbnailPath: snapshot.thumbnailPath, scheduledDate: snapshot.scheduledDate ?? ''});
             if (!active.current) return;
             if (result?.workID !== snapshot.id || !Array.isArray(result.warnings)) {
                 stop(); setMessage('削除結果を確認できません。削除を繰り返さず、アプリを再起動して状態を確認してください。'); return;

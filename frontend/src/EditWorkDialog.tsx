@@ -34,7 +34,8 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
             const result = await EditWork(work.id, {...form});
             if (!active.current) return;
             if (!result?.work || result.work.id !== work.id || !Array.isArray(result.warnings)
-                || !['url', 'title', 'siteName', 'notes', 'updatedAt'].every((key) => typeof result.work[key as keyof WorkView] === 'string')) {
+                || !['url', 'title', 'siteName', 'notes', 'updatedAt'].every((key) => typeof result.work[key as keyof WorkView] === 'string')
+                || (result.work.scheduledDate != null && typeof result.work.scheduledDate !== 'string')) {
                 // A missing/invalid success result is not permission to send another write.
                 blocked.current = true; setStopped(true); onStopped();
                 setError('保存結果を確認できません。入力を控え、アプリを再起動して状態を確認してください。');
