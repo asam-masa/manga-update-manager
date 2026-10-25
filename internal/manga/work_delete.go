@@ -8,4 +8,5 @@ type WorkDeleteInput struct {
 	SiteName      string
 	Notes         string
 	ThumbnailPath string
+	ScheduledDate ScheduledDate
 }

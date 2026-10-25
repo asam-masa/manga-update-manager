@@ -16,7 +16,7 @@ var (
 	ErrWorkEditCommitted      = errors.New("work edit committed with cleanup failure")
 )
 
-// EditWork changes only text fields, based on the current stored row.
+// EditWork changes editable content, based on the current stored row.
 // Operation-level exclusion with image/open/delete belongs to its future caller.
 func (s *Store) EditWork(ctx context.Context, id int64, input manga.EditWorkInput, at time.Time) (result manga.Work, err error) {
 	input, err = input.Normalize()
@@ -61,7 +61,11 @@ func (s *Store) EditWork(ctx context.Context, id int64, input manga.EditWorkInpu
 	if err := work.Validate(); err != nil {
 		return manga.Work{}, err
 	}
-	if work.URL == input.URL && work.Title == input.Title && work.SiteName == input.SiteName && work.Notes == input.Notes {
+	date := work.ScheduledDate
+	if input.ScheduledDate != nil {
+		date = *input.ScheduledDate
+	}
+	if work.URL == input.URL && work.Title == input.Title && work.SiteName == input.SiteName && work.Notes == input.Notes && work.ScheduledDate == date {
 		// Read-only transaction: release through Rollback, never an empty Commit.
 		return work, nil
 	}
@@ -69,7 +73,7 @@ func (s *Store) EditWork(ctx context.Context, id int64, input manga.EditWorkInpu
 	if at.Before(work.UpdatedAt) {
 		at = work.UpdatedAt
 	}
-	updated, err := tx.ExecContext(ctx, "UPDATE works SET url=?,title=?,site_name=?,notes=?,updated_at=? WHERE id=?", input.URL, input.Title, input.SiteName, input.Notes, formatTime(at), id)
+	updated, err := tx.ExecContext(ctx, "UPDATE works SET url=?,title=?,site_name=?,notes=?,scheduled_date=?,updated_at=? WHERE id=?", input.URL, input.Title, input.SiteName, input.Notes, scheduledDateValue(date), formatTime(at), id)
 	if err != nil {
 		var sqliteErr *sqlite.Error
 		if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE {
@@ -92,6 +96,7 @@ func (s *Store) EditWork(ctx context.Context, id int64, input manga.EditWorkInpu
 	}
 	committed = true
 	work.URL, work.Title, work.SiteName, work.Notes = input.URL, input.Title, input.SiteName, input.Notes
+	work.ScheduledDate = date
 	work.UpdatedAt = at
 	return work, nil
 }

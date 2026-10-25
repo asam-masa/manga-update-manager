@@ -186,6 +186,8 @@ func TestEditWorkCleanupFaults(t *testing.T) {
 			}
 			if commit {
 				input.Title = "Committed despite returned error"
+				date := manga.ScheduledDate("2026-10-30")
+				input.ScheduledDate = &date
 			}
 			got, err := s.EditWork(bounded(t), w.ID, input, w.UpdatedAt.Add(time.Hour))
 			if !errors.Is(err, syntheticCleanup) || !errors.Is(err, ErrDBStopped) || errors.Is(err, ErrWorkEditOutcomeUnknown) != commit || got.ID != 0 {
@@ -204,6 +206,7 @@ func TestEditWorkCleanupFaults(t *testing.T) {
 			want := w
 			if commit {
 				want.Title = input.Title
+				want.ScheduledDate = *input.ScheduledDate
 				want.UpdatedAt = w.UpdatedAt.Add(time.Hour)
 			}
 			if err != nil || !reflect.DeepEqual(after, want) {

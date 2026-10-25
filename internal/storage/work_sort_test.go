@@ -153,7 +153,7 @@ func TestWorkSortMigrationFromFivePreservesData(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	w := coverReferenceWork(t, old)
+	w := legacyCoverWork(t, old)
 	readyCover(t, old, testCoverID)
 	before, err := old.ManagedCoverByID(ctx, testCoverID)
 	if err != nil {
