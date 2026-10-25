@@ -59,6 +59,13 @@ func (r failedDisplayRepository) SetWorkListMode(context.Context, settings.WorkL
 	return r.failure
 }
 
+func (r failedDisplayRepository) WorkSort(context.Context) (settings.WorkSort, error) {
+	return settings.RegistrationAsc, r.failure
+}
+func (r failedDisplayRepository) SetWorkSort(context.Context, settings.WorkSort) error {
+	return r.failure
+}
+
 func TestDisplayFailureCodesDistinguishStop(t *testing.T) {
 	for _, stopped := range []bool{false, true} {
 		failure := errors.New("private diagnostic")

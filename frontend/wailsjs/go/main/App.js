@@ -34,6 +34,10 @@ export function LoadWorkListMode() {
   return window['go']['main']['App']['LoadWorkListMode']();
 }
 
+export function LoadWorkSort() {
+  return window['go']['main']['App']['LoadWorkSort']();
+}
+
 export function OpenWork(arg1) {
   return window['go']['main']['App']['OpenWork'](arg1);
 }
@@ -60,6 +64,10 @@ export function SetRegistrationFormVisible(arg1) {
 
 export function SetWorkListMode(arg1) {
   return window['go']['main']['App']['SetWorkListMode'](arg1);
+}
+
+export function SetWorkSort(arg1) {
+  return window['go']['main']['App']['SetWorkSort'](arg1);
 }
 
 export function Status() {

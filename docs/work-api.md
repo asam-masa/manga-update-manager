@@ -106,6 +106,16 @@ Issue #27で表示設定のApplicationとAPIを追加する。作品APIとは独
 
 Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共通受付を接続した。作品IDごとに操作完了まで保持し、操作ID付きAPIも同じ入口を通る。競合は既存の`work_open_in_progress`/`cover_busy`で返す。画像だけの停止と共通受付の終了状態を混同しない。[受付と終了の検証](./verification/work-operation-admission.md)を参照する。#213で編集API、#215で編集UIも接続した。[画面検証の範囲](./verification/work-edit-dialog.md)はAPIの自動試験と区別する。
 
+### 並び順の専用API（Issue #257）
+
+`LoadWorkSort()`は保存済み文字列、`SetWorkSort(order)`は成功時voidを返す。許可値は`registration_asc`/`registration_desc`/`title_asc`/`title_desc`/`last_access_asc`/`last_access_desc`の6値で、未登録は`registration_asc`とする。種類と方向を一組として扱い、APIは一覧を並べ替えない。
+
+Applicationが入力を検証し、StoreはDBの受付・解放処理内で専用列だけを読み書きする。Appは既存設定APIと同じDB寿命ロックを保持する。読取失敗・未知値・未初期化は`settings_read_failed`で登録古い順の続行を案内し、通常の保存失敗・未初期化は`settings_save_failed`、不正入力は`invalid_input`。Storeの`ErrDBStopped`は`database_stopped`として画像側にも通知する。内部診断を返さず、失敗時の戻り値を保存済み値として使わない。
+
+読取だけでは挿入・修復しない。項目単位のUPSERTは他設定を保持するが、並行API要求を利用者の操作順へ並べ替える機能ではない。画面の共有要求列・初期復元・保存失敗表示・整列は#258で接続する。生成されたWailsのJS/TypeScript宣言には専用APIを追加するが、現在の画面は呼び出さない。
+
+一時SQLiteとAppの自動テストで6値、初回非書込、旧5移行からの追加、作品・管理画像・他設定保持、再接続、未知値・CHECK・非修復、書込拒否、取消、読取不能、停止・終了後の拒否、安全なエラーを検証する。実WebView2での選択・保存復元は#258の範囲であり、このAPIのテストを実画面検証とは扱わない。
+
 ### 編集API（Issue #213）
 
 `WorkEditor`は利用側の`WorkEditRepository`と時刻関数を受け取り、ドメインで入力を正規化・検証して保存へ渡す。登録用interfaceは拡大しない。AppはDB寿命ロック内で`BeginEdit`を取得し、Storeの後処理・エラー分類まで保持する。画像だけの停止は編集を止めない。同作品の競合は`work_busy`、通常終了は案内して拒否し、処理終了後に再要求できる。

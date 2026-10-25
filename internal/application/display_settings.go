@@ -11,6 +11,8 @@ type DisplaySettingsRepository interface {
 	SetRegistrationFormVisible(context.Context, bool) error
 	WorkListMode(context.Context) (settings.WorkListMode, error)
 	SetWorkListMode(context.Context, settings.WorkListMode) error
+	WorkSort(context.Context) (settings.WorkSort, error)
+	SetWorkSort(context.Context, settings.WorkSort) error
 }
 
 type DisplaySettings struct {
@@ -38,4 +40,15 @@ func (a *DisplaySettings) SetWorkListMode(ctx context.Context, mode settings.Wor
 		return err
 	}
 	return a.repository.SetWorkListMode(ctx, mode)
+}
+
+func (a *DisplaySettings) LoadWorkSort(ctx context.Context) (settings.WorkSort, error) {
+	return a.repository.WorkSort(ctx)
+}
+
+func (a *DisplaySettings) SetWorkSort(ctx context.Context, order settings.WorkSort) error {
+	if err := order.Validate(); err != nil {
+		return err
+	}
+	return a.repository.SetWorkSort(ctx, order)
 }
