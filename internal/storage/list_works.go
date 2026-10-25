@@ -16,7 +16,7 @@ func (s *Store) ListWorks(ctx context.Context) (_ []manga.Work, err error) {
 		return nil, err
 	}
 	defer finish(&err)
-	rows, err := conn.QueryContext(ctx, `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at FROM works ORDER BY id ASC`)
+	rows, err := conn.QueryContext(ctx, `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at, scheduled_date FROM works ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list works: %w", err)
 	}
@@ -31,7 +31,8 @@ func (s *Store) ListWorks(ctx context.Context) (_ []manga.Work, err error) {
 		var work manga.Work
 		var created, updated string
 		var accessed sql.NullString
-		if err := rows.Scan(&work.ID, &work.URL, &work.Title, &work.SiteName, &work.ThumbnailPath, &work.Notes, &created, &updated, &accessed); err != nil {
+		var scheduled sql.NullString
+		if err := rows.Scan(&work.ID, &work.URL, &work.Title, &work.SiteName, &work.ThumbnailPath, &work.Notes, &created, &updated, &accessed, &scheduled); err != nil {
 			return nil, fmt.Errorf("scan work: %w", err)
 		}
 		work.CreatedAt, err = parseTime(created)
@@ -43,6 +44,10 @@ func (s *Store) ListWorks(ctx context.Context) (_ []manga.Work, err error) {
 			return nil, fmt.Errorf("parse updated_at: %w", err)
 		}
 		work.LastAccessedAt, err = parseAccessTime(accessed)
+		if err != nil {
+			return nil, err
+		}
+		work.ScheduledDate, err = parseScheduledDate(scheduled)
 		if err != nil {
 			return nil, err
 		}

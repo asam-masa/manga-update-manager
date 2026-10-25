@@ -72,8 +72,8 @@ func (s *Store) CreateWork(ctx context.Context, work manga.Work) (_ manga.Work, 
 	}
 	defer finish(&err)
 	result, err := conn.ExecContext(ctx, `
-INSERT INTO works(url, title, site_name, thumbnail_path, notes, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)`,
+INSERT INTO works(url, title, site_name, thumbnail_path, notes, created_at, updated_at, scheduled_date)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		work.URL,
 		work.Title,
 		work.SiteName,
@@ -81,6 +81,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		work.Notes,
 		formatTime(work.CreatedAt),
 		formatTime(work.UpdatedAt),
+		scheduledDateValue(work.ScheduledDate),
 	)
 	if err != nil {
 		var sqliteErr *sqlite.Error
@@ -108,7 +109,7 @@ func (s *Store) WorkByID(ctx context.Context, id int64) (_ manga.Work, err error
 	return scanWork(queryOne(ctx, conn, workByIDQuery, id))
 }
 
-const workByIDQuery = `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at
+const workByIDQuery = `SELECT id, url, title, site_name, thumbnail_path, notes, created_at, updated_at, last_accessed_at, scheduled_date
 FROM works WHERE id = ?`
 
 func scanWork(row oneRow) (manga.Work, error) {
@@ -116,6 +117,7 @@ func scanWork(row oneRow) (manga.Work, error) {
 	var createdAt string
 	var updatedAt string
 	var accessed sql.NullString
+	var scheduled sql.NullString
 
 	err := row.Scan(
 		&work.ID,
@@ -127,6 +129,7 @@ func scanWork(row oneRow) (manga.Work, error) {
 		&createdAt,
 		&updatedAt,
 		&accessed,
+		&scheduled,
 	)
 	if errors.Is(err, sql.ErrNoRows) && !errors.Is(err, ErrDBStopped) {
 		return manga.Work{}, ErrWorkNotFound
@@ -147,7 +150,29 @@ func scanWork(row oneRow) (manga.Work, error) {
 	if err != nil {
 		return manga.Work{}, err
 	}
+	work.ScheduledDate, err = parseScheduledDate(scheduled)
+	if err != nil {
+		return manga.Work{}, err
+	}
 	return work, nil
+}
+
+func scheduledDateValue(date manga.ScheduledDate) any {
+	if date == "" {
+		return nil
+	}
+	return string(date)
+}
+
+func parseScheduledDate(value sql.NullString) (manga.ScheduledDate, error) {
+	if !value.Valid {
+		return "", nil
+	}
+	date := manga.ScheduledDate(value.String)
+	if date == "" || date.Validate() != nil {
+		return "", fmt.Errorf("parse scheduled_date: %w", manga.ErrScheduledDate)
+	}
+	return date, nil
 }
 
 func formatTime(value time.Time) string {

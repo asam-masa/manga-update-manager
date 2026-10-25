@@ -21,7 +21,7 @@ import (
 )
 
 func deleteInput(w manga.Work) manga.WorkDeleteInput {
-	return manga.WorkDeleteInput{URL: w.URL, Title: w.Title, SiteName: w.SiteName, Notes: w.Notes, ThumbnailPath: w.ThumbnailPath}
+	return manga.WorkDeleteInput{URL: w.URL, Title: w.Title, SiteName: w.SiteName, Notes: w.Notes, ThumbnailPath: w.ThumbnailPath, ScheduledDate: w.ScheduledDate}
 }
 
 func TestDeleteWorkPreservesOtherDataAndReopens(t *testing.T) {

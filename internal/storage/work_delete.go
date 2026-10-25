@@ -45,7 +45,7 @@ func (s *Store) DeleteWork(ctx context.Context, id int64, expected manga.WorkDel
 	if err != nil {
 		return manga.Work{}, err
 	}
-	current := manga.WorkDeleteInput{URL: work.URL, Title: work.Title, SiteName: work.SiteName, Notes: work.Notes, ThumbnailPath: work.ThumbnailPath}
+	current := manga.WorkDeleteInput{URL: work.URL, Title: work.Title, SiteName: work.SiteName, Notes: work.Notes, ThumbnailPath: work.ThumbnailPath, ScheduledDate: work.ScheduledDate}
 	if current != expected {
 		return manga.Work{}, ErrWorkDeleteChanged
 	}
@@ -53,8 +53,8 @@ func (s *Store) DeleteWork(ctx context.Context, id int64, expected manga.WorkDel
 	// then having us delete that new content. The predicate also binds all fields
 	// explicitly; neither modification time nor access time is a revision token.
 	deleted, err := tx.ExecContext(ctx, `DELETE FROM works
- WHERE id=? AND url=? AND title=? AND site_name=? AND notes=? AND thumbnail_path=?`,
-		id, expected.URL, expected.Title, expected.SiteName, expected.Notes, expected.ThumbnailPath)
+ WHERE id=? AND url=? AND title=? AND site_name=? AND notes=? AND thumbnail_path=? AND scheduled_date IS ?`,
+		id, expected.URL, expected.Title, expected.SiteName, expected.Notes, expected.ThumbnailPath, scheduledDateValue(expected.ScheduledDate))
 	if err != nil {
 		return manga.Work{}, fmt.Errorf("delete work: %w", err)
 	}

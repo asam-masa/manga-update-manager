@@ -36,6 +36,43 @@ func previousCoverSchema(t *testing.T) (*Store, string) {
 	return &Store{db: db}, path
 }
 
+// Migration fixtures write the actual legacy columns, never today's Store API.
+func legacyCreateWork(t *testing.T, s *Store, work manga.Work) manga.Work {
+	t.Helper()
+	result, err := s.db.Exec(`INSERT INTO works(url,title,site_name,thumbnail_path,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
+		work.URL, work.Title, work.SiteName, work.ThumbnailPath, work.Notes, formatTime(work.CreatedAt), formatTime(work.UpdatedAt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	work.ID, err = result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return work
+}
+
+func legacyWorkByID(t *testing.T, s *Store, id int64) manga.Work {
+	t.Helper()
+	work, err := scanWork(queryOne(context.Background(), s.db, `SELECT id,url,title,site_name,thumbnail_path,notes,created_at,updated_at,last_accessed_at,NULL FROM works WHERE id=?`, id))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return work
+}
+
+func legacyCoverWork(t *testing.T, s *Store) manga.Work {
+	t.Helper()
+	w, err := manga.NewWork(manga.NewWorkInput{URL: "https://example.com/cover-test", Title: "Synthetic", Notes: "unchanged", ThumbnailPath: "legacy/image.png"}, time.Date(2026, 10, 13, 1, 2, 3, 123456789, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w = legacyCreateWork(t, s, w)
+	if err := s.RecordLastAccess(context.Background(), w.ID, w.CreatedAt.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	return legacyWorkByID(t, s, w.ID)
+}
+
 func TestManagedCoverMigrationPreservesExistingData(t *testing.T) {
 	ctx := context.Background()
 	old, path := previousCoverSchema(t)
@@ -43,20 +80,14 @@ func TestManagedCoverMigrationPreservesExistingData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	work, err = old.CreateWork(ctx, work)
-	if err != nil {
-		t.Fatal(err)
-	}
+	work = legacyCreateWork(t, old, work)
 	if err := old.RecordLastAccess(ctx, work.ID, work.CreatedAt.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if err := old.SetRegistrationFormVisible(ctx, false); err != nil {
 		t.Fatal(err)
 	}
-	before, err := old.WorkByID(ctx, work.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	before := legacyWorkByID(t, old, work.ID)
 	if err := old.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +108,7 @@ func TestManagedCoverMigrationPreservesExistingData(t *testing.T) {
 	if err := store.db.QueryRow("SELECT count(*) FROM managed_covers").Scan(&count); err != nil || count != 0 {
 		t.Fatalf("legacy paths enrolled: %d %v", count, err)
 	}
-	if err := store.db.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 6 {
+	if err := store.db.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 7 {
 		t.Fatalf("migration count: %d %v", count, err)
 	}
 	var integrity string

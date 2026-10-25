@@ -28,6 +28,7 @@ type Work struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	LastAccessedAt *time.Time
+	ScheduledDate  ScheduledDate
 }
 
 // NewWorkInput contains values entered when a work is registered.
@@ -59,6 +60,9 @@ func NewWork(input NewWorkInput, now time.Time) (Work, error) {
 
 // Validate verifies invariants shared by creation and persistence.
 func (w Work) Validate() error {
+	if err := w.ScheduledDate.Validate(); err != nil {
+		return err
+	}
 	if err := validateWorkText(w.URL, w.Title); err != nil {
 		return err
 	}

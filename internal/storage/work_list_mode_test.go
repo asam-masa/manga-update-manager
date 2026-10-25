@@ -134,7 +134,7 @@ func TestWorkListModeMigrationPreservesOldSettingsAndWorks(t *testing.T) {
 	if err := applyMigration(ctx, old.db, "migrations/004_managed_covers.sql"); err != nil {
 		t.Fatal(err)
 	}
-	work := coverReferenceWork(t, old)
+	work := legacyCoverWork(t, old)
 	if err := old.SetRegistrationFormVisible(ctx, false); err != nil {
 		t.Fatal(err)
 	}

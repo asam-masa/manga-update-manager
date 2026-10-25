@@ -6,8 +6,8 @@ import (
 )
 
 func TestEditWorkInputNormalize(t *testing.T) {
-	want := EditWorkInput{"https://example.com/new", "漫画", "サイト", "一行\n二行"}
-	got, err := (EditWorkInput{" \nhttps://example.com/new\t", " 漫画 ", " サイト ", " 一行\n二行\n"}).Normalize()
+	want := EditWorkInput{URL: "https://example.com/new", Title: "漫画", SiteName: "サイト", Notes: "一行\n二行"}
+	got, err := (EditWorkInput{URL: " \nhttps://example.com/new\t", Title: " 漫画 ", SiteName: " サイト ", Notes: " 一行\n二行\n"}).Normalize()
 	if err != nil || got != want {
 		t.Fatal(got, err)
 	}

@@ -5,9 +5,11 @@ import (
 	"strings"
 )
 
-// EditWorkInput contains only editable text; it cannot replace images or times.
+// EditWorkInput cannot replace images or timestamps. A nil date preserves it;
+// a pointer to the empty date explicitly clears it.
 type EditWorkInput struct {
 	URL, Title, SiteName, Notes string
+	ScheduledDate               *ScheduledDate
 }
 
 func (input EditWorkInput) Normalize() (EditWorkInput, error) {
@@ -17,6 +19,13 @@ func (input EditWorkInput) Normalize() (EditWorkInput, error) {
 	input.Notes = strings.TrimSpace(input.Notes)
 	if err := validateWorkText(input.URL, input.Title); err != nil {
 		return EditWorkInput{}, err
+	}
+	if input.ScheduledDate != nil {
+		date := *input.ScheduledDate
+		if err := date.Validate(); err != nil {
+			return EditWorkInput{}, err
+		}
+		input.ScheduledDate = &date
 	}
 	return input, nil
 }
