@@ -5,7 +5,7 @@ import App from './App';
 import {ListWorks, OpenWork} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn().mockResolvedValue([])}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn().mockResolvedValue([])}));
 
 const work: main.WorkDTO = {id: 1, title: '作品', url: 'https://example.com', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-01T00:00:00+09:00', updatedAt: '2026-10-01T00:00:00+09:00', lastAccessedAt: '2026-10-08T12:34:56+09:00'};
 beforeEach(() => { vi.mocked(ListWorks).mockReset(); vi.mocked(OpenWork).mockReset(); });

@@ -6,7 +6,7 @@ import type {CoverProgressTarget} from './CoverProgressNotice';
 import {LoadCoverProgress} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadCoverProgress: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadCoverProgress: vi.fn()}));
 const a: CoverProgressTarget = {workID: 1, operationID: 'a'.repeat(32), kind: 'select'};
 const b: CoverProgressTarget = {workID: 2, operationID: 'b'.repeat(32), kind: 'remove'};
 const cleanup: CoverProgressTarget = {workID: 0, operationID: 'startup-cleanup', kind: 'cleanup'};

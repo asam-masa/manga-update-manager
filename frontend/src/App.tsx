@@ -19,6 +19,9 @@ import {WorkPagination} from './WorkPagination';
 import {useWorkSort} from './use-work-sort';
 import {isWorkSort, sortWorks, workSortOptions} from './work-sort';
 import type {WorkSort} from './work-sort';
+import {useFutureSchedules} from './use-future-schedules';
+import {useJapanToday} from './use-japan-today';
+import {scheduledWorks} from './scheduled-works';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -80,7 +83,12 @@ function App() {
     const settingsQueue = useRef<Promise<void>>(Promise.resolve());
     const displayMode = useWorkListMode(settingsQueue);
     const workSort = useWorkSort(settingsQueue);
+    const futureSchedules = useFutureSchedules(settingsQueue);
+    const today = useJapanToday();
+    const scheduled = workSort.order === 'scheduled_date';
+    const scheduleReady = !scheduled || futureSchedules.ready;
     const currentSort = useRef(workSort.order);
+    const currentVisibleWorks = useRef(new Set<string>());
     currentSort.current = workSort.order;
     const listPanel = useRef<HTMLElement>(null);
     const [searchInput, setSearchInput] = useState('');
@@ -216,7 +224,7 @@ function App() {
     }
 
     function changePage(page: number) {
-        if (modal.current || !displayMode.ready || !workSort.ready || page === pagination.page || page < 1 || page > pagination.total) return;
+        if (modal.current || !displayMode.ready || !workSort.ready || !scheduleReady || page === pagination.page || page < 1 || page > pagination.total) return;
         ++navigationRevision.current;
         pageFocusPending.current = true;
         pagination.setPage(page);
@@ -225,6 +233,14 @@ function App() {
     function changeSort(order: WorkSort) {
         if (modal.current) return;
         if (workSort.select(order)) {
+            ++navigationRevision.current;
+            listPanel.current?.scrollIntoView?.({block: 'start'});
+        }
+    }
+
+    function changeFuture(visible: boolean) {
+        if (modal.current) return;
+        if (futureSchedules.select(visible)) {
             ++navigationRevision.current;
             listPanel.current?.scrollIntoView?.({block: 'start'});
         }
@@ -272,7 +288,7 @@ function App() {
         setWorks((current) => current?.map((work) => identity(work) === identity(updated) ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
         setAccessStates((current) => {
             const next = {...current};
-            if (currentSort.current.startsWith('last_access_')) next[key] = {work, pending: false, success: `「${work.title}」のページを開き、最終アクセス日時を保存しました。`};
+            if (currentSort.current.startsWith('last_access_') || !currentVisibleWorks.current.has(key)) next[key] = {work, pending: false, success: `「${work.title}」のページを開き、最終アクセス日時を保存しました。`};
             else delete next[key];
             return next;
         });
@@ -344,14 +360,19 @@ function App() {
         setDeleteNotices((current) => ({...current, [identity(work)]: {work: {...work}, missing, warnings}}));
     }
 
-    const visibleWorks = works ? sortWorks(works.filter((work) => titleMatches(work.title, searchQuery)), workSort.order) : undefined;
-    const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0, workSort.order);
+    const matchingWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
+    const visibleWorks = matchingWorks ? workSort.order === 'scheduled_date'
+        ? scheduledWorks(matchingWorks, today, futureSchedules.visible) : sortWorks(matchingWorks, workSort.order) : undefined;
+    currentVisibleWorks.current = new Set(visibleWorks?.map(identity));
+    // Date changes retain the page; explicit future toggles reset it.
+    const pageOrder = scheduled ? `${workSort.order}:${futureSchedules.visible}` : workSort.order;
+    const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0, pageOrder);
     const pageWorks = visibleWorks?.slice(pagination.start, pagination.start + pagination.size);
     useLayoutEffect(() => {
         const target = registrationPage.current;
         // Resolve against the committed layout/filter, including a late initial
         // settings restore, rather than the register handler's older snapshot.
-        if (target && displayMode.ready && workSort.ready) {
+        if (target && displayMode.ready && workSort.ready && scheduleReady) {
             registrationPage.current = null;
             if (target.revision === navigationRevision.current && !modal.current) {
                 const index = visibleWorks?.findIndex((work) => identity(work) === target.key) ?? -1;
@@ -378,7 +399,8 @@ function App() {
         ...Object.entries(coverActions.states).filter(([, state]) => state.pending || state.notice).map(([key, state]): WorkNotice =>
             ({key: `cover:${key}`, work: state.work, kind: 'cover', pending: state.pending, ...state.notice})),
         ...Object.entries(editNotices).map(([key, state]): WorkNotice => ({key: `edit:${key}`, work: state.work, kind: 'edit', warnings: state.warnings,
-            success: `「${state.work.title}」を保存しました。${!titleMatches(state.work.title, searchQuery) ? '検索条件に一致しないため非表示です。' : ''}`})),
+            success: `「${state.work.title}」を保存しました。${!titleMatches(state.work.title, searchQuery) ? '検索条件に一致しないため非表示です。'
+                : scheduled && scheduledWorks([state.work], today, futureSchedules.visible).length === 0 ? '未来の予定を非表示にしているため、一覧には表示されません。' : ''}`})),
         ...Object.entries(deleteNotices).map(([key, state]): WorkNotice => ({key: `delete:${key}`, work: state.work, kind: 'delete', warnings: state.warnings,
             success: state.missing ? `「${state.work.title}」は既に存在しません。` : `「${state.work.title}」を削除しました。`})),
     ];
@@ -459,6 +481,8 @@ function App() {
                         <select id="work-sort" value={workSort.order} disabled={!workSort.ready} onChange={(event) => {
                             if (isWorkSort(event.target.value)) changeSort(event.target.value);
                         }}>{workSortOptions.map(([order, label]) => <option key={order} value={order}>{label}</option>)}</select>
+                        {scheduled && <label className="future-schedules"><input type="checkbox" checked={futureSchedules.visible} disabled={!futureSchedules.ready}
+                            onChange={(event) => changeFuture(event.target.checked)} />未来の予定を表示</label>}
                     </div>
                     {!displayMode.ready && <p role="status">表示形式を読み込んでいます…</p>}
                     {displayMode.saving && <p role="status">表示形式を保存しています…</p>}
@@ -466,7 +490,10 @@ function App() {
                     {!workSort.ready && <p role="status">並び順を読み込んでいます…</p>}
                     {workSort.saving && <p role="status">並び順を保存しています…</p>}
                     {workSort.warning && <p className="message error-message" role="alert">{workSort.warning}</p>}
-                    <WorkPagination {...pagination} count={visibleWorks?.length ?? 0} position="top" disabled={!displayMode.ready || !workSort.ready}
+                    {scheduled && !futureSchedules.ready && <p role="status">未来の予定の表示設定を読み込んでいます…</p>}
+                    {futureSchedules.saving && <p role="status">未来の予定の表示設定を保存しています…</p>}
+                    {futureSchedules.warning && <p className="message error-message" role="alert">{futureSchedules.warning}</p>}
+                    <WorkPagination {...pagination} count={visibleWorks?.length ?? 0} position="top" disabled={!displayMode.ready || !workSort.ready || !scheduleReady}
                         onChange={changePage} currentRef={currentPageButton} />
                     <CoverProgressNotice targets={progressTargets} works={works} />
                     <WorkNotices notices={notices} onDismiss={dismissNotice} />
@@ -479,13 +506,14 @@ function App() {
                         {works !== null && visibleWorks !== undefined && <>
                             {works.length > 0 && visibleWorks.length === 0 && !loading && !listError &&
                                 <div className="empty-state" role="status">
-                                    <h3>検索条件に一致する作品がありません</h3>
-                                    <p>検索文字を変更するか、空欄にして全作品を表示してください。</p>
+                                    <h3>{scheduled && !futureSchedules.visible ? '表示条件に一致する作品がありません' : '検索条件に一致する作品がありません'}</h3>
+                                    <p>{scheduled && !futureSchedules.visible ? '検索文字を変更するか、未来の予定を表示してください。' : '検索文字を変更するか、空欄にして全作品を表示してください。'}</p>
                                 </div>}
-                            <WorkList key={workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
+                            <WorkList orderKey={scheduled ? `${pageOrder}:${today}` : workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
+                                scheduleSort={{active: scheduled, disabled: !workSort.ready, select: () => changeSort('scheduled_date')}}
                                 coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
                                 deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
-                            <WorkPagination {...pagination} count={visibleWorks.length} position="bottom" disabled={!displayMode.ready || !workSort.ready} onChange={changePage} />
+                            <WorkPagination {...pagination} count={visibleWorks.length} position="bottom" disabled={!displayMode.ready || !workSort.ready || !scheduleReady} onChange={changePage} />
                         </>}
                     </div>
                 </section>

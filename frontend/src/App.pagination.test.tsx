@@ -7,7 +7,7 @@ import {CreateWork, DeleteWork, EditWork, ListWorks, LoadWorkListMode, LoadDispl
     LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(),
     LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
 const work = (id: number): main.WorkDTO => ({id, title: `作品${id}`, url: `https://example.com/${id}`, siteName: '', notes: '', thumbnailPath: '',

@@ -104,6 +104,10 @@ Applicationを通じて未来表示の専用読取・保存をWailsへ公開す�
 
 `scheduledWorks`は今日優先の整列と未来条件を、`useJapanToday`は時計の観測だけを担当する。追加8テストで暦日の範囲・同日順・未設定・未来OFF、午前0時・復帰相当・時計変更・StrictMode・後始末を偽時計と合成データで確認した。Appにはまだ接続していない。検索・ページ・設定保存・編集中の内容との連携、実WebView2と実スリープの確認は後続に残り、Validation StatusはPendingを維持する。
 
+### 一覧画面への接続（Issue #290）
+
+予定順の選択と未来条件、行見出し、共有設定要求列、時計フックをAppへ接続する。今日の変化と明示的な未来切替をページの条件キーで区別し、検索・編集中の内容・処理・通知を維持する。確認済みの範囲と未実施は[予定順の画面検証](../verification/scheduled-date-order.md)へ記録する。実スリープ復帰と最終的な検証条件の一括照合が残るため、Validation StatusはPendingを維持する。
+
 ## References
 
 - [タイマーの遅延（MDN）](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified)

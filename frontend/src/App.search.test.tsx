@@ -5,7 +5,7 @@ import App from './App';
 import {CreateWork, ListWorks, LoadDisplaySettings, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
 const first: main.WorkDTO = {id: 1, title: 'ＡＢＣ物語', url: 'https://example.com/1', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-10T00:00:00+09:00', updatedAt: '2026-10-10T00:00:00+09:00'};
 const second = {...first, id: 2, title: 'マンガ物語', url: 'https://example.com/2'};
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(LoadCoverWarnings).mockResolvedValue([]); vi.mocked(ListWorks).mockResolvedValue([first, second]); vi.mocked(CreateWork).mockResolvedValue(second); vi.mocked(LoadDisplaySettings).mockResolvedValue({registrationFormVisible: true}); });

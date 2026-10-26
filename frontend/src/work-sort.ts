@@ -5,6 +5,7 @@ export const workSortOptions = [
     ['registration_asc', '登録：古い順'], ['registration_desc', '登録：新しい順'],
     ['title_asc', 'タイトル：昇順'], ['title_desc', 'タイトル：降順'],
     ['last_access_asc', '最終アクセス：古い順'], ['last_access_desc', '最終アクセス：新しい順'],
+    ['scheduled_date', '更新予定：今日を先頭'],
 ] as const;
 export type WorkSort = typeof workSortOptions[number][0];
 export const isWorkSort = (value: unknown): value is WorkSort => workSortOptions.some(([order]) => order === value);
@@ -38,7 +39,7 @@ function accessTime(value: WorkView['lastAccessedAt']): {seconds: number; fracti
     return Number.isNaN(seconds) ? null : {seconds, fraction: (parts[2] ?? '').padEnd(9, '0')};
 }
 
-export function sortWorks(works: readonly WorkView[], order: WorkSort): WorkView[] {
+export function sortWorks(works: readonly WorkView[], order: Exclude<WorkSort, 'scheduled_date'>): WorkView[] {
     const direction = order.endsWith('_desc') ? -1 : 1;
     return [...works].sort((a, b) => {
         if (order.startsWith('registration_')) return direction * (a.id - b.id);
