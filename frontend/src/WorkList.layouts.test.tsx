@@ -7,6 +7,25 @@ import type {WorkListMode} from './WorkList';
 const work = {id: 1, title: '長いタイトルの漫画物語', url: 'https://example.com/long/registered-url', siteName: '漫画サイト', notes: '一覧には表示しないメモ', thumbnailPath: 'covers/sample.png', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', lastAccessedAt: null};
 const props = () => ({works: [work], showEmpty: true, onOpen: vi.fn().mockResolvedValue(undefined), coversReady: true, coverRevision: 0, editing: {onEdit: vi.fn(), stopped: false}});
 
+it.each<WorkListMode>(['compact', 'rows', 'cards'])('%sの予定日表示を設定・未設定・解除で切り替える', (mode) => {
+    const values = props(); const dated = {...work, scheduledDate: '2028-02-29'};
+    const view = render(<WorkList {...values} works={[dated]} mode={mode} />);
+    if (mode === 'compact') {
+        expect(view.container.querySelector('.work-scheduled-date')).toBeNull();
+    } else {
+        const date = view.container.querySelector('.work-scheduled-date')!;
+        expect(date.textContent).toBe(mode === 'cards' ? '更新予定 2028/02/29' : '2028/02/29');
+        expect(date.querySelector('time')?.getAttribute('datetime')).toBe('2028-02-29');
+        expect(date.getAttribute('title')).toBe('更新予定 2028/02/29');
+        view.rerender(<WorkList {...values} works={[{...work, scheduledDate: null}]} mode={mode} />);
+        expect(view.container.querySelector('.work-scheduled-date')?.textContent).toBe(mode === 'cards' ? '更新予定 未設定' : '未設定');
+        expect(view.container.querySelector('.work-scheduled-date time')).toBeNull();
+        view.rerender(<WorkList {...values} works={[{...work, scheduledDate: '0001-01-01'}]} mode={mode} />);
+        expect(view.container.querySelector('.work-scheduled-date')?.textContent).toContain('0001/01/01');
+    }
+    expect(values.onOpen).not.toHaveBeenCalled();
+});
+
 it.each<WorkListMode>(['compact', 'rows', 'cards'])('%sは起動入口が一つ、タイトルはリンクにせず全文titleを持つ', async (mode) => {
     const values = props();
     render(<WorkList {...values} mode={mode} />);
@@ -22,7 +41,7 @@ it.each<WorkListMode>(['compact', 'rows', 'cards'])('%sは起動入口が一つ�
     expect(values.onOpen).toHaveBeenCalledExactlyOnceWith(work.id);
     if (mode === 'compact') expect(entry.querySelector('img')).not.toBeNull();
     if (mode === 'rows') {
-        expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['タイトル', 'URL', '最終アクセス', '操作']);
+        expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['タイトル', 'URL', '最終アクセス', '更新予定日', '操作']);
         expect(screen.getByRole('table').querySelector('img')).toBeNull();
         expect(screen.queryByText(work.siteName)).toBeNull();
     }

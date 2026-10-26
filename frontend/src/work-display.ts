@@ -40,3 +40,9 @@ export function registrationDate(value: string): string {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '日時を確認できません' : japanDate.format(date);
 }
+
+// A calendar date is already Japanese: never convert it through a timestamp.
+export function scheduledDateLabel(value: unknown): string {
+    if (value == null || value === '') return '未設定';
+    return typeof value === 'string' ? value.replaceAll('-', '/') : '日付を確認できません';
+}

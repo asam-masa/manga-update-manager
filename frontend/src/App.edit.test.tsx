@@ -192,6 +192,7 @@ it.each(['2028-02-29', '', '0001-01-01', '9999-12-31'])('予定日%sをテキス
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work, scheduledDate: date || null}, warnings: []}));
     await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {...workInput(), scheduledDate: date});
+    expect(screen.getByTitle(date ? `更新予定 ${date.replaceAll('-', '/')}` : '更新予定 未設定')).toBeTruthy();
     const reopened = await open(); expect(field(reopened, /更新予定日/).value).toBe(date);
 });
 
