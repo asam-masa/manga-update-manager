@@ -48,6 +48,12 @@
 
 ## Consequences
 
+### 日付見直しの具体化（2026-10-26、Issue #288）
+
+grillingで、日本時間の午前0時を目標にするタイマー、アプリへ戻るfocus・再表示、1分ごとの確認を併用する方針を承認された。1分ごとと復帰時だけの案より通常の日付境界を早く反映でき、時刻指定だけの案で見落とす遅延や時計変更にも備えられるためである。定期確認はローカル時計を読むだけで、サイトやDBへアクセスしない。
+
+現在の日本の24時間の日から次の午前0時までの待ち時間を求める。実行時は経過日数を加算せず、Asia/Tokyoの現在日付を取り直す。タイマー遅延とスリープ中の停止があるため、実行時刻の厳密な保証はしない。日付が変わったときだけ状態を更新し、アプリ終了・フックの再設定時にタイマーとイベントを解除する。任意の過去の日本の時刻制度に対する午前0時の予約は対象外とする。
+
 ### 保存設定の具体化（2026-10-26、Issue #282）
 
 grillingで、並び順の許可値はアプリ側の完全一致検証へ集約し、DBはNOT NULLの文字列として保持する方針を承認された。予定順追加のたびにDBの列挙CHECKを変更する負担を避け、未知値も補正せず残せるためである。DBの許可値制約も維持する案は不正値を二重に防げるが、順序追加ごとに制約移行が必要になる。直接SQLでの未知値書き込みは防がなくなるため、読取時の検証と非修復を維持する。他列の制約は変更しない。
@@ -94,7 +100,14 @@ WorkDTOは日付文字列/null、編集入力は省略・nullで保持、空文�
 
 Applicationを通じて未来表示の専用読取・保存をWailsへ公開する。未登録はON、読取での非修復と項目単位保存を維持し、既存のDB寿命ロックと停止優先のエラー分類を使う。初回非書込・真偽両値・再接続・未知値・失敗と他設定保持を一時DBとAPIテストで確認する。画面の予定順・未来条件・日付見直し・実機統合は残るため、Validation StatusはPendingを維持する。[API契約](../work-api.md#未来表示設定の専用apiissue-286)を参照する。
 
+### 予定整列と時計フックの先行検証（Issue #288）
+
+`scheduledWorks`は今日優先の整列と未来条件を、`useJapanToday`は時計の観測だけを担当する。追加8テストで暦日の範囲・同日順・未設定・未来OFF、午前0時・復帰相当・時計変更・StrictMode・後始末を偽時計と合成データで確認した。Appにはまだ接続していない。検索・ページ・設定保存・編集中の内容との連携、実WebView2と実スリープの確認は後続に残り、Validation StatusはPendingを維持する。
+
 ## References
+
+- [タイマーの遅延（MDN）](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified)
+- [Page Visibility API（MDN）](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
 
 - [ADR-0005](./0005-define-library-behavior.md)
 - [ADR-0006](./0006-persist-display-settings.md)
