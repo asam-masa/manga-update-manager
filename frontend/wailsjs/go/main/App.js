@@ -30,6 +30,10 @@ export function LoadDisplaySettings() {
   return window['go']['main']['App']['LoadDisplaySettings']();
 }
 
+export function LoadShowFutureSchedules() {
+  return window['go']['main']['App']['LoadShowFutureSchedules']();
+}
+
 export function LoadWorkListMode() {
   return window['go']['main']['App']['LoadWorkListMode']();
 }
@@ -60,6 +64,10 @@ export function SelectWorkCoverWithOperation(arg1, arg2) {
 
 export function SetRegistrationFormVisible(arg1) {
   return window['go']['main']['App']['SetRegistrationFormVisible'](arg1);
+}
+
+export function SetShowFutureSchedules(arg1) {
+  return window['go']['main']['App']['SetShowFutureSchedules'](arg1);
 }
 
 export function SetWorkListMode(arg1) {

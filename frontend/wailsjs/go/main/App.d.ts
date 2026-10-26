@@ -16,6 +16,8 @@ export function LoadCoverWarnings():Promise<Array<main.CoverWarningDTO>>;
 
 export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
+export function LoadShowFutureSchedules():Promise<boolean>;
+
 export function LoadWorkListMode():Promise<string>;
 
 export function LoadWorkSort():Promise<string>;
@@ -31,6 +33,8 @@ export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>
 export function SelectWorkCoverWithOperation(arg1:number,arg2:string):Promise<main.SelectWorkCoverResult>;
 
 export function SetRegistrationFormVisible(arg1:boolean):Promise<void>;
+
+export function SetShowFutureSchedules(arg1:boolean):Promise<void>;
 
 export function SetWorkListMode(arg1:string):Promise<void>;
 
