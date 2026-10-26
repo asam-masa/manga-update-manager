@@ -6,7 +6,7 @@ import {CreateWork, EditWork, ListWorks, LoadWorkSort, SetWorkSort, LoadWorkList
     LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings, LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkSort: vi.fn(), SetWorkSort: vi.fn(), LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(),
     LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(),
     OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));

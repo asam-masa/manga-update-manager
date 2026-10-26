@@ -9,11 +9,13 @@ type Editing = {onEdit: (work: WorkView, button: HTMLButtonElement) => void; sto
 type Deleting = {onDelete: (work: WorkView, button: HTMLButtonElement) => void; stopped: boolean};
 export type WorkListMode = 'compact' | 'rows' | 'cards';
 
-export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing, deleting, isOpening, mode = 'cards'}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting; isOpening?: (work: WorkView) => boolean; mode?: WorkListMode}) {
-    const [menu, setMenu] = useState<{identity: string; mode: WorkListMode; width: number} | null>(null);
+export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, coverActions, editing, deleting, isOpening, scheduleSort, orderKey = '', mode = 'cards'}: {works: WorkView[]; showEmpty: boolean; onOpen: (id: number) => Promise<void>; coversReady: boolean; coverRevision: number; coverActions?: CoverActions; editing?: Editing; deleting?: Deleting; isOpening?: (work: WorkView) => boolean; scheduleSort?: {active: boolean; disabled: boolean; select: () => void}; orderKey?: string; mode?: WorkListMode}) {
+    const [menu, setMenu] = useState<{identity: string; mode: WorkListMode; width: number; order: string} | null>(null);
     const viewport = useRef<HTMLDivElement>(null);
     const [width, setWidth] = useState(0);
-    const hasWorks = works.length > 0;
+    // Keep row headers when filtering hides every registered work, so the
+    // button that selected this order remains connected and focused.
+    const showViewport = works.length > 0 || (mode === 'rows' && !showEmpty);
     useLayoutEffect(() => {
         const node = viewport.current;
         if (!node) return;
@@ -22,11 +24,11 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
         const observer = new ResizeObserver(([entry]) => { if (entry) setWidth(entry.contentRect.width); });
         observer.observe(node);
         return () => observer.disconnect();
-    }, [hasWorks]);
+    }, [showViewport]);
     useEffect(() => {
-        if (menu && (menu.mode !== mode || menu.width !== width || !works.some((work) => JSON.stringify([work.id, work.createdAt]) === menu.identity))) setMenu(null);
-    }, [menu, works, mode, width]);
-    if (works.length === 0) {
+        if (menu && (menu.mode !== mode || menu.width !== width || menu.order !== orderKey || !works.some((work) => JSON.stringify([work.id, work.createdAt]) === menu.identity))) setMenu(null);
+    }, [menu, works, mode, width, orderKey]);
+    if (!showViewport) {
         return showEmpty ? <div className="empty-state">
             <div className="empty-book" aria-hidden="true">本</div>
             <h3>まだ作品が登録されていません</h3>
@@ -34,10 +36,12 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
         </div> : null;
     }
     const items = works.map((work) => <WorkCard key={`${work.id}:${work.createdAt}`} mode={mode} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} deleting={deleting} opening={isOpening?.(work) ?? false}
-        menuOpen={menu?.mode === mode && menu.width === width && menu.identity === JSON.stringify([work.id, work.createdAt])} onMenuChange={(open) => setMenu(open ? {identity: JSON.stringify([work.id, work.createdAt]), mode, width} : null)} />);
+        menuOpen={menu?.mode === mode && menu.width === width && menu.order === orderKey && menu.identity === JSON.stringify([work.id, work.createdAt])} onMenuChange={(open) => setMenu(open ? {identity: JSON.stringify([work.id, work.createdAt]), mode, width, order: orderKey} : null)} />);
     const layout = mode === 'rows' ? <div className="work-rows-scroll" tabIndex={0} aria-label="作品一覧の横スクロール">
         <table className="work-rows" aria-label="作品一覧"><colgroup><col className="title-column" /><col /><col className="access-column" /><col className="schedule-column" /><col className="actions-column" /></colgroup>
-            <thead><tr><th scope="col">タイトル</th><th scope="col">URL</th><th scope="col">最終アクセス</th><th scope="col">更新予定日</th><th scope="col">操作</th></tr></thead>
+            <thead><tr><th scope="col">タイトル</th><th scope="col">URL</th><th scope="col">最終アクセス</th><th scope="col" aria-sort={scheduleSort?.active ? 'other' : undefined}>{scheduleSort
+                ? <button type="button" className="schedule-sort" aria-label="更新予定日で今日を先頭に並べる" aria-pressed={scheduleSort.active}
+                    disabled={scheduleSort.disabled} onClick={scheduleSort.select}>更新予定日{scheduleSort.active ? ' ✓' : ''}</button> : '更新予定日'}</th><th scope="col">操作</th></tr></thead>
             <tbody>{items}</tbody>
         </table>
     </div> : <ul key={mode} className={`work-list work-list-${mode}`} aria-label="作品一覧">{items}</ul>;
