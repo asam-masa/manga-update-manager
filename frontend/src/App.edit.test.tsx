@@ -71,12 +71,12 @@ it('キャンセルは保存せず入力を破棄し、再度開くと保存済�
     expect(field(await open(), /タイトル/).value).toBe('漫画');
 });
 
-it('4項目だけを一度送信し、保存中はキャンセルとEsc・連打で閉じない', async () => {
+it('テキストと予定日を一度送信し、保存中はキャンセルとEsc・連打で閉じない', async () => {
     const pending = deferred<main.EditWorkResult>(); vi.mocked(EditWork).mockReturnValue(pending.promise);
     await boot(); const dialog = await open();
     const form = dialog.querySelector('form')!;
     act(() => { fireEvent.submit(form); fireEvent.submit(form); fireEvent(dialog, new Event('cancel', {cancelable: true, bubbles: false})); });
-    expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes});
+    expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, scheduledDate: ''});
     expect((within(dialog).getByRole('button', {name: 'キャンセル'}) as HTMLButtonElement).disabled).toBe(true);
     expect(dialog).toBe(screen.getByRole('dialog'));
     await act(async () => pending.resolve(new main.EditWorkResult({work: updated, warnings: []})));
@@ -165,6 +165,7 @@ it('編集結果と古い一覧応答をまたいで最新の予定日を保ち�
     const stale = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(stale.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     const dialog = await open(); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: saved, warnings: []}));
+    fireEvent.change(field(dialog, /更新予定日/), {target: {value: '2026-11-01'}});
     await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     await screen.findByRole('heading', {name: '新作'});
     await act(async () => {stale.resolve([original]);});
@@ -173,5 +174,43 @@ it('編集結果と古い一覧応答をまたいで最新の予定日を保ち�
     vi.mocked(DeleteWork).mockResolvedValue(new main.DeleteWorkResult({workID: 1, warnings: []}));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
     expect(vi.mocked(DeleteWork).mock.calls.at(-1)?.[1].scheduledDate).toBe('2026-11-01');
-    expect(vi.mocked(EditWork).mock.calls.at(-1)?.[1]).not.toHaveProperty('scheduledDate');
+    expect(vi.mocked(EditWork).mock.calls.at(-1)?.[1].scheduledDate).toBe('2026-11-01');
+});
+
+it('予定日の現在値を表示し、未保存変更の取消と再表示では保存値を保つ', async () => {
+    vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: '2028-02-29'}]); await boot();
+    let dialog = await open(); const date = field(dialog, /更新予定日/);
+    expect(date.type).toBe('date'); expect(date.min).toBe('0001-01-01'); expect(date.max).toBe('9999-12-31');
+    expect(date.value).toBe('2028-02-29'); fireEvent.change(date, {target: {value: '2026-10-30'}});
+    await userEvent.click(within(dialog).getByRole('button', {name: 'キャンセル'}));
+    dialog = await open(); expect(field(dialog, /更新予定日/).value).toBe('2028-02-29'); expect(EditWork).not.toHaveBeenCalled();
+});
+
+it.each(['2028-02-29', '', '0001-01-01', '9999-12-31'])('予定日%sをテキストと一度に保存し、成功後の再表示へ引き継ぐ', async (date) => {
+    vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: '2026-10-30'}]); await boot();
+    const dialog = await open(); fireEvent.change(field(dialog, /更新予定日/), {target: {value: date}});
+    vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work, scheduledDate: date || null}, warnings: []}));
+    await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
+    expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {...workInput(), scheduledDate: date});
+    const reopened = await open(); expect(field(reopened, /更新予定日/).value).toBe(date);
+});
+
+function workInput() {return {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes};}
+
+it('日付入力が不完全な間は空文字の解除を送らない', async () => {
+    await boot(); const dialog = await open(); const form = dialog.querySelector('form')!;
+    // jsdom cannot represent native date segments. Simulate the failed native validation.
+    vi.spyOn(form, 'reportValidity').mockReturnValue(false);
+    fireEvent.submit(form); expect(EditWork).not.toHaveBeenCalled();
+});
+
+it('予定日の保存失敗で入力を保持し、背景応答でも編集中の値を置換しない', async () => {
+    await boot(); const old = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(old.promise);
+    await userEvent.click(screen.getByRole('button', {name: '再読み込み'})); const dialog = await open();
+    fireEvent.change(field(dialog, /更新予定日/), {target: {value: '2028-02-29'}});
+    await userEvent.type(field(dialog, /メモ/), '追記');
+    await act(async () => old.resolve([{...work, scheduledDate: '2026-10-30'}]));
+    vi.mocked(EditWork).mockRejectedValue({code: 'storage_error', message: '保存できませんでした。'});
+    await userEvent.click(within(dialog).getByRole('button', {name: '保存する'})); await within(dialog).findByRole('alert');
+    expect(field(dialog, /更新予定日/).value).toBe('2028-02-29'); expect(field(dialog, /メモ/).value).toBe('Note追記');
 });

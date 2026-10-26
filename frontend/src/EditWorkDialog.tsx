@@ -9,12 +9,14 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
 }) {
     // Snapshot only once per opening: background responses must never replace input.
     const [form, setForm] = useState(() => ({url: work.url, title: work.title, siteName: work.siteName, notes: work.notes}));
+    const [initialScheduledDate] = useState(() => work.scheduledDate ?? '');
     const [saving, setSaving] = useState(false);
     const [stopped, setStopped] = useState(false);
     const [error, setError] = useState('');
     const pending = useRef(false);
     const blocked = useRef(false);
     const dialog = useRef<HTMLDialogElement>(null);
+    const scheduledDate = useRef<HTMLInputElement>(null);
     const active = useRef(false);
     useEffect(() => {
         active.current = true;
@@ -27,11 +29,15 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (pending.current || blocked.current) return;
+        // Keep the native date editor's partial segments intact. An incomplete
+        // date has an empty value too, but must not become an explicit clear.
+        if (!event.currentTarget.reportValidity()) return;
+        const date = scheduledDate.current!.value;
         pending.current = true;
         onStart(work);
         setSaving(true); setError('');
         try {
-            const result = await EditWork(work.id, {...form});
+            const result = await EditWork(work.id, {...form, scheduledDate: date});
             if (!active.current) return;
             if (!result?.work || result.work.id !== work.id || !Array.isArray(result.warnings)
                 || !['url', 'title', 'siteName', 'notes', 'updatedAt'].every((key) => typeof result.work[key as keyof WorkView] === 'string')
@@ -61,7 +67,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
 
     return <dialog ref={dialog} className="edit-dialog" aria-labelledby="edit-heading" onCancel={(event) => { event.preventDefault(); cancel(); }}>
         <h2 id="edit-heading">作品を編集</h2>
-        <p className="section-description">URLとタイトルは必須です。画像と日時は変更しません。</p>
+        <p className="section-description">URLとタイトルは必須です。画像・登録日時・最終アクセスは変更しません。</p>
         <form onSubmit={(event) => { void save(event); }} aria-busy={saving} onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault();
         }}>
@@ -72,6 +78,9 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
                 <input id="edit-title" required value={form.title} readOnly={stopped} onChange={(event) => setForm({...form, title: event.target.value})} />
                 <label htmlFor="edit-site">サイト名 <span className="optional">任意</span></label>
                 <input id="edit-site" value={form.siteName} readOnly={stopped} onChange={(event) => setForm({...form, siteName: event.target.value})} />
+                <label htmlFor="edit-scheduled-date">更新予定日 <span className="optional">任意</span></label>
+                <p id="edit-scheduled-help" className="section-description">日本時間の日付。空欄で保存すると解除します。</p>
+                <input ref={scheduledDate} id="edit-scheduled-date" type="date" min="0001-01-01" max="9999-12-31" defaultValue={initialScheduledDate} readOnly={stopped} aria-describedby="edit-scheduled-help" />
                 <label htmlFor="edit-notes">メモ <span className="optional">任意</span></label>
                 <textarea id="edit-notes" rows={4} value={form.notes} readOnly={stopped} onChange={(event) => setForm({...form, notes: event.target.value})} />
                 <button type="submit" className="primary-button" disabled={stopped}>{saving ? '保存中…' : '保存する'}</button>
