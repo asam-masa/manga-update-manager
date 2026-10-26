@@ -13,6 +13,8 @@ type DisplaySettingsRepository interface {
 	SetWorkListMode(context.Context, settings.WorkListMode) error
 	WorkSort(context.Context) (settings.WorkSort, error)
 	SetWorkSort(context.Context, settings.WorkSort) error
+	ShowFutureSchedules(context.Context) (bool, error)
+	SetShowFutureSchedules(context.Context, bool) error
 }
 
 type DisplaySettings struct {
@@ -51,4 +53,12 @@ func (a *DisplaySettings) SetWorkSort(ctx context.Context, order settings.WorkSo
 		return err
 	}
 	return a.repository.SetWorkSort(ctx, order)
+}
+
+func (a *DisplaySettings) LoadShowFutureSchedules(ctx context.Context) (bool, error) {
+	return a.repository.ShowFutureSchedules(ctx)
+}
+
+func (a *DisplaySettings) SetShowFutureSchedules(ctx context.Context, visible bool) error {
+	return a.repository.SetShowFutureSchedules(ctx, visible)
 }

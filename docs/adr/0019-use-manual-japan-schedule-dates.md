@@ -90,6 +90,10 @@ WorkDTOは日付文字列/null、編集入力は省略・nullで保持、空文�
 
 親#265から表示だけを分割する。行一覧へ予定日列、カードへ最終アクセス下の1行を追加し、小型は維持する。暦日を時刻変換せず整形し、未設定も領域を確保する。表示と保存成功反映の自動検証、寸法と実画面の確認範囲は[表示検証](../verification/scheduled-date-display.md)へ記録する。予定順・未来設定・日付見直しは未接続のため、Validation StatusはPendingを維持する。
 
+### 未来表示設定APIの接続（Issue #286）
+
+Applicationを通じて未来表示の専用読取・保存をWailsへ公開する。未登録はON、読取での非修復と項目単位保存を維持し、既存のDB寿命ロックと停止優先のエラー分類を使う。初回非書込・真偽両値・再接続・未知値・失敗と他設定保持を一時DBとAPIテストで確認する。画面の予定順・未来条件・日付見直し・実機統合は残るため、Validation StatusはPendingを維持する。[API契約](../work-api.md#未来表示設定の専用apiissue-286)を参照する。
+
 ## References
 
 - [ADR-0005](./0005-define-library-behavior.md)

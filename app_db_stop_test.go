@@ -37,6 +37,13 @@ func TestStoppedAPIErrorPriorityAndSafety(t *testing.T) {
 
 type failedDisplayRepository struct{ failure error }
 
+func (r failedDisplayRepository) ShowFutureSchedules(context.Context) (bool, error) {
+	return true, r.failure
+}
+func (r failedDisplayRepository) SetShowFutureSchedules(context.Context, bool) error {
+	return r.failure
+}
+
 func TestSaveCauseDoesNotHidePartialSuccess(t *testing.T) {
 	for _, cause := range []error{manga.ErrWorkNotFound, manga.ErrDuplicateURL, errors.New("private diagnostic")} {
 		got := workAPIError(errors.Join(application.ErrAccessSave, cause))

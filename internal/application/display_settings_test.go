@@ -9,11 +9,24 @@ import (
 )
 
 type displaySettingsFake struct {
-	value settings.Display
-	err   error
-	saves int
-	mode  settings.WorkListMode
-	order settings.WorkSort
+	value  settings.Display
+	err    error
+	saves  int
+	mode   settings.WorkListMode
+	order  settings.WorkSort
+	future bool
+}
+
+func (f *displaySettingsFake) ShowFutureSchedules(context.Context) (bool, error) {
+	return f.future, f.err
+}
+func (f *displaySettingsFake) SetShowFutureSchedules(_ context.Context, visible bool) error {
+	f.saves++
+	if f.err != nil {
+		return f.err
+	}
+	f.future = visible
+	return nil
 }
 
 func (f *displaySettingsFake) DisplaySettings(context.Context) (settings.Display, error) {
@@ -117,6 +130,30 @@ func TestWorkSortDelegatesAndRejectsBeforeSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := app.SetWorkSort(ctx, settings.TitleDesc); !errors.Is(err, repo.err) || repo.order != settings.TitleAsc {
+		t.Fatal(err)
+	}
+}
+
+func TestFutureSchedulesDelegatesWithoutImplicitSave(t *testing.T) {
+	ctx := context.Background()
+	repo := &displaySettingsFake{future: true}
+	app := NewDisplaySettings(repo)
+	if got, err := app.LoadShowFutureSchedules(ctx); err != nil || !got || repo.saves != 0 {
+		t.Fatal(got, err, repo.saves)
+	}
+	for _, visible := range []bool{false, true} {
+		if err := app.SetShowFutureSchedules(ctx, visible); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := app.LoadShowFutureSchedules(ctx); err != nil || got != visible {
+			t.Fatal(got, err)
+		}
+	}
+	repo.err = context.Canceled
+	if _, err := app.LoadShowFutureSchedules(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if err := app.SetShowFutureSchedules(ctx, false); !errors.Is(err, context.Canceled) || !repo.future {
 		t.Fatal(err)
 	}
 }
