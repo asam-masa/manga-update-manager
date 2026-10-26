@@ -108,13 +108,13 @@ Issue #211で同AppのURL起動・画像設定/変更/解除へApplicationの共
 
 ### 並び順の専用API（Issue #257）
 
-`LoadWorkSort()`は保存済み文字列、`SetWorkSort(order)`は成功時voidを返す。許可値は`registration_asc`/`registration_desc`/`title_asc`/`title_desc`/`last_access_asc`/`last_access_desc`の6値で、未登録は`registration_asc`とする。種類と方向を一組として扱い、APIは一覧を並べ替えない。
+`LoadWorkSort()`は保存済み文字列、`SetWorkSort(order)`は成功時voidを返す。許可値は`registration_asc`/`registration_desc`/`title_asc`/`title_desc`/`last_access_asc`/`last_access_desc`/`scheduled_date`の7値で、未登録は`registration_asc`とする。#282で追加した`scheduled_date`は今日優先の予定順で、逆順を持たない。画面の選択肢はまだ既存6種類である。種類と方向を一組として扱い、APIは一覧を並べ替えない。
 
 Applicationが入力を検証し、StoreはDBの受付・解放処理内で専用列だけを読み書きする。Appは既存設定APIと同じDB寿命ロックを保持する。読取失敗・未知値・未初期化は`settings_read_failed`で登録古い順の続行を案内し、通常の保存失敗・未初期化は`settings_save_failed`、不正入力は`invalid_input`。Storeの`ErrDBStopped`は`database_stopped`として画像側にも通知する。内部診断を返さず、失敗時の戻り値を保存済み値として使わない。
 
 読取だけでは挿入・修復しない。項目単位のUPSERTは他設定を保持するが、並行API要求を利用者の操作順へ並べ替える機能ではない。#258で画面の共有要求列・初期復元・保存失敗表示・整列を接続する。生成されたWailsのJS/TypeScript宣言を呼び、作品APIのID順は維持する。[画面契約](./work-screen.md#基本並び順の画面接続issue-258)を参照する。
 
-一時SQLiteとAppの自動テストで6値、初回非書込、旧5移行からの追加、作品・管理画像・他設定保持、再接続、未知値・CHECK・非修復、書込拒否、取消、読取不能、停止・終了後の拒否、安全なエラーを検証する。実WebView2での選択・保存復元は#258の範囲であり、このAPIのテストを実画面検証とは扱わない。
+#257では一時SQLiteとAppの自動テストで既存6値、初回非書込、旧5移行からの追加、作品・管理画像・他設定保持、再接続、未知値・当時の列挙CHECK・非修復、書込拒否、取消、読取不能、停止・終了後の拒否、安全なエラーを検証した。#282では予定順を含む7値の保存・再接続を確認し、並び順の列挙CHECKを撤去してアプリ検証へ集約した。未知値は移行・読取で補正しない。現在の[保存契約](./データ仕様.md#表示設定)を参照する。実WebView2での既存6種類の選択・保存復元は#258の範囲であり、このAPIのテストを実画面検証とは扱わない。
 
 ### 編集API（Issue #213）
 
