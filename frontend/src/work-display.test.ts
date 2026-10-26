@@ -1,7 +1,16 @@
 import {describe, expect, it} from 'vitest';
-import {apiErrorMessage, isDatabaseStopped, registrationDate} from './work-display';
+import {apiErrorMessage, isDatabaseStopped, registrationDate, scheduledDateLabel} from './work-display';
 
 describe('表示境界', () => {
+    it.each(['0001-01-01', '2028-02-29', '9999-12-31'])('予定日%sを暦日のまま表示する', (value) => {
+        expect(scheduledDateLabel(value)).toBe(value.replaceAll('-', '/'));
+    });
+    it.each([undefined, null, ''])('予定日未設定%sを表示する', (value) => {
+        expect(scheduledDateLabel(value)).toBe('未設定');
+    });
+    it.each([123, false, {}])('予定日の不正型%sで描画を壊さない', (value) => {
+        expect(scheduledDateLabel(value)).toBe('日付を確認できません');
+    });
     it.each(['work_changed', 'work_delete_outcome_unknown'])('削除APIのエラー %s を包装後も判別する', (code) => {
         const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message: '削除結果を確認してください。'}));
         expect(apiErrorMessage(error, '案内')).toBe('削除結果を確認してください。');

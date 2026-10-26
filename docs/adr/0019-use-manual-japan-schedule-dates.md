@@ -80,6 +80,10 @@ WorkDTOは日付文字列/null、編集入力は省略・nullで保持、空文�
 
 標準の日付欄を既存編集のサイト名とメモの間に置き、日付範囲は保存/APIと同じ0001〜9999年とする。空文字による明示解除と、妥当性確認での不完全入力の拒否を区別する。初期値・取消・失敗・遅延応答の自動検証と、実WebView2の確認範囲は[予定日入力の検証](../verification/scheduled-date-input.md)へ記録する。常時表示・予定順・未来設定・日付見直し（#265）が残るため、Validation StatusはPendingを維持する。
 
+### 行・カード表示の接続（Issue #278）
+
+親#265から表示だけを分割する。行一覧へ予定日列、カードへ最終アクセス下の1行を追加し、小型は維持する。暦日を時刻変換せず整形し、未設定も領域を確保する。表示と保存成功反映の自動検証、寸法と実画面の確認範囲は[表示検証](../verification/scheduled-date-display.md)へ記録する。予定順・未来設定・日付見直しは未接続のため、Validation StatusはPendingを維持する。
+
 ## References
 
 - [ADR-0005](./0005-define-library-behavior.md)

@@ -1,6 +1,6 @@
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {CSSProperties} from 'react';
-import {registrationDate} from './work-display';
+import {registrationDate, scheduledDateLabel} from './work-display';
 import type {WorkView} from './work-display';
 import type {CoverActions} from './use-cover-actions';
 import {WorkActionsMenu} from './WorkActionsMenu';
@@ -36,8 +36,8 @@ export function WorkList({works, showEmpty, onOpen, coversReady, coverRevision, 
     const items = works.map((work) => <WorkCard key={`${work.id}:${work.createdAt}`} mode={mode} work={work} onOpen={onOpen} coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={editing} deleting={deleting} opening={isOpening?.(work) ?? false}
         menuOpen={menu?.mode === mode && menu.width === width && menu.identity === JSON.stringify([work.id, work.createdAt])} onMenuChange={(open) => setMenu(open ? {identity: JSON.stringify([work.id, work.createdAt]), mode, width} : null)} />);
     const layout = mode === 'rows' ? <div className="work-rows-scroll" tabIndex={0} aria-label="作品一覧の横スクロール">
-        <table className="work-rows" aria-label="作品一覧"><colgroup><col className="title-column" /><col /><col className="access-column" /><col className="actions-column" /></colgroup>
-            <thead><tr><th scope="col">タイトル</th><th scope="col">URL</th><th scope="col">最終アクセス</th><th scope="col">操作</th></tr></thead>
+        <table className="work-rows" aria-label="作品一覧"><colgroup><col className="title-column" /><col /><col className="access-column" /><col className="schedule-column" /><col className="actions-column" /></colgroup>
+            <thead><tr><th scope="col">タイトル</th><th scope="col">URL</th><th scope="col">最終アクセス</th><th scope="col">更新予定日</th><th scope="col">操作</th></tr></thead>
             <tbody>{items}</tbody>
         </table>
     </div> : <ul key={mode} className={`work-list work-list-${mode}`} aria-label="作品一覧">{items}</ul>;
@@ -53,6 +53,8 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editi
     const accessText = work.lastAccessedAt == null ? '未アクセス' : `${registrationDate(work.lastAccessedAt)}（日本時間）`;
     const access = <p className="work-last-access" title={`最終アクセス ${accessText}`}>{mode !== 'rows' && '最終アクセス '}{work.lastAccessedAt == null ? '未アクセス' :
         <><time dateTime={work.lastAccessedAt}>{registrationDate(work.lastAccessedAt)}</time>（日本時間）</>}</p>;
+    const schedule = <p className="work-scheduled-date" title={`更新予定 ${scheduledDateLabel(work.scheduledDate)}`}>{mode !== 'rows' && '更新予定 '}{typeof work.scheduledDate === 'string' && work.scheduledDate ?
+        <time dateTime={work.scheduledDate}>{scheduledDateLabel(work.scheduledDate)}</time> : scheduledDateLabel(work.scheduledDate)}</p>;
     const cover = <WorkCover key={`${work.thumbnailPath}:${coverRevision}`} id={work.id} enabled={coversReady && work.thumbnailPath !== ''} />;
     const actions = (editing || deleting || coverActions) && <WorkActionsMenu identity={JSON.stringify([work.id, work.createdAt])} title={work.title} open={menuOpen} onChange={onMenuChange}>
                     {(run) => <>
@@ -68,13 +70,13 @@ function WorkCard({work, onOpen, coversReady, coverRevision, coverActions, editi
                         </>}
                     </>}
                 </WorkActionsMenu>;
-    if (mode === 'rows') return <tr className="work-row"><td>{title}</td><td>{url}</td><td>{access}</td><td>{actions}</td></tr>;
+    if (mode === 'rows') return <tr className="work-row"><td>{title}</td><td>{url}</td><td>{access}</td><td>{schedule}</td><td>{actions}</td></tr>;
     if (mode === 'compact') return <li className="work-card work-compact">
         <button type="button" className="work-image-entry" disabled={blocked} aria-label={`${work.title}のURLを開く`} title={work.url} onClick={() => { void onOpen(work.id); }}>{cover}</button>
         {title}{actions}
     </li>;
     return <li className="work-card">{cover}<div className="work-details">{title}
-        <p className="site-name" title={work.siteName}>{work.siteName || '\u00a0'}</p>{url}{access}
+        <p className="site-name" title={work.siteName}>{work.siteName || '\u00a0'}</p>{url}{access}{schedule}
     </div>{actions}</li>;
 }
 

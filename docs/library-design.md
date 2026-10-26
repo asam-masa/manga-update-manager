@@ -143,7 +143,7 @@ Issue #26のgrillingで、次を合意した。
 
 ### 手入力の更新予定日の合意（Issue #31、2026-10-25）
 
-以下は承認済みの設計である。#267で[予定日のドメイン・SQLite保存基盤](./データ仕様.md#手入力の更新予定日issue-267)、#263で[Wails API](./work-api.md#更新予定日のapiissue-263)、#264で[編集入力](./verification/scheduled-date-input.md)を追加する。常時の日付表示・予定順は#265の後続範囲である。判断理由と検証条件は[ADR-0019](./adr/0019-use-manual-japan-schedule-dates.md)へ記録する。
+以下は承認済みの設計である。#267で[予定日のドメイン・SQLite保存基盤](./データ仕様.md#手入力の更新予定日issue-267)、#263で[Wails API](./work-api.md#更新予定日のapiissue-263)、#264で[編集入力](./verification/scheduled-date-input.md)、#278で[行・カードの日付表示](./verification/scheduled-date-display.md)を接続する。予定順・未来設定・日付見直しは#265に残す。判断理由と検証条件は[ADR-0019](./adr/0019-use-manual-japan-schedule-dates.md)へ記録する。
 
 - 一作品につき任意の一日付を手入力する。時刻・繰り返し・複数予定は持たない。Asia/Tokyoの暦日を扱い、保存・APIは`YYYY-MM-DD`と未設定を基準とする。UTCの瞬間へ変換せず、既存の登録日時・最終アクセスなどのUTC保存とは区別する。
 - 既存の作品編集へ任意の日付欄を追加する。空欄で保存したときだけ解除し、取消・失敗で保存済み値を変えない。登録フォームの日付欄は初回対象外とする。
