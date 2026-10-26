@@ -27,7 +27,7 @@ func TestWorkSortAPILifecycle(t *testing.T) {
 	if err := a.SetWorkListMode("rows"); err != nil {
 		t.Fatal(err)
 	}
-	for _, order := range []string{"registration_asc", "registration_desc", "title_asc", "title_desc", "last_access_asc", "last_access_desc"} {
+	for _, order := range []string{"registration_asc", "registration_desc", "title_asc", "title_desc", "last_access_asc", "last_access_desc", "scheduled_date"} {
 		if err := a.SetWorkSort(order); err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +46,7 @@ func TestWorkSortAPILifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened := testApp(t, dir)
-	if got, err := reopened.LoadWorkSort(); err != nil || got != "last_access_desc" {
+	if got, err := reopened.LoadWorkSort(); err != nil || got != "scheduled_date" {
 		t.Fatal(got, err)
 	}
 	if form, err := reopened.LoadDisplaySettings(); err != nil || form.RegistrationFormVisible {

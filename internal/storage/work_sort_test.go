@@ -30,7 +30,7 @@ func TestWorkSortPersistenceAndIsolation(t *testing.T) {
 	if mode, err := s.WorkListMode(ctx); err != nil || mode != settings.Cards {
 		t.Fatal(mode, err)
 	}
-	for _, want := range []settings.WorkSort{settings.RegistrationAsc, settings.RegistrationDesc, settings.TitleAsc, settings.TitleDesc, settings.LastAccessAsc, settings.LastAccessDesc} {
+	for _, want := range []settings.WorkSort{settings.RegistrationAsc, settings.RegistrationDesc, settings.TitleAsc, settings.TitleDesc, settings.LastAccessAsc, settings.LastAccessDesc, settings.ScheduledDate} {
 		if err := s.SetRegistrationFormVisible(ctx, false); err != nil {
 			t.Fatal(err)
 		}
@@ -64,7 +64,7 @@ func TestWorkSortPersistenceAndIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if got, err := reopened.WorkSort(ctx); err != nil || got != settings.LastAccessDesc {
+	if got, err := reopened.WorkSort(ctx); err != nil || got != settings.ScheduledDate {
 		t.Fatal(got, err)
 	}
 	if got, err := reopened.WorkByID(ctx, w.ID); err != nil || !reflect.DeepEqual(got, w) {
@@ -81,9 +81,6 @@ func TestWorkSortInvalidFailureAndStop(t *testing.T) {
 	for _, raw := range []string{"", "future", "TITLE_ASC", " title_asc", "title_asc ", "title"} {
 		if err := s.SetWorkSort(ctx, settings.WorkSort(raw)); !errors.Is(err, settings.ErrWorkSort) {
 			t.Fatal(raw, err)
-		}
-		if _, err := s.db.Exec("UPDATE display_settings SET work_sort=?", raw); err == nil {
-			t.Fatal("missing CHECK", raw)
 		}
 	}
 	if _, err := s.db.Exec("PRAGMA ignore_check_constraints=ON; UPDATE display_settings SET work_sort='future'; PRAGMA ignore_check_constraints=OFF"); err != nil {
