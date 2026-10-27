@@ -29,7 +29,7 @@ func Open(ctx context.Context, dataSourceName string) (*Store, error) {
 		return nil, errors.New("SQLiteの保存先を指定してください")
 	}
 
-	db, err := sql.Open("sqlite", dataSourceName)
+	db, err := sql.Open(sqliteDriverName, dataSourceName)
 	if err != nil {
 		return nil, fmt.Errorf("open SQLite: %w", err)
 	}
