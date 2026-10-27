@@ -15,6 +15,8 @@ type EditWorkInput struct {
 	Notes    string `json:"notes"`
 	// nil (including JSON null) preserves the date; an explicit empty string clears it.
 	ScheduledDate *string `json:"scheduledDate"`
+	// nil (including JSON null) preserves tags; an empty object clears them.
+	Tags *TagEditInput `json:"tags"`
 }
 
 type WorkWarningDTO struct {
@@ -49,6 +51,17 @@ func (a *App) EditWork(id int64, input EditWorkInput) (EditWorkResult, error) {
 		}
 		edit.ScheduledDate = &date
 	}
+	if input.Tags != nil {
+		existing, err := tagSnapshots(input.Tags.Existing)
+		if err != nil {
+			return EditWorkResult{}, invalidTagInput()
+		}
+		tags, err := (manga.TagEdit{Existing: existing, NewNames: input.Tags.NewNames}).Normalize()
+		if err != nil {
+			return EditWorkResult{}, invalidTagInput()
+		}
+		edit.Tags = &tags
+	}
 	work, err := a.editor.EditWork(a.ctx, id, edit)
 	a.coverOperations.ObserveError(err)
 	if errors.Is(err, storage.ErrWorkEditOutcomeUnknown) {
@@ -56,6 +69,9 @@ func (a *App) EditWork(id int64, input EditWorkInput) (EditWorkResult, error) {
 	}
 	if errors.Is(err, storage.ErrWorkEditCommitted) {
 		return EditWorkResult{Work: workDTO(work), Warnings: []WorkWarningDTO{{Code: "database_stopped_after_commit", Message: "作品情報は保存しましたが、接続の解放を確認できません。新たなデータの読み書きを停止しています。アプリを再起動して状態を確認してください。"}}}, nil
+	}
+	if errors.Is(err, storage.ErrWorkTagsChanged) && !errors.Is(err, storage.ErrDBStopped) {
+		return EditWorkResult{}, &APIError{Code: "tags_changed", Message: "選択したタグが変更または削除されました。保存していません。入力を残したままタグを再読み込みし、変更されたタグを確認してください。"}
 	}
 	if err != nil {
 		return EditWorkResult{}, workAPIError(err)

@@ -34,12 +34,20 @@ export function LoadShowFutureSchedules() {
   return window['go']['main']['App']['LoadShowFutureSchedules']();
 }
 
+export function LoadTags() {
+  return window['go']['main']['App']['LoadTags']();
+}
+
 export function LoadWorkListMode() {
   return window['go']['main']['App']['LoadWorkListMode']();
 }
 
 export function LoadWorkSort() {
   return window['go']['main']['App']['LoadWorkSort']();
+}
+
+export function LoadWorkTags(arg1) {
+  return window['go']['main']['App']['LoadWorkTags'](arg1);
 }
 
 export function OpenWork(arg1) {

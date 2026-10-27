@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {apiErrorMessage, isDatabaseStopped, registrationDate, scheduledDateLabel} from './work-display';
+import {apiErrorCode, apiErrorMessage, isDatabaseStopped, registrationDate, scheduledDateLabel} from './work-display';
 
 describe('表示境界', () => {
     it.each(['0001-01-01', '2028-02-29', '9999-12-31'])('予定日%sを暦日のまま表示する', (value) => {
@@ -16,9 +16,10 @@ describe('表示境界', () => {
         expect(apiErrorMessage(error, '案内')).toBe('削除結果を確認してください。');
         expect(isDatabaseStopped(error)).toBe(code === 'work_delete_outcome_unknown');
     });
-    it.each(['work_busy', 'work_edit_outcome_unknown'])('編集APIのエラー %s を包装後も判別する', (code) => {
+    it.each(['work_busy', 'work_edit_outcome_unknown', 'tags_changed'])('編集APIのエラー %s を包装後も判別する', (code) => {
         const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message: '保存結果を確認してください。'}));
         expect(apiErrorMessage(error, '案内')).toBe('保存結果を確認してください。');
+        expect(apiErrorCode(error)).toBe(code);
         expect(isDatabaseStopped(error)).toBe(code === 'work_edit_outcome_unknown');
     });
     it('ホストのタイムゾーンに依存せず日本時間へ変換する', () => {

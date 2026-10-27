@@ -10,12 +10,13 @@ import (
 
 // Values are the exact confirmed snapshot, not editable/normalized new input.
 type DeleteWorkInput struct {
-	URL           string `json:"url"`
-	Title         string `json:"title"`
-	SiteName      string `json:"siteName"`
-	Notes         string `json:"notes"`
-	ThumbnailPath string `json:"thumbnailPath"`
-	ScheduledDate string `json:"scheduledDate"`
+	URL           string    `json:"url"`
+	Title         string    `json:"title"`
+	SiteName      string    `json:"siteName"`
+	Notes         string    `json:"notes"`
+	ThumbnailPath string    `json:"thumbnailPath"`
+	ScheduledDate string    `json:"scheduledDate"`
+	Tags          *[]TagDTO `json:"tags"`
 }
 
 type DeleteWorkResult struct {
@@ -37,7 +38,15 @@ func (a *App) DeleteWork(id int64, expected DeleteWorkInput) (DeleteWorkResult, 
 		return DeleteWorkResult{}, &APIError{Code: "work_busy", Message: "この作品は処理中です。処理が終わってから、内容を確認して再度操作してください。"}
 	}
 	defer end()
-	result, err := a.deleter.DeleteWork(a.ctx, id, manga.WorkDeleteInput{URL: expected.URL, Title: expected.Title, SiteName: expected.SiteName, Notes: expected.Notes, ThumbnailPath: expected.ThumbnailPath, ScheduledDate: manga.ScheduledDate(expected.ScheduledDate)})
+	deletion := manga.WorkDeleteInput{URL: expected.URL, Title: expected.Title, SiteName: expected.SiteName, Notes: expected.Notes, ThumbnailPath: expected.ThumbnailPath, ScheduledDate: manga.ScheduledDate(expected.ScheduledDate)}
+	if expected.Tags != nil {
+		tags, err := tagSnapshots(*expected.Tags)
+		if err != nil {
+			return DeleteWorkResult{}, invalidTagInput()
+		}
+		deletion.Tags = &tags
+	}
+	result, err := a.deleter.DeleteWork(a.ctx, id, deletion)
 	if errors.Is(err, storage.ErrWorkDeleteOutcomeUnknown) {
 		return DeleteWorkResult{}, &APIError{Code: "work_delete_outcome_unknown", Message: "作品の削除結果を確認できません。新たなデータの読み書きを停止しています。削除を繰り返さず、アプリを再起動して状態を確認してください。"}
 	}
@@ -45,6 +54,9 @@ func (a *App) DeleteWork(id int64, expected DeleteWorkInput) (DeleteWorkResult, 
 		return DeleteWorkResult{}, databaseStoppedError()
 	}
 	if errors.Is(err, storage.ErrWorkDeleteChanged) {
+		if expected.Tags != nil {
+			return DeleteWorkResult{}, &APIError{Code: "work_changed", Message: "確認後に作品情報またはタグが変わりました。削除していません。最新の作品情報とタグを読み込み、内容を確認してください。"}
+		}
 		return DeleteWorkResult{}, &APIError{Code: "work_changed", Message: "確認後に作品情報が変わりました。削除していません。一覧を再読み込みし、最新の作品名とURLを確認してください。"}
 	}
 	if err != nil {

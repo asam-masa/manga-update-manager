@@ -18,9 +18,13 @@ export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
 export function LoadShowFutureSchedules():Promise<boolean>;
 
+export function LoadTags():Promise<Array<main.TagDTO>>;
+
 export function LoadWorkListMode():Promise<string>;
 
 export function LoadWorkSort():Promise<string>;
+
+export function LoadWorkTags(arg1:number):Promise<Array<main.TagDTO>>;
 
 export function OpenWork(arg1:number):Promise<main.WorkDTO>;
 

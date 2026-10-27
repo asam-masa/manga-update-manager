@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import {DeleteWork} from '../wailsjs/go/main/App';
+import {main} from '../wailsjs/go/models';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped} from './work-display';
 import type {WorkView} from './work-display';
 
@@ -52,7 +53,7 @@ export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped,
         pending.current = true; setBusy(true); setMessage('');
         onStart(snapshot);
         try {
-            const result = await DeleteWork(snapshot.id, {url: snapshot.url, title: snapshot.title, siteName: snapshot.siteName, notes: snapshot.notes, thumbnailPath: snapshot.thumbnailPath, scheduledDate: snapshot.scheduledDate ?? ''});
+            const result = await DeleteWork(snapshot.id, main.DeleteWorkInput.createFrom({url: snapshot.url, title: snapshot.title, siteName: snapshot.siteName, notes: snapshot.notes, thumbnailPath: snapshot.thumbnailPath, scheduledDate: snapshot.scheduledDate ?? ''}));
             if (!active.current) return;
             if (result?.workID !== snapshot.id || !Array.isArray(result.warnings)) {
                 stop(); setMessage('削除結果を確認できません。削除を繰り返さず、アプリを再起動して状態を確認してください。'); return;

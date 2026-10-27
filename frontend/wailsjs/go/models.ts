@@ -56,6 +56,20 @@ export namespace main {
 	        this.notes = source["notes"];
 	    }
 	}
+	export class TagDTO {
+	    id: string;
+	    name: string;
+
+	    static createFrom(source: any = {}) {
+	        return new TagDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
 	export class DeleteWorkInput {
 	    url: string;
 	    title: string;
@@ -63,6 +77,7 @@ export namespace main {
 	    notes: string;
 	    thumbnailPath: string;
 	    scheduledDate: string;
+	    tags?: TagDTO[];
 
 	    static createFrom(source: any = {}) {
 	        return new DeleteWorkInput(source);
@@ -76,7 +91,26 @@ export namespace main {
 	        this.notes = source["notes"];
 	        this.thumbnailPath = source["thumbnailPath"];
 	        this.scheduledDate = source["scheduledDate"];
+	        this.tags = this.convertValues(source["tags"], TagDTO);
 	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class WorkWarningDTO {
 	    code: string;
@@ -136,12 +170,45 @@ export namespace main {
 	        this.registrationFormVisible = source["registrationFormVisible"];
 	    }
 	}
+	export class TagEditInput {
+	    existing: TagDTO[];
+	    newNames: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new TagEditInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.existing = this.convertValues(source["existing"], TagDTO);
+	        this.newNames = source["newNames"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EditWorkInput {
 	    url: string;
 	    title: string;
 	    siteName: string;
 	    notes: string;
 	    scheduledDate?: string;
+	    tags?: TagEditInput;
 
 	    static createFrom(source: any = {}) {
 	        return new EditWorkInput(source);
@@ -154,7 +221,26 @@ export namespace main {
 	        this.siteName = source["siteName"];
 	        this.notes = source["notes"];
 	        this.scheduledDate = source["scheduledDate"];
+	        this.tags = this.convertValues(source["tags"], TagEditInput);
 	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class WorkDTO {
 	    id: number;
