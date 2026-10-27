@@ -10,6 +10,8 @@ import (
 type EditWorkInput struct {
 	URL, Title, SiteName, Notes string
 	ScheduledDate               *ScheduledDate
+	// nil preserves associations; a non-nil empty selection removes all tags.
+	Tags *TagEdit
 }
 
 func (input EditWorkInput) Normalize() (EditWorkInput, error) {
@@ -26,6 +28,13 @@ func (input EditWorkInput) Normalize() (EditWorkInput, error) {
 			return EditWorkInput{}, err
 		}
 		input.ScheduledDate = &date
+	}
+	if input.Tags != nil {
+		tags, err := input.Tags.Normalize()
+		if err != nil {
+			return EditWorkInput{}, err
+		}
+		input.Tags = &tags
 	}
 	return input, nil
 }

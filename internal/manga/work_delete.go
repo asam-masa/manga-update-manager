@@ -9,4 +9,7 @@ type WorkDeleteInput struct {
 	Notes         string
 	ThumbnailPath string
 	ScheduledDate ScheduledDate
+	// nil keeps compatibility with callers that have no tag feature yet.
+	// A supplied snapshot must exactly match the current ID/name set.
+	Tags *[]Tag
 }

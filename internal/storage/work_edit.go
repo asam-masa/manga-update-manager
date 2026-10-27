@@ -65,7 +65,14 @@ func (s *Store) EditWork(ctx context.Context, id int64, input manga.EditWorkInpu
 	if input.ScheduledDate != nil {
 		date = *input.ScheduledDate
 	}
-	if work.URL == input.URL && work.Title == input.Title && work.SiteName == input.SiteName && work.Notes == input.Notes && work.ScheduledDate == date {
+	tagsChanged := false
+	if input.Tags != nil {
+		tagsChanged, err = syncWorkTags(ctx, tx, id, *input.Tags)
+		if err != nil {
+			return manga.Work{}, err
+		}
+	}
+	if work.URL == input.URL && work.Title == input.Title && work.SiteName == input.SiteName && work.Notes == input.Notes && work.ScheduledDate == date && !tagsChanged {
 		// Read-only transaction: release through Rollback, never an empty Commit.
 		return work, nil
 	}

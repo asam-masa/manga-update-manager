@@ -46,8 +46,19 @@ func (s *Store) DeleteWork(ctx context.Context, id int64, expected manga.WorkDel
 		return manga.Work{}, err
 	}
 	current := manga.WorkDeleteInput{URL: work.URL, Title: work.Title, SiteName: work.SiteName, Notes: work.Notes, ThumbnailPath: work.ThumbnailPath, ScheduledDate: work.ScheduledDate}
-	if current != expected {
+	textExpected := expected
+	textExpected.Tags = nil
+	if current != textExpected {
 		return manga.Work{}, ErrWorkDeleteChanged
+	}
+	if expected.Tags != nil {
+		tags, err := readTags(ctx, tx, workTagsQuery, id)
+		if err != nil {
+			return manga.Work{}, err
+		}
+		if !sameTags(tags, *expected.Tags) {
+			return manga.Work{}, ErrWorkDeleteChanged
+		}
 	}
 	// The transaction prevents a concurrent writer from changing the read row and
 	// then having us delete that new content. The predicate also binds all fields
