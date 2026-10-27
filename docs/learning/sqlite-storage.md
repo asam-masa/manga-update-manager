@@ -72,6 +72,12 @@ Issue #97のStorage実装では、UPDATEのWHEREで予約状態と確認情報�
 
 操作時刻は必ず増えるとは限りません。時計が戻ったら保存済み更新日時を下限とし、同一参照の設定や未設定の解除は更新しません。旧パスを返してもファイル削除まで許可したとは扱いません。DBトランザクションが守るのはDBの状態であり、管理記録と実ファイルの照合・競合排他は別の境界です。
 
+## テーブルの構造と接続の設定を分ける
+
+#299ではタグ名から独立したIDを持ち、作品との対応を別テーブルへ保存する構造を追加した。名前変更で関連を全部置き換えずに済む。タグIDの自動採番では削除済みIDを再利用しないようにし、古い選択が別のタグへ変わる危険を減らす。名前の検索用正規化は、保存名の同一性とは分ける。
+
+SQLiteでは外部キーをSQLに書くだけで強制が保証されるわけではない。接続ごとに有効化が必要で、接続プールが後で作った接続にも適用する必要がある。今回は構造を先行し、一時DBの有効化した接続で制約を検証した。本番の接続設定と保存操作は後続へ残しており、この成功をアプリ全体の関連整合の確認とは扱わない。現在の範囲は[データ仕様](../データ仕様.md#タグ保存の構造issue-299)を参照する。
+
 ## 正本と根拠
 
 - [Go database/sql: Null](https://pkg.go.dev/database/sql#Null)
@@ -79,6 +85,7 @@ Issue #97のStorage実装では、UPDATEのWHEREで予約状態と確認情報�
 - [データ仕様](../データ仕様.md)
 - [ADR-0002: 内部アーキテクチャを選定する](../adr/0002-select-application-architecture.md)
 - [ADR-0004: SQLiteアクセス方式を選定する](../adr/0004-select-sqlite-access.md)
+
 - [Issue #19: 作品モデルとSQLite保存基盤を実装する](https://github.com/asam-masa/manga-update-manager/issues/19)
 - [`modernc.org/sqlite` package](https://pkg.go.dev/modernc.org/sqlite)
 - [`modernc.org/sqlite` v1.58.0 `go.mod`](https://gitlab.com/cznic/sqlite/-/raw/v1.58.0/go.mod)
