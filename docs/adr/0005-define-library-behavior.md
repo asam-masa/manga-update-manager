@@ -113,6 +113,10 @@ Issue #26ではフォーム開閉・入力保持・フォーカス・検索・IM
 
 これは本ADRの未決定部分の具体化である。暦日と既存のUTC時刻の区別、入力範囲と既存編集との境界を[ADR-0019](./0019-use-manual-japan-schedule-dates.md)へ記録し、詳細仕様は[一覧設計](../library-design.md#手入力の更新予定日の合意issue-312026-10-25)を正本とする。今回は設計だけで、予定日・タグの実装と検証は残るためValidation StatusはPendingを維持する。
 
+### タグの操作と保存境界の具体化（2026-10-27）
+
+タグの編集入口、作品保存時の新規作成・付与の一括確定、未使用タグ保持、名前制限と候補検索、専用管理と即時AND条件を[ADR-0020](./0020-confirm-tags-with-work-edits.md)へ記録した。具体的な合意は[一覧設計](../library-design.md#タグ)を正本とする。これは未決定部分の具体化であり、保存名の完全一致や既存のAND・再起動解除を変更しない。タグは未実装・未検証のため、本ADRとADR-0020のValidation StatusはPendingを維持する。
+
 ## References
 
 - [作品一覧の拡張設計](../library-design.md)
