@@ -21,6 +21,7 @@ type App struct {
 	mu                     sync.RWMutex
 	ctx                    context.Context
 	works                  *application.Works
+	tags                   *application.TagReader
 	editor                 *application.WorkEditor
 	deleter                *application.WorkDeleter
 	display                *application.DisplaySettings
@@ -77,6 +78,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.store = store
 	a.works = application.NewWorks(store, time.Now)
+	a.tags = application.NewTagReader(store)
 	a.editor = application.NewWorkEditor(store, time.Now)
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
@@ -101,6 +103,7 @@ func (a *App) shutdown(_ context.Context) {
 		_ = a.coverCleanupTicket.End()
 	}
 	a.works = nil
+	a.tags = nil
 	a.editor = nil
 	a.deleter = nil
 	a.display = nil

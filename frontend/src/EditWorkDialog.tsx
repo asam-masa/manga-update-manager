@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
 import {EditWork} from '../wailsjs/go/main/App';
+import {main} from '../wailsjs/go/models';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped} from './work-display';
 import type {WorkView} from './work-display';
 
@@ -37,7 +38,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
         onStart(work);
         setSaving(true); setError('');
         try {
-            const result = await EditWork(work.id, {...form, scheduledDate: date});
+            const result = await EditWork(work.id, main.EditWorkInput.createFrom({...form, scheduledDate: date}));
             if (!active.current) return;
             if (!result?.work || result.work.id !== work.id || !Array.isArray(result.warnings)
                 || !['url', 'title', 'siteName', 'notes', 'updatedAt'].every((key) => typeof result.work[key as keyof WorkView] === 'string')
