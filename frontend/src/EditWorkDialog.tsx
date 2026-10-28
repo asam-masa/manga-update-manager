@@ -4,6 +4,8 @@ import {EditWork} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped} from './work-display';
 import type {WorkView} from './work-display';
+import {useWorkTagEdit} from './use-work-tag-edit';
+import {WorkTagEditor} from './WorkTagEditor';
 
 export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
     work: WorkView; onSaved: (work: WorkView, warnings: string[]) => void; onClose: () => void; onStopped: () => void; onStart: (work: WorkView) => void;
@@ -17,12 +19,15 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
     const pending = useRef(false);
     const blocked = useRef(false);
     const dialog = useRef<HTMLDialogElement>(null);
+    const url = useRef<HTMLInputElement>(null);
     const scheduledDate = useRef<HTMLInputElement>(null);
     const active = useRef(false);
+    const tags = useWorkTagEdit(work.id, () => {blocked.current = true; setStopped(true); onStopped();});
     useEffect(() => {
         active.current = true;
         const node = dialog.current!;
         node.showModal();
+        url.current?.focus();
         return () => { active.current = false; node.close(); };
     }, []);
 
@@ -30,6 +35,8 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (pending.current || blocked.current) return;
+        const tagInput = tags.input();
+        if (!tagInput) return;
         // Keep the native date editor's partial segments intact. An incomplete
         // date has an empty value too, but must not become an explicit clear.
         if (!event.currentTarget.reportValidity()) return;
@@ -38,7 +45,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
         onStart(work);
         setSaving(true); setError('');
         try {
-            const result = await EditWork(work.id, main.EditWorkInput.createFrom({...form, scheduledDate: date}));
+            const result = await EditWork(work.id, main.EditWorkInput.createFrom({...form, scheduledDate: date, tags: tagInput}));
             if (!active.current) return;
             if (!result?.work || result.work.id !== work.id || !Array.isArray(result.warnings)
                 || !['url', 'title', 'siteName', 'notes', 'updatedAt'].every((key) => typeof result.work[key as keyof WorkView] === 'string')
@@ -59,6 +66,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
             if (isDatabaseStopped(cause) || !apiErrorCode(cause) || apiErrorCode(cause) === 'database_unavailable') {
                 blocked.current = true; setStopped(true); onStopped();
             }
+            if (!blocked.current && apiErrorCode(cause) === 'tags_changed') void tags.reload();
             setError(apiErrorMessage(cause, '保存結果を取得できませんでした。入力を控え、アプリを再起動して状態を確認してください。'));
         } finally {
             pending.current = false;
@@ -66,29 +74,37 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
         }
     }
 
-    return <dialog ref={dialog} className="edit-dialog" aria-labelledby="edit-heading" onCancel={(event) => { event.preventDefault(); cancel(); }}>
+    return <dialog ref={dialog} className="edit-dialog tag-edit-dialog" aria-labelledby="edit-heading" onCancel={(event) => { event.preventDefault(); cancel(); }}>
         <h2 id="edit-heading">作品を編集</h2>
         <p className="section-description">URLとタイトルは必須です。画像・登録日時・最終アクセスは変更しません。</p>
         <form onSubmit={(event) => { void save(event); }} aria-busy={saving} onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault();
         }}>
-            <fieldset disabled={saving}>
+            <div className="edit-fields"><fieldset disabled={saving}>
                 <label htmlFor="edit-url">作品URL <span className="required">必須</span></label>
-                <input id="edit-url" autoFocus type="url" required value={form.url} readOnly={stopped} onChange={(event) => setForm({...form, url: event.target.value})} />
+                <input ref={url} id="edit-url" autoFocus type="url" required value={form.url} readOnly={stopped} onChange={(event) => setForm({...form, url: event.target.value})} />
                 <label htmlFor="edit-title">タイトル <span className="required">必須</span></label>
                 <input id="edit-title" required value={form.title} readOnly={stopped} onChange={(event) => setForm({...form, title: event.target.value})} />
-                <label htmlFor="edit-site">サイト名 <span className="optional">任意</span></label>
-                <input id="edit-site" value={form.siteName} readOnly={stopped} onChange={(event) => setForm({...form, siteName: event.target.value})} />
-                <label htmlFor="edit-scheduled-date">更新予定日 <span className="optional">任意</span></label>
-                <p id="edit-scheduled-help" className="section-description">日本時間の日付。空欄で保存すると解除します。</p>
-                <input ref={scheduledDate} id="edit-scheduled-date" type="date" min="0001-01-01" max="9999-12-31" defaultValue={initialScheduledDate} readOnly={stopped} aria-describedby="edit-scheduled-help" />
+                <div className="edit-site-date"><div>
+                    <label htmlFor="edit-site">サイト名 <span className="optional">任意</span></label>
+                    <input id="edit-site" value={form.siteName} readOnly={stopped} onChange={(event) => setForm({...form, siteName: event.target.value})} />
+                </div><div>
+                    <label htmlFor="edit-scheduled-date">更新予定日 <span className="optional">任意</span></label>
+                    <input ref={scheduledDate} id="edit-scheduled-date" type="date" min="0001-01-01" max="9999-12-31" defaultValue={initialScheduledDate} readOnly={stopped} aria-describedby="edit-scheduled-help" />
+                    <p id="edit-scheduled-help" className="section-description">日本時間の日付。空欄で保存すると解除します。</p>
+                </div></div>
+                <WorkTagEditor tags={tags} disabled={saving || stopped} />
                 <label htmlFor="edit-notes">メモ <span className="optional">任意</span></label>
                 <textarea id="edit-notes" rows={4} value={form.notes} readOnly={stopped} onChange={(event) => setForm({...form, notes: event.target.value})} />
-                <button type="submit" className="primary-button" disabled={stopped}>{saving ? '保存中…' : '保存する'}</button>
-            </fieldset>
+            </fieldset></div>
+            <div className="edit-feedback">
             {saving && <p role="status">作品情報を保存しています。結果が表示されるまでお待ちください。</p>}
             {error && <p className="message error-message" role="alert">{error}</p>}
-            <button type="button" className="secondary-button edit-cancel" disabled={saving} onClick={cancel}>{stopped ? '閉じる' : 'キャンセル'}</button>
+            </div>
+            <div className="edit-footer">
+                <button type="button" className="secondary-button" disabled={saving} onClick={cancel}>{stopped ? '閉じる' : 'キャンセル'}</button>
+                <button type="submit" className="primary-button" disabled={saving || stopped || !tags.ready}>{saving ? '保存中…' : '保存する'}</button>
+            </div>
         </form>
     </dialog>;
 }
