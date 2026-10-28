@@ -6,7 +6,7 @@ import {CreateWork, EditWork, ListWorks, LoadWorkSort, SetWorkSort, LoadWorkList
     LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings, LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkSort: vi.fn(), SetWorkSort: vi.fn(), LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(),
     LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(),
     OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
@@ -149,6 +149,7 @@ it('タイトル編集後は現在ページを保って整列し、モーダル�
     choose('title_desc'); expect(select().value).toBe('title_asc'); expect(save).not.toHaveBeenCalled();
     const dialog = within(screen.getByRole('dialog')); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work(13), title: 'AAA'}, warnings: []}));
     fireEvent.change(dialog.getByRole('textbox', {name: /タイトル/}), {target: {value: 'AAA'}});
+    await waitFor(() => expect((dialog.getByRole('button', {name: '保存する'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(dialog.getByRole('button', {name: '保存する'}));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull()); expect(current()).toBe('2');
     expect(screen.queryByRole('heading', {name: 'AAA'})).toBeNull(); expect(screen.getByText(/「AAA」を保存しました/)).toBeTruthy();

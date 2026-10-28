@@ -1,6 +1,6 @@
 # タグの公開API
 
-Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。画面からの呼び出しは未接続である。
+Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集画面へ接続する。管理・絞り込み・削除確認画面へのタグ接続は後続である。
 
 ## 読取と識別子
 
@@ -37,4 +37,4 @@ DeleteWorkInput.tagsは任意のTagDTO[]。省略・nullは従来互換、空配
 
 生成型へ入れ子のタグが加わりconvertValuesメソッドが必須になったため、初回TypeScriptビルドは既存の編集/削除入力で失敗した。両呼出しで生成モデルのcreateFromを使用し、タグ未指定の既存送信とint64文字列のJSON往復をテストする。画面配置やタグ操作は追加していない。
 
-#295の[画面合意](./work-screen.md#タグ編集の失敗時の合意issue-295未接続)に従い、サンプル確認後にUIを接続する。タグ管理・絞り込みは#296/#297に残し、ADR-0020はPendingを維持する。
+#295の[画面合意](./work-screen.md#タグ編集の失敗時の合意issue-295未接続)を#306で[編集画面へ接続](./work-screen.md#タグ編集の画面接続issue-306)する。公開API段階の試験と実画面の検証範囲は区別する。タグ管理・絞り込みは#296/#297に残し、ADR-0020はPendingを維持する。

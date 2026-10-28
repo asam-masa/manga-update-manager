@@ -7,7 +7,7 @@ import {CreateWork, DeleteWork, EditWork, ListWorks, LoadWorkListMode, LoadDispl
     LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(),
     LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
 const work = (id: number): main.WorkDTO => ({id, title: `作品${id}`, url: `https://example.com/${id}`, siteName: '', notes: '', thumbnailPath: '',
@@ -223,7 +223,7 @@ it('最終ページの削除は他作品があれば維持し、空になった�
 it('編集で検索から外れた最後の作品を除き、補正と通知を維持する', async () => {
     list.mockResolvedValue(works(25)); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work(25), title: '別名'}, warnings: []}));
     await boot(); fireEvent.change(screen.getByRole('searchbox'), {target: {value: '作品'}}); fireEvent.click(page(3));
-    action(25, '作品25を編集'); fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}));
+    action(25, '作品25を編集'); await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}) as HTMLButtonElement).disabled).toBe(false)); fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}));
     await waitFor(() => expect(current()?.textContent).toBe('2'));
     expect(screen.getByText('「別名」を保存しました。検索条件に一致しないため非表示です。')).toBeTruthy();
 });

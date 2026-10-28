@@ -6,7 +6,7 @@ import App from './App';
 import {EditWork, ListWorks, DeleteWork} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
     LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
 const work = {id: 1, url: 'https://example.com/old', title: '漫画', siteName: 'Site', notes: 'Note', thumbnailPath: '', createdAt: '2026-10-22T00:00:00+09:00', updatedAt: '2026-10-22T00:00:00+09:00'};
@@ -76,7 +76,7 @@ it('テキストと予定日を一度送信し、保存中はキャンセルとE
     await boot(); const dialog = await open();
     const form = dialog.querySelector('form')!;
     act(() => { fireEvent.submit(form); fireEvent.submit(form); fireEvent(dialog, new Event('cancel', {cancelable: true, bubbles: false})); });
-    expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, scheduledDate: ''});
+    expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, tags: {existing: [], newNames: []}, scheduledDate: ''});
     expect((within(dialog).getByRole('button', {name: 'キャンセル'}) as HTMLButtonElement).disabled).toBe(true);
     expect(dialog).toBe(screen.getByRole('dialog'));
     await act(async () => pending.resolve(new main.EditWorkResult({work: updated, warnings: []})));
@@ -196,7 +196,7 @@ it.each(['2028-02-29', '', '0001-01-01', '9999-12-31'])('予定日%sをテキス
     const reopened = await open(); expect(field(reopened, /更新予定日/).value).toBe(date);
 });
 
-function workInput() {return {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes};}
+function workInput() {return {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, tags: {existing: [], newNames: []}};}
 
 it('日付入力が不完全な間は空文字の解除を送らない', async () => {
     await boot(); const dialog = await open(); const form = dialog.querySelector('form')!;

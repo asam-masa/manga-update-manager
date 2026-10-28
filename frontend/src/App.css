@@ -109,6 +109,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .edit-dialog::backdrop { background: rgb(23 43 77 / 45%); }
 .edit-dialog form { margin-top: 20px; }
 .edit-cancel { margin-top: 16px; }
+.tag-edit-dialog { width: min(620px, calc(100% - 32px)); overflow: hidden; }
+.tag-edit-dialog[open] { display: flex; flex-direction: column; }
+.tag-edit-dialog form { min-height: 0; display: flex; flex-direction: column; }
+.edit-fields { min-height: 0; overflow-y: auto; padding: 3px; }
+.edit-site-date { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.edit-site-date input { margin-bottom: 0; min-width: 0; }
+.edit-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #dfe3e8; padding-top: 12px; margin-top: 12px; flex-shrink: 0; }
+.edit-footer .primary-button { width: auto; }
+.edit-feedback { overflow-y: auto; max-height: 25vh; flex-shrink: 0; }
+.work-tag-editor { margin-bottom: 20px; }
+.work-tag-editor h3 { font-size: 0.875rem; margin-bottom: 8px; }
+.tag-box { background: #f8fafc; border: 1px solid #c7d9e4; border-radius: 8px; padding: 12px; }
+.tag-box .message { margin-top: 0; margin-bottom: 10px; }
+.tag-box p { overflow-wrap: anywhere; }
+.tag-box > input { margin-bottom: 8px; }
+.tag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.tag-chip { background: #e3f0f3; border: 1px solid #b9d6dc; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; padding-left: 8px; font-size: 0.875rem; max-width: 100%; }
+.tag-chip > span { overflow-wrap: anywhere; min-width: 0; }
+.tag-chip button { min-height: 30px; flex-shrink: 0; background: transparent; color: inherit; padding: 0 8px; }
+.tag-new { background: #fff4da; border-color: #ead39d; }
+.tag-new-label { font-size: 0.7rem; white-space: nowrap; }
+.tag-candidates { max-height: 112px; overflow-y: auto; background: #fff; border: 1px solid #d8e3ed; border-radius: 6px; }
+.tag-candidates label { display: flex; align-items: center; gap: 8px; font-weight: 400; padding: 8px; margin: 0; overflow-wrap: anywhere; }
+.tag-candidates label:hover { background: #e8f1f7; }
+.tag-candidates input { width: 18px; height: 18px; margin: 0; padding: 0; flex-shrink: 0; }
+.tag-create { width: 100%; margin-top: 8px; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.tag-conflicts { background: #fff4da; padding: 8px; margin-bottom: 10px; border-radius: 6px; }
+.tag-conflict { border-top: 1px solid #ead39d; padding-top: 6px; margin-top: 6px; }
+.tag-conflict button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .edit-site-date { grid-template-columns: minmax(0, 1fr); } }
 .delete-dialog dd { margin: 6px 0 16px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .delete-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 .danger-button { background: #a33424; color: #fff; }

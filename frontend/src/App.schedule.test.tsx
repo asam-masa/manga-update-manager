@@ -8,7 +8,7 @@ import {main} from '../wailsjs/go/models';
 
 const clock = vi.hoisted(() => ({today: '2028-02-29'}));
 vi.mock('./use-japan-today', () => ({useJapanToday: () => clock.today}));
-vi.mock('../wailsjs/go/main/App', () => ({CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkSort: vi.fn(), SetWorkSort: vi.fn(), LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(),
     LoadShowFutureSchedules: vi.fn(), SetShowFutureSchedules: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(),
     LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
@@ -110,6 +110,7 @@ it('編集で未来へ移った作品が隠れても現在ページと通知を�
     fireEvent.click(screen.getByRole('button', {name: '作品1の作品操作'})); fireEvent.click(screen.getByRole('button', {name: '作品1を編集'}));
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: work(1, '2028-03-02'), warnings: []}));
     fireEvent.change(screen.getByLabelText(/更新予定日/), {target: {value: '2028-03-02'}});
+    await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByText(/未来の予定を非表示にしているため/)).toBeTruthy(); expect(page()).toBe('1');
