@@ -29,7 +29,7 @@ type TagWork struct {
 }
 
 // TagDeletePreview is display/confirmation data, not permission to delete.
-// A future delete operation must recheck its conditions inside its transaction.
+// DeleteTag rechecks its conditions inside the mutation transaction.
 type TagDeletePreview struct {
 	Tag   manga.Tag
 	Works []TagWork
@@ -87,9 +87,13 @@ func (s *Store) PreviewTagDelete(ctx context.Context, id int64) (result TagDelet
 			result = TagDeletePreview{}
 		}
 	}()
+	return readTagDeletePreview(ctx, conn, id)
+}
+
+func readTagDeletePreview(ctx context.Context, q rowQueryer, id int64) (result TagDeletePreview, err error) {
 	// One statement supplies both the exact tag name and its associated works.
 	// A separate name read followed by a target read could mix two DB snapshots.
-	rows, err := conn.QueryContext(ctx, `SELECT t.id,t.name,wt.work_id,w.id,w.created_at,w.title
+	rows, err := q.QueryContext(ctx, `SELECT t.id,t.name,wt.work_id,w.id,w.created_at,w.title
  FROM tags t LEFT JOIN work_tags wt ON wt.tag_id=t.id
  LEFT JOIN works w ON w.id=wt.work_id WHERE t.id=? ORDER BY wt.work_id`, id)
 	if err != nil {
@@ -98,6 +102,9 @@ func (s *Store) PreviewTagDelete(ctx context.Context, id int64) (result TagDelet
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
 			err = errors.Join(err, ErrDBStopped, closeErr)
+		}
+		if err != nil {
+			result = TagDeletePreview{}
 		}
 	}()
 	result.Works = make([]TagWork, 0)
