@@ -212,9 +212,10 @@ it('モーダル開始後は背景からのページ変更を受け付けない'
 it('最終ページの削除は他作品があれば維持し、空になった時だけ最後へ補正する', async () => {
     list.mockResolvedValue(works(26)); vi.mocked(DeleteWork).mockImplementation(async (id) => new main.DeleteWorkResult({workID: id, warnings: []}));
     await boot(); fireEvent.click(page(3)); action(26, '作品26を削除');
+    await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull()); expect(current()?.textContent).toBe('3');
-    action(25, '作品25を削除'); fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
+    action(25, '作品25を削除'); await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}) as HTMLButtonElement).disabled).toBe(false)); fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
     await waitFor(() => expect(current()?.textContent).toBe('2'));
     expect(screen.getByRole('region', {name: '作品25の削除結果'})).toBeTruthy();
     expect(screen.getByRole('region', {name: '作品26の削除結果'})).toBeTruthy();

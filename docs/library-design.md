@@ -2,7 +2,7 @@
 
 grillingで合意した機能の振る舞いと、その後の具体化を記録する。現行のAPI・画面契約は[作品API](./work-api.md)と[画面設計](./work-screen.md)、タグの保存・公開APIは[保存契約](./tag-storage.md)と[タグAPI](./tag-api.md)を参照する。過去のIssue段階の「未実装」「後続」は当時の記録であり、後の接続・検証結果と区別する。
 
-現在は手入力の予定日・予定順・未来表示設定と、作品編集のタグ欄を接続済みである。予定の検証範囲と未確認事項は[予定順の検証](./verification/scheduled-date-order.md)、タグ編集は[編集欄の検証](./verification/work-tag-editor.md)を参照する。タグ管理・AND絞り込み・削除確認画面へのタグ接続は後続であり、機能全体の検証完了を意味しない。残る条件は[ADR-0019](./adr/0019-use-manual-japan-schedule-dates.md)と[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)へ記録する。
+現在は手入力の予定日・予定順・未来表示設定と、作品編集・削除確認のタグ欄を接続済みである。予定の検証範囲と未確認事項は[予定順の検証](./verification/scheduled-date-order.md)、タグ編集は[編集欄の検証](./verification/work-tag-editor.md)、削除確認は[タグ付き削除の検証](./verification/work-delete-tags.md)を参照する。タグ管理・AND絞り込みは後続であり、機能全体の検証完了を意味しない。残る条件は[ADR-0019](./adr/0019-use-manual-japan-schedule-dates.md)と[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)へ記録する。
 
 重要な判断の背景と選択肢は[ADR-0005](./adr/0005-define-library-behavior.md)へ分離する。作業状態と受け入れ条件はGitHub Issuesで管理し、この文書へ進捗を重複記録しない。
 
@@ -199,6 +199,8 @@ DB/APIの型・移行・省略更新の互換性・競合・結果不明・削�
 #303で[公開API](./tag-api.md)を接続する。#295では候補/現在タグの初期・再取得失敗で入力を保持して保存無効、タグ変更検出後は本文・付け外し・新規仮追加を残して変更されたタグだけ再確認する方針を承認済み。改名後の名前の採用と削除済み選択の解除は明示操作とする。UI配置はサンプルで確認してから実装し、APIの追加をUI接続済みとは扱わない。
 
 #306で承認済み配置の[タグ編集画面](./work-screen.md#タグ編集の画面接続issue-306)へ接続する。予定日とメモの間へタグ欄を置き、既存候補・新規仮追加・読込失敗と変更確認を扱う。実機の範囲は[検証記録](./verification/work-tag-editor.md)を参照する。管理・AND絞り込み・削除確認のタグ表示は後続である。
+
+#310で[削除確認のタグ接続](./work-screen.md#削除確認のタグ接続issue-310親295)を追加する。確認した作品情報とタグを送り、取得失敗時は削除不可、変更検出後は全体の再確認と明示操作を必要とする。これはタグ自体を削除する管理操作ではない。
 
 ## 設定の保持
 

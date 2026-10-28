@@ -1,6 +1,6 @@
 # タグの公開API
 
-Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集画面へ接続する。管理・絞り込み・削除確認画面へのタグ接続は後続である。
+Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集、#310で削除確認画面へ接続する。管理・絞り込みは後続である。
 
 ## 読取と識別子
 
@@ -14,7 +14,7 @@ EditWorkInput.tagsは任意のTagEditInput{existing: TagDTO[], newNames: string[
 
 Appは入力変換時に検証し、既存のWorkEditor・共通受付・DB寿命・結果分類を使う。EditWorkResultは従来の作品と警告で、タグIDを返すためのSQLを確定後に追加しない。確定IDは必要に応じて読取APIから取得する。後続画面は保存成功で編集を閉じ、次の編集開始で最新候補を読む。
 
-DeleteWorkInput.tagsは任意のTagDTO[]。省略・nullは従来互換、空配列はタグなしの正確な確認。指定したID/名前集合が変わればwork_changedで拒否し、タグも含めた再確認を案内する。未使用候補は作品削除後も保持する。現在の削除画面はまだタグを送らず、UI接続時に確認・再取得へ引き継ぐ。
+DeleteWorkInput.tagsは任意のTagDTO[]。省略・nullは従来互換、空配列はタグなしの正確な確認。指定したID/名前集合が変わればwork_changedで拒否し、タグも含めた再確認を案内する。未使用候補は作品削除後も保持する。#310の[削除確認画面](./work-screen.md#削除確認のタグ接続issue-310親295)は取得成功したタグ集合を必ず指定し、失敗時は削除せず、変更検出後は作品情報とタグを読み直して再確認する。
 
 ## 安全なエラー
 
