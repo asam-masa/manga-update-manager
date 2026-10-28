@@ -371,4 +371,88 @@ export namespace main {
 		}
 	}
 
+	export class TagWorkDTO {
+	    id: string;
+	    createdAt: string;
+	    title: string;
+
+	    static createFrom(source: any = {}) {
+	        return new TagWorkDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.createdAt = source["createdAt"];
+	        this.title = source["title"];
+	    }
+	}
+	export class TagDeletePreviewDTO {
+	    tag: TagDTO;
+	    works: TagWorkDTO[];
+
+	    static createFrom(source: any = {}) {
+	        return new TagDeletePreviewDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tag = this.convertValues(source["tag"], TagDTO);
+	        this.works = this.convertValues(source["works"], TagWorkDTO);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+	export class TagUsageDTO {
+	    tag: TagDTO;
+	    workCount: number;
+
+	    static createFrom(source: any = {}) {
+	        return new TagUsageDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tag = this.convertValues(source["tag"], TagDTO);
+	        this.workCount = source["workCount"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+
+
 }

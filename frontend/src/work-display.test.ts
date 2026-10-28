@@ -22,6 +22,12 @@ describe('表示境界', () => {
         expect(apiErrorCode(error)).toBe(code);
         expect(isDatabaseStopped(error)).toBe(code === 'work_edit_outcome_unknown');
     });
+    it('タグ不存在を包装後も判別し、DB停止とは扱わない', () => {
+        const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code: 'tag_not_found', message: 'タグ一覧を再読み込みしてください。'}));
+        expect(apiErrorCode(error)).toBe('tag_not_found');
+        expect(apiErrorMessage(error, '案内')).toBe('タグ一覧を再読み込みしてください。');
+        expect(isDatabaseStopped(error)).toBe(false);
+    });
     it('ホストのタイムゾーンに依存せず日本時間へ変換する', () => {
         expect(registrationDate('2026-10-05T18:30:00Z')).toBe('2026/10/06 03:30:00');
         expect(registrationDate('invalid')).toBe('日時を確認できません');

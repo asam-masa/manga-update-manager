@@ -18,6 +18,10 @@ export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
 export function LoadShowFutureSchedules():Promise<boolean>;
 
+export function LoadTagDeletePreview(arg1:string):Promise<main.TagDeletePreviewDTO>;
+
+export function LoadTagUsage():Promise<Array<main.TagUsageDTO>>;
+
 export function LoadTags():Promise<Array<main.TagDTO>>;
 
 export function LoadWorkListMode():Promise<string>;

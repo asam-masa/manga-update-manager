@@ -34,6 +34,14 @@ export function LoadShowFutureSchedules() {
   return window['go']['main']['App']['LoadShowFutureSchedules']();
 }
 
+export function LoadTagDeletePreview(arg1) {
+  return window['go']['main']['App']['LoadTagDeletePreview'](arg1);
+}
+
+export function LoadTagUsage() {
+  return window['go']['main']['App']['LoadTagUsage']();
+}
+
 export function LoadTags() {
   return window['go']['main']['App']['LoadTags']();
 }
