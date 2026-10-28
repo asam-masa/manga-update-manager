@@ -140,6 +140,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .tag-conflict button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .edit-site-date { grid-template-columns: minmax(0, 1fr); } }
 .delete-dialog dd { margin: 6px 0 16px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.delete-tag-list { margin: 0; padding-left: 24px; max-height: 10rem; overflow-y: auto; }
 .delete-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 .danger-button { background: #a33424; color: #fff; }
 .danger-button:hover:not(:disabled) { background: #81291c; }
