@@ -108,6 +108,10 @@ Applicationを通じて未来表示の専用読取・保存をWailsへ公開す�
 
 予定順の選択と未来条件、行見出し、共有設定要求列、時計フックをAppへ接続する。今日の変化と明示的な未来切替をページの条件キーで区別し、検索・編集中の内容・処理・通知を維持する。確認済みの範囲と未実施は[予定順の画面検証](../verification/scheduled-date-order.md)へ記録する。実スリープ復帰と最終的な検証条件の一括照合が残るため、Validation StatusはPendingを維持する。
 
+### 日付またぎスリープ復帰の結果（Issue #292、2026-10-28）
+
+利用者が、10月27日に起動した専用合成データのアプリを手動スリープから翌日に復帰し、再読み込みせず「明日」が先頭・29件/全30件となる確認について問題なかったと報告した。[対象版・開始状態・利用者確認と観測の限界](../verification/scheduled-date-order.md#日付またぎスリープ復帰の利用者確認issue-292)を記録する。報告後に開始PIDは存在せず、親担当による復帰後再撮影と同一PID照合はできなかった。検索・ページ・編集中入力・DB不変・正常終了の前後比較、起動したまま午前0時をまたぐ試験と全条件の照合は未完了であり、Validation StatusはPendingを維持する。
+
 ## References
 
 - [タイマーの遅延（MDN）](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified)
