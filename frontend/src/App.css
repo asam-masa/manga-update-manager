@@ -107,6 +107,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .work-actions-panel button:hover:not(:disabled), .work-actions-panel button:focus-visible { background: #e2edf3; }
 .edit-dialog { background: #fff; color: #172b4d; border: 1px solid #acb8c4; border-radius: 12px; width: min(540px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 24px; overflow: auto; }
 .edit-dialog::backdrop { background: rgb(23 43 77 / 45%); }
+.tag-management-dialog { width: min(720px, calc(100% - 32px)); overflow: hidden; }
+.tag-management-dialog[open] { display: flex; flex-direction: column; }
+.tag-management-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tag-management-search { margin-top: 16px; }
+.tag-management-search input { margin-bottom: 0; }
+.tag-management-search p { margin: 8px 0; }
+.tag-management-header, .tag-management-search, .tag-management-footer { flex-shrink: 0; }
+.tag-management-feedback { flex-shrink: 0; max-height: 25vh; overflow-y: auto; }
+.tag-management-feedback p { overflow-wrap: anywhere; }
+.tag-management-list { min-height: 0; overflow: auto; margin-top: 8px; }
+.tag-management-list table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.tag-management-list th, .tag-management-list td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #dfe3e8; overflow-wrap: anywhere; }
+.tag-management-list thead { position: sticky; top: 0; background: #eef4f8; }
+.tag-management-list th:last-child, .tag-management-list td:last-child { width: 35%; }
+.tag-management-list tbody th { font-weight: 400; }
+.tag-management-list tbody tr:nth-child(even) { background: #f4f7fa; }
+.tag-management-footer { border-top: 1px solid #dfe3e8; margin-top: 12px; padding-top: 8px; }
+.tag-management-footer > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 .edit-dialog form { margin-top: 20px; }
 .edit-cancel { margin-top: 16px; }
 .tag-edit-dialog { width: min(620px, calc(100% - 32px)); overflow: hidden; }
