@@ -10,6 +10,7 @@ import {CoverProgressNotice} from './CoverProgressNotice';
 import type {CoverProgressTarget} from './CoverProgressNotice';
 import {EditWorkDialog} from './EditWorkDialog';
 import {DeleteWorkDialog} from './DeleteWorkDialog';
+import {TagManagementDialog} from './TagManagementDialog';
 import {WorkNotices} from './WorkNotices';
 import type {WorkNotice} from './WorkNotices';
 import {useWorkListMode} from './use-work-list-mode';
@@ -57,6 +58,9 @@ function App() {
     const [deleteNotices, setDeleteNotices] = useState<Record<string, {work: WorkView; missing: boolean; warnings: string[]}>>({});
     const deleteOrigin = useRef<HTMLButtonElement | null>(null);
     const modal = useRef(false);
+    const [tagManagementOpen, setTagManagementOpen] = useState(false);
+    const [tagManagementStopped, setTagManagementStopped] = useState(false);
+    const tagManagementButton = useRef<HTMLButtonElement>(null);
     // SQLite can reuse IDs. Tombstones identify the deleted registration, not
     // every future work that receives the same numeric ID.
     const removedWorks = useRef(new Set<string>());
@@ -320,6 +324,19 @@ function App() {
         editOrigin.current = button;
         setEditing({...work});
     }
+    function openTagManagement() {
+        if (modal.current) return;
+        ++navigationRevision.current;
+        modal.current = true; setTagManagementOpen(true);
+    }
+    function closeTagManagement() {
+        modal.current = false; setTagManagementOpen(false);
+        requestAnimationFrame(() => {
+            const button = tagManagementButton.current;
+            if (modal.current || (document.activeElement !== document.body && document.activeElement !== button)) return;
+            button?.focus({preventScroll: true});
+        });
+    }
     function closeEdit() {
         modal.current = false;
         setEditing(null);
@@ -407,6 +424,9 @@ function App() {
 
     return (
         <main className="app-shell">
+            {tagManagementStopped && <p className="message error-message" role="alert">タグ情報の取得でDB停止を検出しました。アプリを再起動して状態を確認してください。</p>}
+            {tagManagementOpen && <TagManagementDialog stopped={tagManagementStopped || editStopped || deleteStopped || listStopped}
+                onStopped={() => { setTagManagementStopped(true); setEditStopped(true); setDeleteStopped(true); }} onClose={closeTagManagement} />}
             {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
             {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
                 onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} onStart={(work) => clearResult('delete', work)} />}
@@ -465,6 +485,7 @@ function App() {
                             onClick={() => { void loadWorks(); }}>↻</button>
                     </div>
                     <div className="search-controls">
+                        <button ref={tagManagementButton} type="button" className="secondary-button" aria-haspopup="dialog" onClick={openTagManagement}>タグ管理</button>
                         <label htmlFor="title-search" className="visually-hidden">漫画名で検索</label>
                         <input ref={searchElement} id="title-search" type="search" placeholder="漫画名で検索" value={searchInput}
                             onCompositionStart={() => { composingSearch.current = true; }}

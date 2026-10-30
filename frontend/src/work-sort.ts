@@ -12,7 +12,7 @@ export const isWorkSort = (value: unknown): value is WorkSort => workSortOptions
 const textOrder = new Intl.Collator('ja', {sensitivity: 'variant'});
 const lexical = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 
-function titleOrder(a: string, b: string): number {
+export function titleOrder(a: string, b: string): number {
     const left = searchText(a).split(/(\d+)/), right = searchText(b).split(/(\d+)/);
     for (let i = 0; i < Math.min(left.length, right.length); i++) {
         let result: number;
