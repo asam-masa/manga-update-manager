@@ -179,6 +179,8 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	if err != nil {
 		if errors.Is(err, application.ErrWorkDeleting) {
 			a.deleteBusyNotice(ctx)
+		} else if errors.Is(err, application.ErrTagBusy) {
+			a.tagBusyNotice(ctx)
 		} else if errors.Is(err, application.ErrWorkBusy) {
 			a.workBusyNotice(ctx)
 		} else {
@@ -192,6 +194,10 @@ func (a *App) beforeClose(ctx context.Context) bool {
 
 func workBusyNotice(ctx context.Context) {
 	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "作品情報を保存中です", Message: "作品情報の保存中は終了できません。処理結果を確認してから、もう一度閉じてください。"})
+}
+
+func tagBusyNotice(ctx context.Context) {
+	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "タグを変更中です", Message: "タグの名前変更・削除中は終了できません。処理結果を確認してから、もう一度閉じてください。"})
 }
 
 func deleteBusyNotice(ctx context.Context) {

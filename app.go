@@ -23,6 +23,7 @@ type App struct {
 	works                  *application.Works
 	tags                   *application.TagReader
 	tagManagement          *application.TagManagementReader
+	tagManager             *application.TagManager
 	editor                 *application.WorkEditor
 	deleter                *application.WorkDeleter
 	display                *application.DisplaySettings
@@ -37,6 +38,7 @@ type App struct {
 	coverBusyNotice        func(context.Context)
 	workBusyNotice         func(context.Context)
 	deleteBusyNotice       func(context.Context)
+	tagBusyNotice          func(context.Context)
 	openURL                func(string) error
 	store                  *storage.Store
 	dataDirectory          func() (string, error)
@@ -51,7 +53,7 @@ type App struct {
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, deleteBusyNotice: deleteBusyNotice, startupFinished: make(chan struct{})}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, deleteBusyNotice: deleteBusyNotice, tagBusyNotice: tagBusyNotice, startupFinished: make(chan struct{})}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -81,6 +83,7 @@ func (a *App) startup(ctx context.Context) {
 	a.works = application.NewWorks(store, time.Now)
 	a.tags = application.NewTagReader(store)
 	a.tagManagement = application.NewTagManagementReader(store)
+	a.tagManager = application.NewTagManager(store)
 	a.editor = application.NewWorkEditor(store, time.Now)
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
@@ -107,6 +110,7 @@ func (a *App) shutdown(_ context.Context) {
 	a.works = nil
 	a.tags = nil
 	a.tagManagement = nil
+	a.tagManager = nil
 	a.editor = nil
 	a.deleter = nil
 	a.display = nil

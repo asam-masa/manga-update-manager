@@ -6,6 +6,10 @@ export function CreateWork(arg1) {
   return window['go']['main']['App']['CreateWork'](arg1);
 }
 
+export function DeleteTag(arg1) {
+  return window['go']['main']['App']['DeleteTag'](arg1);
+}
+
 export function DeleteWork(arg1, arg2) {
   return window['go']['main']['App']['DeleteWork'](arg1, arg2);
 }
@@ -68,6 +72,10 @@ export function RemoveWorkCover(arg1) {
 
 export function RemoveWorkCoverWithOperation(arg1, arg2) {
   return window['go']['main']['App']['RemoveWorkCoverWithOperation'](arg1, arg2);
+}
+
+export function RenameTag(arg1, arg2) {
+  return window['go']['main']['App']['RenameTag'](arg1, arg2);
 }
 
 export function SelectWorkCover(arg1) {
