@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function CreateWork(arg1:main.CreateWorkInput):Promise<main.WorkDTO>;
 
+export function DeleteTag(arg1:main.TagDeletePreviewDTO):Promise<main.TagChangeResult>;
+
 export function DeleteWork(arg1:number,arg2:main.DeleteWorkInput):Promise<main.DeleteWorkResult>;
 
 export function EditWork(arg1:number,arg2:main.EditWorkInput):Promise<main.EditWorkResult>;
@@ -35,6 +37,8 @@ export function OpenWork(arg1:number):Promise<main.WorkDTO>;
 export function RemoveWorkCover(arg1:number):Promise<main.RemoveWorkCoverResult>;
 
 export function RemoveWorkCoverWithOperation(arg1:number,arg2:string):Promise<main.RemoveWorkCoverResult>;
+
+export function RenameTag(arg1:main.TagDTO,arg2:string):Promise<main.TagChangeResult>;
 
 export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>;
 
