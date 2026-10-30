@@ -120,7 +120,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .tag-management-list table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .tag-management-list th, .tag-management-list td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #dfe3e8; overflow-wrap: anywhere; }
 .tag-management-list thead { position: sticky; top: 0; background: #eef4f8; }
-.tag-management-list th:last-child, .tag-management-list td:last-child { width: 35%; }
+.tag-management-list th:nth-child(2), .tag-management-list td:nth-child(2) { width: 22%; }
+.tag-management-list th:last-child, .tag-management-list td:last-child { width: 28%; }
+.tag-management-list form { margin: 0; }
+.tag-management-list form input { min-width: 0; margin-bottom: 0; }
+.tag-management-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-management-actions .primary-button { width: auto; }
+.tag-management-list button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.tag-discard { padding: 16px 0; }
+.tag-discard button { margin: 4px; }
+@media (max-width: 600px) {
+    .tag-management-list tr { display: grid; grid-template-columns: minmax(0, 1fr) 100px; }
+    .tag-management-list th:nth-child(2), .tag-management-list td:nth-child(2) { width: auto; }
+    .tag-management-list th:last-child, .tag-management-list td:last-child { width: auto; grid-column: 1 / -1; }
+}
 .tag-management-list tbody th { font-weight: 400; }
 .tag-management-list tbody tr:nth-child(even) { background: #f4f7fa; }
 .tag-management-footer { border-top: 1px solid #dfe3e8; margin-top: 12px; padding-top: 8px; }

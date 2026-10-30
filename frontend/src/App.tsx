@@ -11,6 +11,8 @@ import type {CoverProgressTarget} from './CoverProgressNotice';
 import {EditWorkDialog} from './EditWorkDialog';
 import {DeleteWorkDialog} from './DeleteWorkDialog';
 import {TagManagementDialog} from './TagManagementDialog';
+import {TagManagementNotices} from './TagManagementNotices';
+import type {TagNotice} from './TagManagementNotices';
 import {WorkNotices} from './WorkNotices';
 import type {WorkNotice} from './WorkNotices';
 import {useWorkListMode} from './use-work-list-mode';
@@ -60,6 +62,7 @@ function App() {
     const modal = useRef(false);
     const [tagManagementOpen, setTagManagementOpen] = useState(false);
     const [tagManagementStopped, setTagManagementStopped] = useState(false);
+    const [tagNotices, setTagNotices] = useState<Record<string, TagNotice>>({});
     const tagManagementButton = useRef<HTMLButtonElement>(null);
     // SQLite can reuse IDs. Tombstones identify the deleted registration, not
     // every future work that receives the same numeric ID.
@@ -424,8 +427,10 @@ function App() {
 
     return (
         <main className="app-shell">
-            {tagManagementStopped && <p className="message error-message" role="alert">タグ情報の取得でDB停止を検出しました。アプリを再起動して状態を確認してください。</p>}
+            <TagManagementNotices notices={Object.values(tagNotices)} />
+            {tagManagementStopped && <p className="message error-message" role="alert">タグ操作でDB停止または結果不明を検出しました。アプリを再起動して状態を確認してください。</p>}
             {tagManagementOpen && <TagManagementDialog stopped={tagManagementStopped || editStopped || deleteStopped || listStopped}
+                notices={Object.values(tagNotices)} onNotice={(notice) => setTagNotices((old) => ({...old, [notice.id]: notice}))}
                 onStopped={() => { setTagManagementStopped(true); setEditStopped(true); setDeleteStopped(true); }} onClose={closeTagManagement} />}
             {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
             {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
