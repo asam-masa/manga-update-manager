@@ -129,6 +129,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .tag-management-list button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .tag-discard { padding: 16px 0; }
 .tag-discard button { margin: 4px; }
+.tag-delete-confirmation { min-height: 0; overflow-y: auto; padding-top: 16px; }
+.tag-delete-confirmation p, .tag-delete-confirmation dd, .tag-delete-confirmation li { overflow-wrap: anywhere; }
+.tag-delete-confirmation dd { margin: 6px 0 12px; }
+.tag-delete-targets { max-height: 28vh; overflow-y: auto; border: 1px solid #dfe3e8; padding: 8px; margin-bottom: 12px; }
+.tag-delete-targets ul { margin: 0; padding-left: 24px; }
 @media (max-width: 600px) {
     .tag-management-list tr { display: grid; grid-template-columns: minmax(0, 1fr) 100px; }
     .tag-management-list th:nth-child(2), .tag-management-list td:nth-child(2) { width: auto; }

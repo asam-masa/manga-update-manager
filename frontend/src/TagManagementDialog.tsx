@@ -4,12 +4,13 @@ import {LoadTagUsage, RenameTag} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped} from './work-display';
 import {titleMatches} from './work-search';
-import {readRenamedTag, readTagUsage, sortTagUsage} from './tag-management';
+import {readTagChange, readTagUsage, sortTagUsage} from './tag-management';
 import type {TagUsage} from './tag-management';
 import {tagName, validTagName} from './tag-edit';
 import type {Tag} from './tag-edit';
 import {TagManagementNotices} from './TagManagementNotices';
 import type {TagNotice} from './TagManagementNotices';
+import {TagDeleteConfirmation} from './TagDeleteConfirmation';
 
 export function TagManagementDialog({stopped, onStopped, onClose, notices = [], onNotice = () => {}}: {
     stopped: boolean; onStopped: () => void; onClose: () => void;
@@ -35,6 +36,19 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
     const saving = useRef(false);
     const [discard, setDiscard] = useState(false);
     const focus = useRef<string | null>(null);
+    const [deleting, setDeleting] = useState<Tag | null>(null);
+
+    function backFromDelete() {
+        if (saving.current) return;
+        focus.current = deleting?.id ?? 'search'; setDeleting(null);
+    }
+    function removed(tag: Tag, warning?: string) {
+        const rows = usage!.filter((row) => titleMatches(row.tag.name, query));
+        const index = rows.findIndex((row) => row.tag.id === tag.id);
+        focus.current = rows[index + 1]?.tag.id ?? rows[index - 1]?.tag.id ?? 'search';
+        setUsage((old) => old!.filter((row) => row.tag.id !== tag.id)); setDeleting(null);
+        onNotice({id: tag.id, message: `タグ「${tag.name}」を削除しました。作品は残っています。`, warning});
+    }
 
     function stopWrites() { stop.current = true; setBlocked(true); setFresh(false); onStopped(); }
     function close() {
@@ -111,7 +125,7 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
         try {
             const result = await RenameTag(main.TagDTO.createFrom(submitted.expected), submitted.name);
             if (!active.current) return;
-            const renamed = readRenamedTag(result, submitted.expected.id, tagName(submitted.name));
+            const renamed = readTagChange(result, submitted.expected.id, tagName(submitted.name));
             // Reflect the confirmed mutation directly; no post-commit read can revoke it.
             setUsage(sortTagUsage(usage!.map((row) => row.tag.id === renamed.tag.id ? {...row, tag: renamed.tag} : row)));
             if (usage!.some((row) => row.tag.id !== renamed.tag.id && row.tag.name === renamed.tag.name)) setFresh(false);
@@ -138,7 +152,7 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
     const visible: {tag: Tag; workCount: number | null}[] | undefined = usage?.filter(({tag}) => tag.id === edit?.expected.id || titleMatches(tag.name, query));
     if (edit && usage && !currentTag) visible?.unshift({tag: edit.expected, workCount: null});
     return <dialog ref={dialog} className="edit-dialog tag-management-dialog" aria-labelledby="tag-management-heading"
-        onCancel={(event) => { event.preventDefault(); if (discard) {setDiscard(false); focus.current = 'input';} else close(); }}>
+        onCancel={(event) => { event.preventDefault(); if (deleting) backFromDelete(); else if (discard) {setDiscard(false); focus.current = 'input';} else close(); }}>
         <header className="tag-management-header">
             <h2 id="tag-management-heading">タグ管理</h2>
             <button type="button" className="secondary-button" aria-label="タグ管理を閉じる" disabled={writing} onClick={close}>×</button>
@@ -148,7 +162,7 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
             <button ref={returnButton} type="button" className="secondary-button" onClick={() => {setDiscard(false); focus.current = 'input';}}>編集に戻る</button>
             <button type="button" className="danger-button" onClick={onClose}>変更を破棄して閉じる</button>
         </div>}
-        <div className="tag-management-search" hidden={discard}>
+        <div className="tag-management-search" hidden={discard || deleting !== null}>
             <label htmlFor="tag-management-search">タグ名で検索</label>
             <input ref={search} id="tag-management-search" type="search" value={query} disabled={edit !== null || writing} onChange={(event) => setQuery(event.target.value)} />
             {usage !== null && <p role="status">{visible?.filter((row) => row.workCount !== null).length}件 / 全{usage.length}件</p>}
@@ -158,10 +172,17 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
             {!fresh && usage !== null && <p>前回の表示です。最新情報は未確認です。</p>}
             {blocked && <p className="message error-message" role="alert">データの読み書きを停止しています。アプリを再起動して状態を確認してください。</p>}
             {error && <p className="message error-message" role="alert">{error}</p>}
-            {writing && <p role="status">タグ名を保存しています。結果が表示されるまでお待ちください。</p>}
+            {writing && !deleting && <p role="status">タグ名を保存しています。結果が表示されるまでお待ちください。</p>}
             <TagManagementNotices notices={notices} />
         </div>
-        <div className="tag-management-list" hidden={discard} aria-busy={reading || writing} tabIndex={0} role="region" aria-label="タグと使用作品数">
+        {deleting && <TagDeleteConfirmation key={deleting.id} tag={deleting} stopped={blocked} onStopped={stopWrites}
+            onUnconfirmed={() => setFresh(false)}
+            onPreview={(snapshot) => {
+                setUsage(sortTagUsage(usage!.map((row) => row.tag.id === snapshot.tag.id ? {tag: snapshot.tag, workCount: snapshot.works.length} : row)));
+                setFresh(!stop.current && !usage!.some((row) => row.tag.id !== snapshot.tag.id && row.tag.name === snapshot.tag.name));
+            }}
+            onBusy={(busy) => {saving.current = busy; setWriting(busy);}} onBack={backFromDelete} onRemoved={removed} onNotice={onNotice} />}
+        <div className="tag-management-list" hidden={discard || deleting !== null} aria-busy={reading || writing} tabIndex={0} role="region" aria-label="タグと使用作品数">
             {usage !== null && (usage.length === 0 && !edit ? <p>タグはまだありません。</p>
                 : visible?.length === 0 ? <p>検索条件に一致するタグがありません。</p>
                 : <table><thead><tr><th scope="col">タグ名</th><th scope="col">使用作品数</th><th scope="col">操作</th></tr></thead>
@@ -178,11 +199,16 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
                         {edit?.expected.id === tag.id ? <div className="tag-management-actions">
                             <button type="submit" form="tag-rename-form" className="primary-button" disabled={!canSave}>保存</button>
                             <button type="button" className="secondary-button" disabled={writing} onClick={cancelEdit}>キャンセル</button>
-                        </div> : <button id={`rename-tag-${tag.id}`} type="button" className="secondary-button" aria-label={`「${tag.name}」の名前変更`}
-                            disabled={!fresh || reading || writing || blocked || edit !== null} onClick={() => {setEdit({expected: {...tag}, original: tag.name, name: tag.name}); setError(''); focus.current = 'input';}}>名前変更</button>}
+                        </div> : <div className="tag-management-actions"><button id={`rename-tag-${tag.id}`} type="button" className="secondary-button" aria-label={`「${tag.name}」の名前変更`}
+                            disabled={!fresh || reading || writing || blocked || edit !== null} onClick={() => {setEdit({expected: {...tag}, original: tag.name, name: tag.name}); setError(''); focus.current = 'input';}}>名前変更</button>
+                            <button type="button" className="danger-button" aria-label={`「${tag.name}」を削除`}
+                                disabled={!fresh || reading || writing || blocked || edit !== null} onClick={() => {
+                                    if (saving.current || pending.current || !fresh || edit || stop.current) return;
+                                    setError(''); setDeleting({...tag});
+                                }}>削除</button></div>}
                     </td></tr>)}</tbody></table>)}
         </div>
-        <footer className="tag-management-footer" hidden={discard}>
+        <footer className="tag-management-footer" hidden={discard || deleting !== null}>
             <p className="section-description">使用数は全作品への付与件数です。</p>
             <div><button type="button" className="secondary-button" disabled={reading || blocked || writing} onClick={() => { void reload(); }}>再読み込み</button>
                 <button ref={closeButton} type="button" className="secondary-button" disabled={writing} onClick={close}>閉じる</button></div>

@@ -3,7 +3,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing
 import userEvent from '@testing-library/user-event';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import App from './App';
-import {LoadTagUsage, RenameTag} from '../wailsjs/go/main/App';
+import {DeleteTag, LoadTagDeletePreview, LoadTagUsage, RenameTag} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
 vi.mock('../wailsjs/go/main/App', () => ({
@@ -14,11 +14,12 @@ vi.mock('../wailsjs/go/main/App', () => ({
     LoadCoverWarnings: async () => [], LoadCoverProgress: async () => [],
     ListWorks: async () => Array.from({length: 23}, (_, i) => ({id: i + 1, title: `漫画${i + 1}`, url: `https://example.com/${i + 1}`,
         siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-30T00:00:00+09:00', updatedAt: '2026-10-30T00:00:00+09:00'})),
-    LoadTagUsage: vi.fn(), RenameTag: vi.fn(), CreateWork: vi.fn(), OpenWork: vi.fn(),
+    LoadTagUsage: vi.fn(), RenameTag: vi.fn(), LoadTagDeletePreview: vi.fn(), DeleteTag: vi.fn(), CreateWork: vi.fn(), OpenWork: vi.fn(),
 }));
 beforeEach(() => {
     vi.mocked(LoadTagUsage).mockReset().mockResolvedValue([main.TagUsageDTO.createFrom({tag: {id: '1', name: 'マンガ'}, workCount: 23})]);
     vi.mocked(RenameTag).mockReset();
+    vi.mocked(LoadTagDeletePreview).mockReset(); vi.mocked(DeleteTag).mockReset();
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {configurable: true, value: function(this: HTMLDialogElement) {this.open = true;}});
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {configurable: true, value: function(this: HTMLDialogElement) {this.open = false;}});
 });
@@ -73,4 +74,24 @@ it.each([false, true])('改名の結果と確定後警告を閉じた後も親�
         expect(screen.getByText('保存済み・接続を確認できません')).toBeTruthy();
         expect(screen.getByText(/タグ操作でDB停止または結果不明/)).toBeTruthy();
     }
+});
+
+it.each([false, true])('タグ削除後も作品と親の結果通知を保持する: warning=%s', async (warning) => {
+    const tag = {id: '1', name: 'マンガ'};
+    vi.mocked(LoadTagDeletePreview).mockResolvedValue(main.TagDeletePreviewDTO.createFrom({tag, works: Array.from({length: 23}, (_, i) => ({
+        id: String(i + 1), title: `漫画${i + 1}`, createdAt: '2026-10-30T00:00:00+09:00',
+    }))}));
+    vi.mocked(DeleteTag).mockResolvedValue(main.TagChangeResult.createFrom({tag, warnings: warning
+        ? [{code: 'database_stopped_after_commit', message: '削除済み・接続を確認できません'}] : []}));
+    render(<App />); await screen.findByRole('heading', {name: '漫画1'});
+    await userEvent.click(screen.getByRole('button', {name: 'タグ管理'}));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(await within(dialog).findByRole('button', {name: '「マンガ」を削除'}));
+    await within(dialog).findByText('漫画23');
+    await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
+    await within(dialog).findByText('タグ「マンガ」を削除しました。作品は残っています。');
+    await userEvent.click(within(dialog).getByRole('button', {name: '閉じる'}));
+    expect(screen.getByRole('heading', {name: '漫画1'})).toBeTruthy(); expect(screen.getAllByText('23件 / 全23件').length).toBeGreaterThan(0);
+    expect(screen.getByText('タグ「マンガ」を削除しました。作品は残っています。')).toBeTruthy();
+    if (warning) expect(screen.getByText('削除済み・接続を確認できません')).toBeTruthy();
 });
