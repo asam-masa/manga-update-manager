@@ -1,4 +1,4 @@
-import {act, fireEvent, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {beforeEach, afterEach, expect, it, vi} from 'vitest';
 import {StrictMode} from 'react';
@@ -72,7 +72,10 @@ it('整理API完了後に画像取得を開始し、一覧再読み込み成功�
     fireEvent.error(old);
     expect(screen.getByText('画像を表示できません')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
-    expect(screen.queryByText('画像を表示できません')).toBeNull();
-    expect(view.container.querySelector('img')).not.toBe(old);
+    await waitFor(() => {
+        expect(screen.queryByText('画像を表示できません')).toBeNull();
+        expect(view.container.querySelector('img')).not.toBeNull();
+        expect(view.container.querySelector('img')).not.toBe(old);
+    });
     vi.mocked(ListWorks).mockResolvedValue([]);
 });
