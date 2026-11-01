@@ -6,9 +6,9 @@ import App from './App';
 import {CreateWork, DeleteWork, ListWorks, LoadDisplaySettings} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), DeleteWork: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), DeleteWork: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
+    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}); });
 const work = {id: 1, url: 'https://example.com/old', title: '漫画', siteName: 'Site', notes: 'Note', thumbnailPath: '', createdAt: '2026-10-23T00:00:00+09:00', updatedAt: '2026-10-23T00:00:00+09:00'};
 function deferred<T>() {
     let resolve!: (value: T) => void; let reject!: (reason: unknown) => void;
@@ -25,9 +25,13 @@ async function boot() { render(<StrictMode><App /></StrictMode>); await screen.f
 async function open() { await userEvent.click(screen.getByRole('button', {name: '漫画の作品操作'})); await userEvent.click(screen.getByRole('button', {name: '漫画を削除'})); return screen.getByRole('dialog'); }
 
 it('複数作品の削除結果を保持し、消えた作品の通知を閉じると検索へ戻る', async () => {
-    const other = {...work, id: 2, title: '別作品'};
+    const other = {...work, id: 2, url: 'https://example.com/2', title: '別作品'};
     vi.mocked(ListWorks).mockResolvedValue([work, other]);
-    vi.mocked(DeleteWork).mockImplementation(async (id) => new main.DeleteWorkResult({workID: id, warnings: []}));
+    let remaining = [work, other];
+    vi.mocked(DeleteWork).mockImplementation(async (id) => {
+        remaining = remaining.filter((value) => value.id !== id); vi.mocked(ListWorks).mockResolvedValue(remaining);
+        return new main.DeleteWorkResult({workID: id, warnings: []});
+    });
     await boot();
     const dialog = await open();
     await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
@@ -58,6 +62,7 @@ it('予定日を含む確認項目を一度送信し処理中の連打・Escを�
     act(() => { fireEvent.click(remove); fireEvent.click(remove); fireEvent(dialog, new Event('cancel', {cancelable: true})); });
     expect(DeleteWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, thumbnailPath: '', scheduledDate: '', tags: []});
     expect((within(dialog).getByRole('button', {name: 'キャンセル'}) as HTMLButtonElement).disabled).toBe(true);
+    vi.mocked(ListWorks).mockResolvedValue([]);
     await act(async () => pending.resolve(new main.DeleteWorkResult({workID: 1, warnings: [{code: 'cover_cleanup_failed', message: '画像整理は未完了です。'}]})));
     expect(screen.queryByRole('dialog')).toBeNull(); expect(screen.queryByRole('heading', {name: '漫画'})).toBeNull();
     expect(screen.getByText('「漫画」を削除しました。')).toBeTruthy(); expect(screen.getByText('画像整理は未完了です。')).toBeTruthy();
@@ -82,7 +87,7 @@ it('再確認応答の予定日が不正な型なら削除を再送しない', a
     vi.mocked(DeleteWork).mockRejectedValueOnce({code: 'work_changed', message: '確認後の変更'});
     vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: 123} as unknown as main.WorkDTO]);
     await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
-    await within(dialog).findByText(/最新の作品情報を取得できません/);
+    await within(dialog).findByText(/最新.*取得できません/);
     fireEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
     expect(DeleteWork).toHaveBeenCalledTimes(1);
 });
@@ -90,7 +95,7 @@ it('再確認応答の予定日が不正な型なら削除を再送しない', a
 it('削除前の一覧応答が遅れても作品が再出現しない', async () => {
     await boot(); const old = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(old.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
-    vi.mocked(DeleteWork).mockResolvedValue(new main.DeleteWorkResult({workID: 1, warnings: []}));
+    vi.mocked(DeleteWork).mockImplementation(async () => {vi.mocked(ListWorks).mockResolvedValue([]); return new main.DeleteWorkResult({workID: 1, warnings: []});});
     const dialog = await open(); await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
     await act(async () => old.resolve([work]));
     expect(screen.queryByRole('heading', {name: '漫画'})).toBeNull();
@@ -98,9 +103,9 @@ it('削除前の一覧応答が遅れても作品が再出現しない', async (
 
 it('再利用された同じIDの新規登録を削除済み扱いせず表示する', async () => {
     vi.mocked(LoadDisplaySettings).mockResolvedValue({registrationFormVisible: true});
-    vi.mocked(DeleteWork).mockResolvedValue(new main.DeleteWorkResult({workID: 1, warnings: []}));
+    vi.mocked(DeleteWork).mockImplementation(async () => {vi.mocked(ListWorks).mockResolvedValue([]); return new main.DeleteWorkResult({workID: 1, warnings: []});});
     await boot(); const dialog = await open(); await userEvent.click(within(dialog).getByRole('button', {name: '削除する'}));
-    const created = {...work, title: '新しい登録', createdAt: '2026-10-23T01:00:00+09:00'};
+    const created = {...work, title: '新しい登録', createdAt: '2026-10-23T01:00:00+09:00', updatedAt: '2026-10-23T01:00:00+09:00'};
     vi.mocked(CreateWork).mockResolvedValue(created); vi.mocked(ListWorks).mockResolvedValue([created]);
     await userEvent.type(screen.getByLabelText(/作品URL/), created.url); await userEvent.type(screen.getByLabelText(/タイトル/), created.title);
     await userEvent.click(screen.getByRole('button', {name: '登録する'}));
@@ -131,7 +136,8 @@ it('再確認の取得失敗では削除不可とし、再読込またはキャ�
 
 it('不存在は今回の成功とせず一覧から除外する', async () => {
     vi.mocked(DeleteWork).mockRejectedValue({code:'work_not_found', message:'存在しません'});
-    await boot(); const dialog = await open(); await userEvent.click(within(dialog).getByRole('button', {name:'削除する'}));
+    await boot(); const dialog = await open(); vi.mocked(ListWorks).mockResolvedValue([]);
+    await userEvent.click(within(dialog).getByRole('button', {name:'削除する'}));
     expect(await screen.findByText('「漫画」は既に存在しません。')).toBeTruthy(); expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('heading', {name:'漫画'})).toBeNull();
 });

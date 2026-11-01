@@ -5,7 +5,7 @@ import {StrictMode} from 'react';
 import App from './App';
 import {LoadCoverWarnings, ListWorks, LoadCoverProgress} from '../wailsjs/go/main/App';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn().mockResolvedValue([]), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn().mockResolvedValue([])}); });
 let frames: Map<number, FrameRequestCallback>;
 beforeEach(() => {
     frames = new Map();
@@ -62,7 +62,7 @@ it('アンマウント後には整理を要求しない', async () => {
 it('整理API完了後に画像取得を開始し、一覧再読み込み成功後に取得をやり直す', async () => {
     let complete!: (warnings: []) => void;
     vi.mocked(LoadCoverWarnings).mockReturnValue(new Promise((resolve) => { complete = resolve; }));
-    vi.mocked(ListWorks).mockResolvedValue([{id: 1, title: '画像作品', url: 'https://example.com/', siteName: '', notes: '', thumbnailPath: 'covers/managed.png', createdAt: '', updatedAt: ''}]);
+    vi.mocked(ListWorks).mockResolvedValue([{id: 1, title: '画像作品', url: 'https://example.com/', siteName: '', notes: '', thumbnailPath: 'covers/managed.png', createdAt: '2026-10-30T00:00:00+09:00', updatedAt: '2026-10-30T00:00:00+09:00'}]);
     const view = render(<App />);
     await screen.findByRole('heading', {name: '画像作品'});
     await frame(); await frame();

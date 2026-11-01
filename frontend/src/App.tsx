@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
-import {CreateWork, ListWorks, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings} from '../wailsjs/go/main/App';
+import {CreateWork, OpenWork, LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {WorkView} from './work-display';
 import {WorkList} from './WorkList';
 import {apiErrorMessage, isDatabaseStopped} from './work-display';
@@ -25,16 +25,20 @@ import type {WorkSort} from './work-sort';
 import {useFutureSchedules} from './use-future-schedules';
 import {useJapanToday} from './use-japan-today';
 import {scheduledWorks} from './scheduled-works';
+import {useLibrarySnapshot} from './use-library-snapshot';
+import {validCreatedAt} from './tag-management';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
 
 function App() {
     const [form, setForm] = useState(emptyForm);
-    const [works, setWorks] = useState<WorkView[] | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [listError, setListError] = useState('');
-    const [listStopped, setListStopped] = useState(false);
+    const library = useLibrarySnapshot();
+    const works = library.data?.works ?? null;
+    const {loading, error: listError, stopped: listStopped} = library;
+    const stoppedRef = useRef(false);
+    stoppedRef.current ||= listStopped;
+    function stopLibrary() { stoppedRef.current = true; library.stop(); }
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [registeredTitle, setRegisteredTitle] = useState<string | null>(null);
@@ -53,8 +57,6 @@ function App() {
     const searchElement = useRef<HTMLInputElement>(null);
     const opening = useRef(new Set<number>());
     const [accessStates, setAccessStates] = useState<Record<string, {work: WorkView; pending: boolean; error?: string; success?: string}>>({});
-    const editRevision = useRef(0);
-    const savedEdits = useRef(new Map<number, {revision: number; work: WorkView}>());
     const [deleting, setDeleting] = useState<WorkView | null>(null);
     const [deleteStopped, setDeleteStopped] = useState(false);
     const [deleteNotices, setDeleteNotices] = useState<Record<string, {work: WorkView; missing: boolean; warnings: string[]}>>({});
@@ -94,9 +96,6 @@ function App() {
     const today = useJapanToday();
     const scheduled = workSort.order === 'scheduled_date';
     const scheduleReady = !scheduled || futureSchedules.ready;
-    const currentSort = useRef(workSort.order);
-    const currentVisibleWorks = useRef(new Set<string>());
-    currentSort.current = workSort.order;
     const listPanel = useRef<HTMLElement>(null);
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -109,62 +108,18 @@ function App() {
     const urlInput = useRef<HTMLInputElement>(null);
     const toggleButton = useRef<HTMLButtonElement>(null);
     const submitting = useRef(false);
-    const request = useRef(0);
-    const accessRevision = useRef(0);
-    const savedAccess = useRef(new Map<number, {revision: number; value: WorkView['lastAccessedAt']; createdAt: string}>());
-    const coverChangeRevision = useRef(0);
-    const savedCovers = useRef(new Map<number, {revision: number; work: WorkView}>());
-    const coverActions = useCoverActions(coversReady, (updated) => {
-        savedCovers.current.set(updated.id, {revision: ++coverChangeRevision.current, work: updated});
-        setWorks((current) => current?.map((work) => identity(work) === identity(updated)
-            ? {...work, thumbnailPath: updated.thumbnailPath, updatedAt: later(work.updatedAt, updated.updatedAt)} : work) ?? null);
-        setCoverRevision((value) => value + 1);
-    }, (id) => modal.current || opening.current.has(id));
+    const coverActions = useCoverActions(coversReady, () => {
+        library.changed();
+    }, (id) => modal.current || stoppedRef.current || opening.current.has(id)
+        || !!works?.some((work) => work.id === id && removedWorks.current.has(identity(work))), stopLibrary);
+
+    useEffect(() => { setCoverRevision((value) => value + 1); }, [library.data]);
 
     const loadWorks = useCallback(async (throwOnError = false) => {
-        const current = ++request.current;
-        const revision = accessRevision.current;
-        const coverStart = coverChangeRevision.current;
-        const editStart = editRevision.current;
-        setLoading(true);
-        setListError('');
-        setListStopped(false);
-        try {
-            const result = await ListWorks();
-            if (current === request.current) {
-                setCoverRevision((value) => value + 1);
-                const values = result.filter((work) => !removedWorks.current.has(identity(work))).map((work) => {
-                    const saved = savedAccess.current.get(work.id);
-                    const cover = savedCovers.current.get(work.id);
-                    const edit = savedEdits.current.get(work.id);
-                    const edited = edit && edit.work.createdAt === work.createdAt && edit.revision > editStart ? edit.work : null;
-                    return {...work,
-                        ...(saved && saved.createdAt === work.createdAt && saved.revision > revision ? {lastAccessedAt: saved.value} : {}),
-                        ...(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? {thumbnailPath: cover.work.thumbnailPath} : {}),
-                        ...(edited ? {url: edited.url, title: edited.title, siteName: edited.siteName, notes: edited.notes, scheduledDate: edited.scheduledDate} : {}),
-                        updatedAt: later(work.updatedAt, later(cover && cover.work.createdAt === work.createdAt && cover.revision > coverStart ? cover.work.updatedAt : work.updatedAt, edited?.updatedAt ?? work.updatedAt))};
-                });
-                setWorks(values);
-                return values;
-            }
-            if (throwOnError) throw new Error('Superseded confirmation read');
-        } catch (error: unknown) {
-            if (current === request.current) {
-                const stopped = isDatabaseStopped(error);
-                setListError(apiErrorMessage(error, stopped ? 'データの読み書きを停止しています。アプリを再起動して状態を確認してください。' : '作品一覧を取得できません。再読み込みをお試しください。'));
-                setListStopped(stopped);
-            }
-            if (throwOnError) throw error;
-        } finally {
-            if (current === request.current) setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        void loadWorks();
-        // Ignore results from the previous mount, including StrictMode's first effect.
-        return () => { ++request.current; };
-    }, [loadWorks]);
+        const data = await library.reload();
+        if (!data && throwOnError) throw {code: 'storage_error', message: '最新の一覧を取得できません。再読み込みをお試しください。'};
+        return data?.works;
+    }, [library.reload]);
 
     useEffect(() => {
         const current = ++settingsRequest.current;
@@ -256,7 +211,7 @@ function App() {
     async function register(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         // Close the gap before React renders the disabled submit button.
-        if (modal.current || submitting.current || !settingsReady || !formVisible) return;
+        if (stoppedRef.current || modal.current || submitting.current || !settingsReady || !formVisible) return;
         submitting.current = true;
         setSaving(true);
         setSaveError('');
@@ -274,6 +229,7 @@ function App() {
                 registrationPage.current = {key: identity(created), revision: navigation};
             }
         } catch (error: unknown) {
+            if (isDatabaseStopped(error)) stopLibrary();
             setSaveError(apiErrorMessage(error, '作品を登録できません。入力内容を確認して再度お試しください。'));
         } finally {
             submitting.current = false;
@@ -282,24 +238,20 @@ function App() {
     }
 
     async function openWork(id: number) {
-        if (modal.current || opening.current.has(id) || coverActions.isPending(id)) return;
+        if (stoppedRef.current || modal.current || opening.current.has(id) || coverActions.isPending(id)) return;
         const work = works?.find((value) => value.id === id);
-        if (!work) return;
+        if (!work || removedWorks.current.has(identity(work))) return;
         const key = identity(work);
         opening.current.add(id);
         setAccessStates((current) => ({...current, [key]: {work, pending: true}}));
         try {
         const updated = await OpenWork(id);
-        savedAccess.current.set(id, {revision: ++accessRevision.current, value: updated.lastAccessedAt, createdAt: updated.createdAt});
-        // OpenWork owns lastAccessedAt, never an image snapshot from an older operation.
-        setWorks((current) => current?.map((work) => identity(work) === identity(updated) ? {...work, lastAccessedAt: updated.lastAccessedAt} : work) ?? null);
-        setAccessStates((current) => {
-            const next = {...current};
-            if (currentSort.current.startsWith('last_access_') || !currentVisibleWorks.current.has(key)) next[key] = {work, pending: false, success: `「${work.title}」のページを開き、最終アクセス日時を保存しました。`};
-            else delete next[key];
-            return next;
-        });
+        if (!updated || identity(updated) !== key || !validCreatedAt(updated.lastAccessedAt)) throw new Error('Invalid work open result');
+        library.changed();
+        setAccessStates((current) => ({...current, [key]: {work, pending: false,
+            success: `「${work.title}」のページを開き、最終アクセス日時を保存しました。`}}));
         } catch (cause: unknown) {
+            if (isDatabaseStopped(cause)) stopLibrary();
             setAccessStates((current) => ({...current, [key]: {work, pending: false,
                 error: apiErrorMessage(cause, '作品を開く処理に失敗しました。再度お試しください。')}}));
         } finally { opening.current.delete(id); }
@@ -321,7 +273,7 @@ function App() {
     }
 
     function startEdit(work: WorkView, button: HTMLButtonElement) {
-        if (modal.current || editStopped || deleteStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        if (stoppedRef.current || removedWorks.current.has(identity(work)) || modal.current || editStopped || deleteStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
         ++navigationRevision.current;
         modal.current = true;
         editOrigin.current = button;
@@ -352,14 +304,11 @@ function App() {
         });
     }
     function edited(work: WorkView, warnings: string[]) {
-        savedEdits.current.set(work.id, {revision: ++editRevision.current, work});
-        setWorks((current) => current?.map((value) => identity(value) === identity(work) ? {...value,
-            url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, scheduledDate: work.scheduledDate,
-            updatedAt: later(value.updatedAt, work.updatedAt)} : value) ?? null);
+        library.changed();
         setEditNotices((current) => ({...current, [identity(work)]: {work: {...work}, warnings}}));
     }
     function startDelete(work: WorkView, button: HTMLButtonElement) {
-        if (modal.current || deleteStopped || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
+        if (stoppedRef.current || removedWorks.current.has(identity(work)) || modal.current || deleteStopped || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
         ++navigationRevision.current;
         modal.current = true; deleteOrigin.current = button; setDeleting({...work});
     }
@@ -375,15 +324,13 @@ function App() {
     }
     function removed(work: WorkView, missing: boolean, warnings: string[]) {
         removedWorks.current.add(identity(work));
-        savedAccess.current.delete(work.id); savedCovers.current.delete(work.id); savedEdits.current.delete(work.id);
-        setWorks((current) => current?.filter((value) => identity(value) !== identity(work)) ?? null);
+        library.changed();
         setDeleteNotices((current) => ({...current, [identity(work)]: {work: {...work}, missing, warnings}}));
     }
 
     const matchingWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
     const visibleWorks = matchingWorks ? workSort.order === 'scheduled_date'
         ? scheduledWorks(matchingWorks, today, futureSchedules.visible) : sortWorks(matchingWorks, workSort.order) : undefined;
-    currentVisibleWorks.current = new Set(visibleWorks?.map(identity));
     // Date changes retain the page; explicit future toggles reset it.
     const pageOrder = scheduled ? `${workSort.order}:${futureSchedules.visible}` : workSort.order;
     const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0, pageOrder);
@@ -430,13 +377,13 @@ function App() {
             <TagManagementNotices notices={Object.values(tagNotices)} />
             {tagManagementStopped && <p className="message error-message" role="alert">タグ操作でDB停止または結果不明を検出しました。アプリを再起動して状態を確認してください。</p>}
             {tagManagementOpen && <TagManagementDialog stopped={tagManagementStopped || editStopped || deleteStopped || listStopped}
-                notices={Object.values(tagNotices)} onNotice={(notice) => setTagNotices((old) => ({...old, [notice.id]: notice}))}
-                onStopped={() => { setTagManagementStopped(true); setEditStopped(true); setDeleteStopped(true); }} onClose={closeTagManagement} />}
+                notices={Object.values(tagNotices)} onChanged={library.changed} onNotice={(notice) => setTagNotices((old) => ({...old, [notice.id]: notice}))}
+                onStopped={() => { stopLibrary(); setTagManagementStopped(true); setEditStopped(true); setDeleteStopped(true); }} onClose={closeTagManagement} />}
             {deleteStopped && <p className="message error-message" role="alert">削除結果またはDBの安全性を確認できないため、追加の編集・削除を停止しています。アプリを再起動して状態を確認してください。</p>}
-            {deleting && <DeleteWorkDialog key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
-                onRemoved={removed} onClose={closeDelete} onStopped={() => { setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} onStart={(work) => clearResult('delete', work)} />}
+            {deleting && <DeleteWorkDialog externallyStopped={listStopped} key={identity(deleting)} work={deleting} onReload={async () => (await loadWorks(true))?.find((work) => work.id === deleting.id)}
+                onRemoved={removed} onClose={closeDelete} onStopped={() => { stopLibrary(); setDeleteStopped(true); setEditStopped(true); }} onImagesStopped={() => setCoversReady(false)} onStart={(work) => clearResult('delete', work)} />}
             {editStopped && <p className="message error-message" role="alert">編集の保存結果またはDBの安全性を確認できないため、追加の編集を停止しています。アプリを再起動して状態を確認してください。</p>}
-            {editing && <EditWorkDialog key={editing.id} work={editing} onSaved={edited} onClose={closeEdit} onStopped={() => setEditStopped(true)} onStart={(work) => clearResult('edit', work)} />}
+            {editing && <EditWorkDialog externallyStopped={listStopped} key={editing.id} work={editing} onSaved={edited} onClose={closeEdit} onStopped={() => { stopLibrary(); setEditStopped(true); }} onStart={(work) => clearResult('edit', work)} />}
             {coverWarnings.length > 0 && <section className="message error-message" role="alert" aria-label="画像整理のお知らせ">
                 <h2>画像整理のお知らせ</h2>
                 {coverWarnings.map((warning) => <p key={warning.code}>{warning.message}</p>)}
@@ -481,12 +428,12 @@ function App() {
                                 <button key={mode} type="button" className="secondary-button" aria-label={name} aria-pressed={displayMode.mode === mode}
                                     disabled={!displayMode.ready} onClick={() => changeMode(mode)}>{label}</button>)}
                         </div>
-                        <button ref={toggleButton} type="button" className="secondary-button registration-toggle" disabled={saving || !settingsReady}
+                        <button ref={toggleButton} type="button" className="secondary-button registration-toggle" disabled={saving || !settingsReady || listStopped}
                             aria-label={!settingsReady ? '表示設定を読み込み中…' : formVisible ? '登録フォームを閉じる' : '作品を登録'}
                             aria-expanded={settingsReady && formVisible} aria-controls="registration-panel" onClick={toggleForm}>
                             {!settingsReady ? '登録…' : formVisible ? '閉じる' : '登録'}
                         </button>
-                        <button type="button" className="secondary-button reload-button" aria-label="再読み込み" title="再読み込み" disabled={loading || saving}
+                        <button type="button" className="secondary-button reload-button" aria-label="再読み込み" title="再読み込み" disabled={loading || saving || listStopped}
                             onClick={() => { void loadWorks(); }}>↻</button>
                     </div>
                     <div className="search-controls">
@@ -524,6 +471,7 @@ function App() {
                     <CoverProgressNotice targets={progressTargets} works={works} />
                     <WorkNotices notices={notices} onDismiss={dismissNotice} />
                     {loading && <p className="loading-message" role="status">一覧を読み込んでいます…</p>}
+                    {works !== null && !library.fresh && <p className="message" role="status">最新情報は未確認です。前回取得した一覧を表示しています。</p>}
                     {listError && <div className="message error-message" role="alert">
                         <p>{listError}</p>
                         {!listStopped && <p>一覧を再読み込みしてください。登録した作品は再登録する必要はありません。</p>}
@@ -535,7 +483,7 @@ function App() {
                                     <h3>{scheduled && !futureSchedules.visible ? '表示条件に一致する作品がありません' : '検索条件に一致する作品がありません'}</h3>
                                     <p>{scheduled && !futureSchedules.visible ? '検索文字を変更するか、未来の予定を表示してください。' : '検索文字を変更するか、空欄にして全作品を表示してください。'}</p>
                                 </div>}
-                            <WorkList orderKey={scheduled ? `${pageOrder}:${today}` : workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => accessStates[identity(work)]?.pending ?? false}
+                            <WorkList orderKey={scheduled ? `${pageOrder}:${today}` : workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => listStopped || removedWorks.current.has(identity(work)) || (accessStates[identity(work)]?.pending ?? false)}
                                 scheduleSort={{active: scheduled, disabled: !workSort.ready, select: () => changeSort('scheduled_date')}}
                                 coversReady={coversReady} coverRevision={coverRevision} coverActions={coverActions} editing={{onEdit: startEdit, stopped: editStopped || deleteStopped}}
                                 deleting={{onDelete: startDelete, stopped: editStopped || deleteStopped}} />
@@ -550,5 +498,4 @@ function App() {
 
 export default App;
 
-function later(a: string, b: string): string { return Date.parse(a) >= Date.parse(b) ? a : b; }
 function identity(work: WorkView): string { return JSON.stringify([work.id, work.createdAt]); }

@@ -5,7 +5,7 @@ import App from './App';
 import {ListWorks, OpenWork} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn().mockResolvedValue([])}));
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, ListWorks: vi.fn(), OpenWork: vi.fn(), CreateWork: vi.fn(), LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: true}), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn().mockResolvedValue([])}); });
 
 const work: main.WorkDTO = {id: 1, title: '作品', url: 'https://example.com', siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-01T00:00:00+09:00', updatedAt: '2026-10-01T00:00:00+09:00', lastAccessedAt: '2026-10-08T12:34:56+09:00'};
 beforeEach(() => { vi.mocked(ListWorks).mockReset(); vi.mocked(OpenWork).mockReset(); });
@@ -18,9 +18,10 @@ it('一覧の古い応答でもアクセス日時を戻さず、追加作品は�
     render(<App />);
     await screen.findByRole('heading', {name: '作品'});
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
+    vi.mocked(ListWorks).mockResolvedValue([{...work, lastAccessedAt: '2026-10-09T12:00:00+09:00'}, {...work, id: 2, url: 'https://example.com/2', title: '追加作品'}]);
     await userEvent.click(screen.getByRole('button', {name: '作品のURLを開く'}));
     await screen.findByText('2026/10/09 12:00:00');
-    await act(async () => { reply([work, {...work, id: 2, title: '追加作品'}]); });
+    await act(async () => { reply([work, {...work, id: 2, url: 'https://example.com/2', title: '追加作品'}]); });
     expect(screen.getByText('2026/10/09 12:00:00')).toBeTruthy();
     expect(screen.getByRole('heading', {name: '追加作品'})).toBeTruthy();
 });
@@ -42,7 +43,7 @@ it.each(['browser_open_failed', 'access_save_failed', 'database_stopped'])('失�
     expect(OpenWork).toHaveBeenCalledTimes(1);
 });
 
-it('カードの非表示・再表示をまたぐ同時tick二重起動を防ぎ、完了時は通知だけ消す', async () => {
+it('カードの非表示・再表示をまたぐ同時tick二重起動を防ぎ、完了時は成功通知を保持する', async () => {
     let reply!: (value: main.WorkDTO) => void;
     vi.mocked(ListWorks).mockResolvedValue([work]);
     vi.mocked(OpenWork).mockReturnValue(new Promise((resolve) => {reply = resolve;}));
@@ -56,14 +57,15 @@ it('カードの非表示・再表示をまたぐ同時tick二重起動を防ぎ
     expect((screen.getByRole('button', {name: '作品のURLを開く'}) as HTMLButtonElement).disabled).toBe(true);
     expect(OpenWork).toHaveBeenCalledTimes(1);
     search.focus();
+    vi.mocked(ListWorks).mockResolvedValue([{...work, lastAccessedAt: '2026-10-09T12:00:00+09:00'}]);
     await act(async () => {reply({...work, lastAccessedAt: '2026-10-09T12:00:00+09:00'});});
-    expect(screen.queryByRole('region', {name: '作品のURL操作'})).toBeNull();
+    expect(screen.getByRole('region', {name: '作品のURL操作'}).textContent).toContain('保存しました');
     expect(document.activeElement).toBe(search);
     expect(screen.getByText('2026/10/09 12:00:00')).toBeTruthy();
 });
 
 it('別作品の失敗通知を保持し、同じ作品の再操作だけで更新する', async () => {
-    const other = {...work, id: 2, title: '別作品'};
+    const other = {...work, id: 2, url: 'https://example.com/2', title: '別作品'};
     vi.mocked(ListWorks).mockResolvedValue([work, other]);
     vi.mocked(OpenWork).mockRejectedValue(new Error('private diagnostic'));
     render(<App />);
@@ -75,7 +77,7 @@ it('別作品の失敗通知を保持し、同じ作品の再操作だけで更�
     expect(document.body.textContent).not.toContain('private diagnostic');
     vi.mocked(OpenWork).mockResolvedValue(work);
     await userEvent.click(screen.getByRole('button', {name: '作品のURLを開く'}));
-    expect(screen.queryByRole('region', {name: '作品のURL操作'})).toBeNull();
+    expect(screen.getByRole('region', {name: '作品のURL操作'}).textContent).toContain('保存しました');
     const remaining = screen.getByRole('region', {name: '別作品のURL操作'});
     await userEvent.click(within(remaining).getByRole('button'));
     expect(document.activeElement).toBe(screen.getByRole('button', {name: '別作品の作品操作'}));
@@ -83,13 +85,14 @@ it('別作品の失敗通知を保持し、同じ作品の再操作だけで更�
 
 it('再利用されたIDの新しい登録へ処理状態と遅い日時応答を混ぜない', async () => {
     let reply!: (value: main.WorkDTO) => void;
-    const replacement = {...work, title: '別登録', createdAt: '2026-10-10T00:00:00+09:00', lastAccessedAt: undefined};
+    const replacement = {...work, title: '別登録', updatedAt: '2026-10-10T00:00:00+09:00', createdAt: '2026-10-10T00:00:00+09:00', lastAccessedAt: undefined};
     vi.mocked(ListWorks).mockResolvedValueOnce([work]).mockResolvedValueOnce([replacement]);
     vi.mocked(OpenWork).mockReturnValue(new Promise((resolve) => {reply = resolve;}));
     render(<App />);
     await userEvent.click(await screen.findByRole('button', {name: '作品のURLを開く'}));
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     await screen.findByRole('heading', {name: '別登録'});
+    vi.mocked(ListWorks).mockResolvedValue([replacement]);
     await act(async () => {reply({...work, lastAccessedAt: '2026-10-09T12:00:00+09:00'});});
     expect(screen.getByText(/未アクセス/)).toBeTruthy();
     expect(screen.queryByText('2026/10/09 12:00:00')).toBeNull();
@@ -108,7 +111,7 @@ it('ページ起動済み・保存失敗の案内を保持し、通知を閉じ�
 });
 
 it('IDが再利用されても古い通知の閉鎖で別登録のURLへフォーカスを移さない', async () => {
-    vi.mocked(ListWorks).mockResolvedValueOnce([work]).mockResolvedValueOnce([{...work, title: '別登録', createdAt: '2026-10-10T00:00:00+09:00'}]);
+    vi.mocked(ListWorks).mockResolvedValueOnce([work]).mockResolvedValueOnce([{...work, title: '別登録', createdAt: '2026-10-10T00:00:00+09:00', updatedAt: '2026-10-10T00:00:00+09:00'}]);
     vi.mocked(OpenWork).mockRejectedValue(new Error('private diagnostic'));
     render(<App />);
     await userEvent.click(await screen.findByRole('button', {name: '作品のURLを開く'}));

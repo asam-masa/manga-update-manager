@@ -6,7 +6,7 @@ import App from './App';
 import {CreateWork, ListWorks, LoadDisplaySettings, LoadCoverWarnings} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}));
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn()}); });
 const list = vi.mocked(ListWorks);
 const create = vi.mocked(CreateWork);
 const work: main.WorkDTO = {
@@ -51,7 +51,7 @@ describe('作品管理画面', () => {
     });
 
     it('一覧をAPIの順序で表示し、作品文字列をHTMLとして解釈しない', async () => {
-        list.mockResolvedValue([work, {...work, id: 2, title: '<img src=x onerror=alert(1)>', notes: '<script>bad()</script>'}]);
+        list.mockResolvedValue([work, {...work, id: 2, url: 'https://example.com/2', title: '<img src=x onerror=alert(1)>', notes: '<script>bad()</script>'}]);
         render(<App />);
         const items = await screen.findAllByRole('listitem');
         expect(within(items[0]).getByRole('heading').textContent).toBe(work.title);
@@ -85,7 +85,7 @@ describe('作品管理画面', () => {
         await screen.findByText('まだ作品が登録されていません');
         const user = await fillRequired();
         await user.click(screen.getByRole('button', {name: '登録する'}));
-        expect((await screen.findByRole('alert')).textContent).toContain('入力と保存先を確認してください');
+        expect((await screen.findAllByRole('alert')).some((node) => node.textContent?.includes('入力と保存先を確認してください'))).toBe(true);
         expect((screen.getByLabelText(/作品URL/) as HTMLInputElement).value).toBe(work.url);
         expect((screen.getByLabelText(/タイトル/) as HTMLInputElement).value).toBe(work.title);
         expect(list).toHaveBeenCalledTimes(1);
@@ -117,7 +117,7 @@ describe('作品管理画面', () => {
     });
 
     it('登録後の一覧失敗でも成功と入力クリアを維持し、既存一覧を残す', async () => {
-        list.mockResolvedValueOnce([work]).mockRejectedValueOnce(new Error('private path')).mockResolvedValueOnce([work, {...work, id: 2, title: '追加作品'}]);
+        list.mockResolvedValueOnce([work]).mockRejectedValueOnce(new Error('private path')).mockResolvedValueOnce([work, {...work, id: 2, url: 'https://example.com/2', title: '追加作品'}]);
         render(<App />);
         await screen.findByRole('heading', {name: work.title});
         const user = await fillRequired();

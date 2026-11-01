@@ -12,9 +12,9 @@ import {TagManagementNotices} from './TagManagementNotices';
 import type {TagNotice} from './TagManagementNotices';
 import {TagDeleteConfirmation} from './TagDeleteConfirmation';
 
-export function TagManagementDialog({stopped, onStopped, onClose, notices = [], onNotice = () => {}}: {
+export function TagManagementDialog({stopped, onStopped, onClose, notices = [], onNotice = () => {}, onChanged = () => {}}: {
     stopped: boolean; onStopped: () => void; onClose: () => void;
-    notices?: TagNotice[]; onNotice?: (notice: TagNotice) => void;
+    notices?: TagNotice[]; onNotice?: (notice: TagNotice) => void; onChanged?: () => void;
 }) {
     const [usage, setUsage] = useState<TagUsage[] | null>(null);
     const [query, setQuery] = useState('');
@@ -47,6 +47,7 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
         const index = rows.findIndex((row) => row.tag.id === tag.id);
         focus.current = rows[index + 1]?.tag.id ?? rows[index - 1]?.tag.id ?? 'search';
         setUsage((old) => old!.filter((row) => row.tag.id !== tag.id)); setDeleting(null);
+        onChanged();
         onNotice({id: tag.id, message: `タグ「${tag.name}」を削除しました。作品は残っています。`, warning});
     }
 
@@ -129,6 +130,7 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
             // Reflect the confirmed mutation directly; no post-commit read can revoke it.
             setUsage(sortTagUsage(usage!.map((row) => row.tag.id === renamed.tag.id ? {...row, tag: renamed.tag} : row)));
             if (usage!.some((row) => row.tag.id !== renamed.tag.id && row.tag.name === renamed.tag.name)) setFresh(false);
+            onChanged();
             onNotice({id: renamed.tag.id, message: `タグ「${submitted.expected.name}」を「${renamed.tag.name}」に変更しました。`, warning: renamed.warning});
             setEdit(null); focus.current = renamed.tag.id;
             if (renamed.warning) stopWrites();

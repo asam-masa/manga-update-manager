@@ -7,13 +7,13 @@ import {ListWorks, OpenWork, RemoveWorkCoverWithOperation, SelectWorkCoverWithOp
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([]), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
+    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([]), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}); });
 const base = {url: 'https://example.com/', siteName: '', notes: '', createdAt: '2026-10-19T00:00:00+09:00', updatedAt: '2026-10-19T00:00:00+09:00'};
 const first = {...base, id: 1, title: '一', thumbnailPath: 'covers/old.png'};
-const second = {...base, id: 2, title: '二', thumbnailPath: 'covers/second.png'};
-const third = {...base, id: 3, title: '三', thumbnailPath: ''};
+const second = {...base, id: 2, url: 'https://example.com/2', title: '二', thumbnailPath: 'covers/second.png'};
+const third = {...base, id: 3, url: 'https://example.com/3', title: '三', thumbnailPath: ''};
 let listener: (...values: unknown[]) => void;
 let frames: FrameRequestCallback[];
 beforeEach(() => {
@@ -93,6 +93,7 @@ it('画像通知は別作品を操作しても保持し、非表示作品の通�
     await boot();
     await userEvent.click(remove('一'));
     await screen.findByRole('group', {name: '一の画像操作'});
+    vi.mocked(ListWorks).mockResolvedValue([first, {...second, thumbnailPath: ''}, third]);
     await userEvent.click(remove('二'));
     await screen.findByRole('group', {name: '二の画像操作'});
     const search = screen.getByRole('searchbox');
@@ -112,7 +113,7 @@ it('ID再利用後の遅い画像結果を別登録へ混ぜず、旧通知の�
     const view = await boot();
     expect(view.container.querySelector('.work-notices')).toBeNull();
     await userEvent.click(remove('一'));
-    vi.mocked(ListWorks).mockResolvedValue([{...first, title: '別登録', createdAt: '2026-10-24T00:00:00+09:00', thumbnailPath: 'covers/replacement.png'}]);
+    vi.mocked(ListWorks).mockResolvedValue([{...first, title: '別登録', updatedAt: '2026-10-24T00:00:00+09:00', createdAt: '2026-10-24T00:00:00+09:00', thumbnailPath: 'covers/replacement.png'}]);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     await screen.findByRole('heading', {name: '別登録'});
     await act(async () => pending.resolve(new main.RemoveWorkCoverResult({work: {...first, thumbnailPath: ''}, warnings: []})));
@@ -168,6 +169,7 @@ it('別作品の解除は選択中も可能で、成功と後処理警告を分�
     vi.mocked(RemoveWorkCoverWithOperation).mockResolvedValue(new main.RemoveWorkCoverResult({work: {...second, thumbnailPath: ''}, warnings: [{code: 'cover_cleanup_failed', message: '旧画像の後処理を確認できませんでした。'}]}));
     await boot();
     await userEvent.click(select('一'));
+    vi.mocked(ListWorks).mockResolvedValue([first, {...second, thumbnailPath: ''}, third]);
     await userEvent.click(remove('二'));
     expect(RemoveWorkCoverWithOperation).toHaveBeenCalledWith(2, expect.stringMatching(/^[0-9a-f]{32}$/));
     expect(await screen.findByText('画像を外しました。')).toBeTruthy();
@@ -189,12 +191,14 @@ it('検索で隠しても結果を保持し、検索とフォーカスを変え�
     const view = await boot();
     await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
     expect(select('一', '画像を設定').hasAttribute('disabled')).toBe(true);
+    vi.mocked(ListWorks).mockResolvedValue([{...unset, lastAccessedAt: '2026-10-19T10:00:00+09:00'}, second, third]);
     await act(async () => access.resolve({...unset, lastAccessedAt: '2026-10-19T10:00:00+09:00'}));
     vi.mocked(ListWorks).mockReturnValueOnce(list.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     await userEvent.click(select('一', '画像を設定'));
     const search = screen.getByRole('searchbox', {name: '漫画名で検索'});
     await userEvent.type(search, '二');
+    vi.mocked(ListWorks).mockResolvedValue([{...first, thumbnailPath: 'covers/new.png', lastAccessedAt: '2026-10-19T10:00:00+09:00'}, second, third]);
     await act(async () => a.resolve(new main.SelectWorkCoverResult({cancelled: false, work: {...first, thumbnailPath: 'covers/new.png'}, warnings: []})));
     expect(screen.queryByRole('heading', {name: '一'})).toBeNull();
     expect(document.activeElement).toBe(search);
@@ -250,6 +254,7 @@ it('画像変更の遅い応答で新しい最終アクセスを戻さず、次�
     await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
     expect(OpenWork).not.toHaveBeenCalled();
     await act(async () => a.resolve(new main.SelectWorkCoverResult({cancelled: false, work: first, warnings: []})));
+    vi.mocked(ListWorks).mockResolvedValue([{...first, lastAccessedAt: '2026-10-19T12:00:00+09:00'}, second, third]);
     await userEvent.click(screen.getByRole('button', {name: '一のURLを開く'}));
     expect(screen.getByText('2026/10/19 12:00:00')).toBeTruthy();
     expect(screen.getByText('画像を設定しました。')).toBeTruthy();
@@ -263,6 +268,7 @@ it.each(['cover_outcome_unknown', 'database_stopped', 'cover_unavailable'])('停
     vi.mocked(SelectWorkCoverWithOperation).mockRejectedValue(new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code, message})));
     const view = await boot();
     const oldSource = view.container.querySelector('img')!.getAttribute('src');
+    vi.mocked(ListWorks).mockResolvedValue([{...first, thumbnailPath: 'covers/committed.png'}, second, third]);
     const listCalls = vi.mocked(ListWorks).mock.calls.length;
     const search = screen.getByRole('searchbox', {name: '漫画名で検索'});
     await userEvent.type(search, '一');
@@ -274,20 +280,22 @@ it.each(['cover_outcome_unknown', 'database_stopped', 'cover_unavailable'])('停
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
     expect(ListWorks).toHaveBeenCalledTimes(listCalls);
     expect(RemoveWorkCoverWithOperation).not.toHaveBeenCalled();
-    expect(select('一').hasAttribute('disabled')).toBe(false);
+    expect(select('一').hasAttribute('disabled')).toBe(code === 'database_stopped');
 });
 
-it.each(['cover_release_unconfirmed', 'database_stopped_after_commit'])('確定後の停止警告 %s では新画像と成功を保持する', async (code) => {
+it.each(['cover_release_unconfirmed', 'database_stopped_after_commit'])('確定後の停止警告 %s では成功通知を保持し、DB停止なら旧画像を残す', async (code) => {
     const message = '後始末を確認できません。アプリを再起動して状態を確認してください。';
     vi.mocked(SelectWorkCoverWithOperation).mockResolvedValue(new main.SelectWorkCoverResult({
         cancelled: false, work: {...first, thumbnailPath: 'covers/committed.png'}, warnings: [{code, message}],
     }));
     const view = await boot();
     const oldSource = view.container.querySelector('img')!.getAttribute('src');
+    vi.mocked(ListWorks).mockResolvedValue([{...first, thumbnailPath: 'covers/committed.png'}, second, third]);
     await userEvent.click(select('一'));
     expect(await screen.findByText('画像を設定しました。')).toBeTruthy();
     expect(screen.getByText(message)).toBeTruthy();
-    expect(view.container.querySelector('img')!.getAttribute('src')).not.toBe(oldSource);
+    if (code === 'database_stopped_after_commit') expect(view.container.querySelector('img')!.getAttribute('src')).toBe(oldSource);
+    else expect(view.container.querySelector('img')!.getAttribute('src')).not.toBe(oldSource);
     expect(SelectWorkCoverWithOperation).toHaveBeenCalledTimes(1);
     expect(RemoveWorkCoverWithOperation).not.toHaveBeenCalled();
 });

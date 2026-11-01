@@ -6,10 +6,10 @@ import {CreateWork, EditWork, ListWorks, LoadWorkSort, SetWorkSort, LoadWorkList
     LoadDisplaySettings, SetRegistrationFormVisible, LoadCoverWarnings, LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkSort: vi.fn(), SetWorkSort: vi.fn(), LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(),
     LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(), LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(),
-    OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
+    OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}); });
 const work = (id: number): main.WorkDTO => ({id, title: `作品${id}`, url: `https://example.com/${id}`, siteName: '', notes: '', thumbnailPath: '',
     createdAt: '2026-10-25T00:00:00+09:00', updatedAt: '2026-10-25T00:00:00+09:00'});
 const works = (n: number) => Array.from({length: n}, (_, i) => work(i + 1));
@@ -131,6 +131,7 @@ it('日時保存後の整列で作品が別ページへ移っても現在ペー�
     const pending = deferred<main.WorkDTO>(), stale = deferred<main.WorkDTO[]>(); vi.mocked(OpenWork).mockReturnValue(pending.promise); await boot();
     list.mockReturnValueOnce(stale.promise); fireEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     fireEvent.click(screen.getByRole('button', {name: '作品1のURLを開く'}));
+    list.mockResolvedValue(values.map((w) => w.id === 1 ? {...w, lastAccessedAt: '2026-10-26T00:00:00Z'} : w));
     await act(async () => {pending.resolve({...values[0], lastAccessedAt: '2026-10-26T00:00:00Z'});});
     expect(current()).toBe('1'); expect(screen.queryByRole('button', {name: '作品1のURLを開く'})).toBeNull();
     const notice = screen.getByRole('region', {name: '作品1のURL操作'}); expect(notice.textContent).toContain('保存しました');

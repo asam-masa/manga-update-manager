@@ -7,8 +7,8 @@ import type {WorkView} from './work-display';
 import {useWorkTagEdit} from './use-work-tag-edit';
 import {WorkTagEditor} from './WorkTagEditor';
 
-export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
-    work: WorkView; onSaved: (work: WorkView, warnings: string[]) => void; onClose: () => void; onStopped: () => void; onStart: (work: WorkView) => void;
+export function EditWorkDialog({work, externallyStopped = false, onSaved, onClose, onStopped, onStart}: {
+    externallyStopped?: boolean; work: WorkView; onSaved: (work: WorkView, warnings: string[]) => void; onClose: () => void; onStopped: () => void; onStart: (work: WorkView) => void;
 }) {
     // Snapshot only once per opening: background responses must never replace input.
     const [form, setForm] = useState(() => ({url: work.url, title: work.title, siteName: work.siteName, notes: work.notes}));
@@ -19,6 +19,7 @@ export function EditWorkDialog({work, onSaved, onClose, onStopped, onStart}: {
     const pending = useRef(false);
     const blocked = useRef(false);
     const dialog = useRef<HTMLDialogElement>(null);
+    useEffect(() => { if (externallyStopped) { blocked.current = true; setStopped(true); } }, [externallyStopped]);
     const url = useRef<HTMLInputElement>(null);
     const scheduledDate = useRef<HTMLInputElement>(null);
     const active = useRef(false);

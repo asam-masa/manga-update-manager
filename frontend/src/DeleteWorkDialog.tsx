@@ -8,8 +8,8 @@ import type {Tag} from './tag-edit';
 
 const warningCodes = new Set(['cover_cleanup_failed', 'cover_release_unconfirmed', 'cover_unavailable_after_commit', 'database_stopped_after_commit']);
 
-export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped, onImagesStopped, onStart}: {
-    work: WorkView; onReload: () => Promise<WorkView | undefined>;
+export function DeleteWorkDialog({work, externallyStopped = false, onReload, onRemoved, onClose, onStopped, onImagesStopped, onStart}: {
+    externallyStopped?: boolean; work: WorkView; onReload: () => Promise<WorkView | undefined>;
     onRemoved: (work: WorkView, missing: boolean, warnings: string[]) => void;
     onClose: () => void; onStopped: () => void; onImagesStopped: () => void; onStart: (work: WorkView) => void;
 }) {
@@ -26,6 +26,7 @@ export function DeleteWorkDialog({work, onReload, onRemoved, onClose, onStopped,
     const generation = useRef(0);
     const active = useRef(false);
     const dialog = useRef<HTMLDialogElement>(null);
+    useEffect(() => { if (externallyStopped) { blocked.current = true; setStopped(true); } }, [externallyStopped]);
     const cancelButton = useRef<HTMLButtonElement>(null);
     useEffect(() => {
         active.current = true;

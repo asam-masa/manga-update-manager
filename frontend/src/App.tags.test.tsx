@@ -6,7 +6,7 @@ import App from './App';
 import {DeleteTag, LoadTagDeletePreview, LoadTagUsage, RenameTag} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({
     LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {},
     LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {},
     LoadWorkListMode: async () => 'rows', SetWorkListMode: async () => {},
@@ -15,7 +15,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
     ListWorks: async () => Array.from({length: 23}, (_, i) => ({id: i + 1, title: `漫画${i + 1}`, url: `https://example.com/${i + 1}`,
         siteName: '', notes: '', thumbnailPath: '', createdAt: '2026-10-30T00:00:00+09:00', updatedAt: '2026-10-30T00:00:00+09:00'})),
     LoadTagUsage: vi.fn(), RenameTag: vi.fn(), LoadTagDeletePreview: vi.fn(), DeleteTag: vi.fn(), CreateWork: vi.fn(), OpenWork: vi.fn(),
-}));
+}); });
 beforeEach(() => {
     vi.mocked(LoadTagUsage).mockReset().mockResolvedValue([main.TagUsageDTO.createFrom({tag: {id: '1', name: 'マンガ'}, workCount: 23})]);
     vi.mocked(RenameTag).mockReset();
