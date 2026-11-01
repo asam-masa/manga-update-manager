@@ -6,9 +6,9 @@ import App from './App';
 import {EditWork, ListWorks, DeleteWork} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, LoadWorkListMode: async () => 'cards', SetWorkListMode: async () => {}, CreateWork: vi.fn(), ListWorks: vi.fn(), OpenWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(),
     LoadDisplaySettings: vi.fn().mockResolvedValue({registrationFormVisible: false}), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}));
+    LoadCoverWarnings: vi.fn().mockResolvedValue([]), LoadCoverProgress: vi.fn().mockResolvedValue([])}); });
 const work = {id: 1, url: 'https://example.com/old', title: '漫画', siteName: 'Site', notes: 'Note', thumbnailPath: '', createdAt: '2026-10-22T00:00:00+09:00', updatedAt: '2026-10-22T00:00:00+09:00'};
 const updated = {...work, url: 'https://example.com/new', title: '新作', updatedAt: '2026-10-22T01:00:00+09:00'};
 function deferred<T>() {
@@ -29,7 +29,7 @@ async function open() { await userEvent.click(screen.getByRole('button', {name: 
 const field = (dialog: HTMLElement, label: RegExp) => within(dialog).getByLabelText(label) as HTMLInputElement;
 
 it('別作品の保存結果を保持し、開閉だけでは消さず次の保存で対象通知だけ更新する', async () => {
-    const other = {...work, id: 2, title: '別作品'};
+    const other = {...work, id: 2, url: 'https://example.com/2', title: '別作品'};
     vi.mocked(ListWorks).mockResolvedValue([work, other]);
     vi.mocked(EditWork).mockImplementation(async (id) => new main.EditWorkResult({work: id === 1 ? work : other, warnings: []}));
     await boot();
@@ -79,6 +79,7 @@ it('テキストと予定日を一度送信し、保存中はキャンセルとE
     expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {url: work.url, title: work.title, siteName: work.siteName, notes: work.notes, tags: {existing: [], newNames: []}, scheduledDate: ''});
     expect((within(dialog).getByRole('button', {name: 'キャンセル'}) as HTMLButtonElement).disabled).toBe(true);
     expect(dialog).toBe(screen.getByRole('dialog'));
+    vi.mocked(ListWorks).mockResolvedValue([updated]);
     await act(async () => pending.resolve(new main.EditWorkResult({work: updated, warnings: []})));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(await screen.findByRole('heading', {name: '新作'})).toBeTruthy();
@@ -107,15 +108,15 @@ it('結果不明は入力を残して再保存を止め、閉じた後も編集�
     expect((screen.getByRole('button', {name: '漫画を編集'}) as HTMLButtonElement).disabled).toBe(true);
 });
 
-it('検索を維持し、条件外への編集成功と確定後の警告はカードが消えても残る', async () => {
+it('確定後の停止警告では旧カードと検索・成功通知を残す', async () => {
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: updated, warnings: [{code: 'database_stopped_after_commit', message: '保存しましたが再起動してください。'}]}));
     await boot(); const search = screen.getByRole('searchbox'); await userEvent.type(search, '漫画');
     const dialog = await open(); await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     expect(await screen.findByText(/「新作」を保存しました/)).toBeTruthy();
     expect(screen.getByText('保存しましたが再起動してください。')).toBeTruthy();
-    expect(screen.queryByRole('heading', {name: '漫画'})).toBeNull();
+    expect(screen.getByRole('heading', {name: '漫画'})).toBeTruthy();
     expect((search as HTMLInputElement).value).toBe('漫画');
-    await waitFor(() => expect(document.activeElement).toBe(search));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', {name: '漫画の作品操作'})));
 });
 
 it('開いた入力は背景の一覧応答で置換せず、保存後の古い一覧でテキストを戻さない', async () => {
@@ -123,6 +124,7 @@ it('開いた入力は背景の一覧応答で置換せず、保存後の古い�
     vi.mocked(ListWorks).mockReturnValueOnce(oldList.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     const dialog = await open(); await userEvent.type(field(dialog, /メモ/), '入力');
+    vi.mocked(ListWorks).mockResolvedValue([updated]);
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: updated, warnings: []}));
     await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     await act(async () => oldList.resolve([work]));
@@ -164,7 +166,7 @@ it('編集結果と古い一覧応答をまたいで最新の予定日を保ち�
     vi.mocked(ListWorks).mockResolvedValue([original]); await boot();
     const stale = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(stale.promise);
     await userEvent.click(screen.getByRole('button', {name: '再読み込み'}));
-    const dialog = await open(); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: saved, warnings: []}));
+    const dialog = await open(); vi.mocked(ListWorks).mockResolvedValue([saved]); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: saved, warnings: []}));
     fireEvent.change(field(dialog, /更新予定日/), {target: {value: '2026-11-01'}});
     await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     await screen.findByRole('heading', {name: '新作'});
@@ -189,6 +191,7 @@ it('予定日の現在値を表示し、未保存変更の取消と再表示で�
 it.each(['2028-02-29', '', '0001-01-01', '9999-12-31'])('予定日%sをテキストと一度に保存し、成功後の再表示へ引き継ぐ', async (date) => {
     vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: '2026-10-30'}]); await boot();
     const dialog = await open(); fireEvent.change(field(dialog, /更新予定日/), {target: {value: date}});
+    vi.mocked(ListWorks).mockResolvedValue([{...work, scheduledDate: date || undefined}]);
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work, scheduledDate: date || null}, warnings: []}));
     await userEvent.click(within(dialog).getByRole('button', {name: '保存する'}));
     expect(EditWork).toHaveBeenCalledExactlyOnceWith(1, {...workInput(), scheduledDate: date});

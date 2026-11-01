@@ -7,9 +7,9 @@ import {CreateWork, DeleteWork, EditWork, ListWorks, LoadWorkListMode, LoadDispl
     LoadCoverProgress, OpenWork, SelectWorkCoverWithOperation} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadTags: async () => [], LoadWorkTags: async () => [], LoadShowFutureSchedules: async () => true, SetShowFutureSchedules: async () => {}, LoadWorkSort: async () => 'registration_asc', SetWorkSort: async () => {}, CreateWork: vi.fn(), DeleteWork: vi.fn(), EditWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
+    LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}); });
 const work = (id: number): main.WorkDTO => ({id, title: `作品${id}`, url: `https://example.com/${id}`, siteName: '', notes: '', thumbnailPath: '',
     createdAt: '2026-10-25T00:00:00+09:00', updatedAt: '2026-10-25T00:00:00+09:00'});
 const works = (count: number) => Array.from({length: count}, (_, i) => work(i + 1));
@@ -198,7 +198,7 @@ it('登録応答が先に来た場合も、形式復元を待って新作品の�
 it('登録成功後の一覧取得失敗ではページを戻さず再登録も行わない', async () => {
     list.mockResolvedValue(works(24)); vi.mocked(CreateWork).mockResolvedValue(work(25)); await boot(); fireEvent.click(page(2));
     list.mockRejectedValue('private diagnostic'); await register('作品25');
-    await screen.findByText('作品一覧を取得できません。再読み込みをお試しください。');
+    await screen.findByText('作品とタグの一覧を取得できません。再読み込みをお試しください。');
     expect(current()?.textContent).toBe('2'); expect(CreateWork).toHaveBeenCalledTimes(1);
     expect(screen.getByText('作品を登録しました。')).toBeTruthy();
 });
@@ -210,7 +210,7 @@ it('モーダル開始後は背景からのページ変更を受け付けない'
 });
 
 it('最終ページの削除は他作品があれば維持し、空になった時だけ最後へ補正する', async () => {
-    list.mockResolvedValue(works(26)); vi.mocked(DeleteWork).mockImplementation(async (id) => new main.DeleteWorkResult({workID: id, warnings: []}));
+    list.mockResolvedValue(works(26)); vi.mocked(DeleteWork).mockImplementation(async (id) => {list.mockResolvedValue(works(id - 1)); return new main.DeleteWorkResult({workID: id, warnings: []});});
     await boot(); fireEvent.click(page(3)); action(26, '作品26を削除');
     await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '削除する'}));
@@ -224,6 +224,7 @@ it('最終ページの削除は他作品があれば維持し、空になった�
 it('編集で検索から外れた最後の作品を除き、補正と通知を維持する', async () => {
     list.mockResolvedValue(works(25)); vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: {...work(25), title: '別名'}, warnings: []}));
     await boot(); fireEvent.change(screen.getByRole('searchbox'), {target: {value: '作品'}}); fireEvent.click(page(3));
+    list.mockResolvedValue(works(25).map((w) => w.id === 25 ? {...w, title: '別名'} : w));
     action(25, '作品25を編集'); await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}) as HTMLButtonElement).disabled).toBe(false)); fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}));
     await waitFor(() => expect(current()?.textContent).toBe('2'));
     expect(screen.getByText('「別名」を保存しました。検索条件に一致しないため非表示です。')).toBeTruthy();
@@ -244,6 +245,7 @@ it('画像処理の非表示ページで完了しても警告を残し、戻る�
     const pending = deferred<main.SelectWorkCoverResult>(); vi.mocked(SelectWorkCoverWithOperation).mockReturnValue(pending.promise); await boot();
     action(1, '画像を設定'); fireEvent.click(page(2));
     expect(screen.getByText('画像を処理しています…')).toBeTruthy();
+    list.mockResolvedValue(works(25).map((w) => w.id === 1 ? {...w, thumbnailPath: 'covers/new.png'} : w));
     await act(async () => {pending.resolve({cancelled: false, work: {...work(1), thumbnailPath: 'covers/new.png'}, warnings: [{code: 'cover_cleanup_failed', message: '合成整理警告'}]} as main.SelectWorkCoverResult);});
     expect(screen.getByText('合成整理警告')).toBeTruthy(); fireEvent.click(page(1));
     fireEvent.click(screen.getByRole('button', {name: '作品1の作品操作'}));

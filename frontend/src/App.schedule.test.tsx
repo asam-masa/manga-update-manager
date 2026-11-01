@@ -8,10 +8,10 @@ import {main} from '../wailsjs/go/models';
 
 const clock = vi.hoisted(() => ({today: '2028-02-29'}));
 vi.mock('./use-japan-today', () => ({useJapanToday: () => clock.today}));
-vi.mock('../wailsjs/go/main/App', () => ({LoadTags: async () => [], LoadWorkTags: async () => [], CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
+vi.mock('../wailsjs/go/main/App', async () => { const {withLibrarySnapshot} = await import('./test-library-api'); return withLibrarySnapshot({LoadTags: async () => [], LoadWorkTags: async () => [], CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), ListWorks: vi.fn(),
     LoadWorkSort: vi.fn(), SetWorkSort: vi.fn(), LoadWorkListMode: vi.fn(), SetWorkListMode: vi.fn(),
     LoadShowFutureSchedules: vi.fn(), SetShowFutureSchedules: vi.fn(), LoadDisplaySettings: vi.fn(), SetRegistrationFormVisible: vi.fn(),
-    LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}));
+    LoadCoverWarnings: vi.fn(), LoadCoverProgress: vi.fn(), OpenWork: vi.fn(), SelectWorkCoverWithOperation: vi.fn(), RemoveWorkCoverWithOperation: vi.fn()}); });
 const work = (id: number, scheduledDate?: string): main.WorkDTO => ({id, scheduledDate, title: `作品${id}`, url: `https://example.com/${id}`,
     siteName: '', notes: '', thumbnailPath: '', createdAt: '2028-02-28T00:00:00+09:00', updatedAt: '2028-02-28T00:00:00+09:00'});
 const fixtures = () => [work(1, '2028-02-29'), work(2, '2028-02-28'), work(3, '0001-01-01'), work(4, '2028-03-01'), work(5, '9999-12-31'),
@@ -108,6 +108,7 @@ it('編集で未来へ移った作品が隠れても現在ページと通知を�
     const stale = deferred<main.WorkDTO[]>(); vi.mocked(ListWorks).mockReturnValueOnce(stale.promise);
     fireEvent.click(screen.getByRole('button', {name: '再読み込み'}));
     fireEvent.click(screen.getByRole('button', {name: '作品1の作品操作'})); fireEvent.click(screen.getByRole('button', {name: '作品1を編集'}));
+    vi.mocked(ListWorks).mockResolvedValue(fixtures().map((w) => w.id === 1 ? work(1, '2028-03-02') : w));
     vi.mocked(EditWork).mockResolvedValue(new main.EditWorkResult({work: work(1, '2028-03-02'), warnings: []}));
     fireEvent.change(screen.getByLabelText(/更新予定日/), {target: {value: '2028-03-02'}});
     await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('button', {name: '保存する'}) as HTMLButtonElement).disabled).toBe(false));
