@@ -25,7 +25,7 @@ export type TagDeletePreview = {tag: Tag; works: {id: string; createdAt: string;
 
 // Validate canonical RFC3339Nano without Date conversion or fractional rounding.
 // Tokyo's historical daylight saving time can use +10:00 as well as +09:00.
-function validCreatedAt(value: unknown): value is string {
+export function validCreatedAt(value: unknown): value is string {
     if (typeof value !== 'string') return false;
     const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{0,8}[1-9]))?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
     if (!parts) return false;
