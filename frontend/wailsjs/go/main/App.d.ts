@@ -18,6 +18,8 @@ export function LoadCoverWarnings():Promise<Array<main.CoverWarningDTO>>;
 
 export function LoadDisplaySettings():Promise<main.DisplaySettingsDTO>;
 
+export function LoadLibrarySnapshot():Promise<main.LibrarySnapshotDTO>;
+
 export function LoadShowFutureSchedules():Promise<boolean>;
 
 export function LoadTagDeletePreview(arg1:string):Promise<main.TagDeletePreviewDTO>;

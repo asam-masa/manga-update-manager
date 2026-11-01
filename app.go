@@ -22,6 +22,7 @@ type App struct {
 	ctx                    context.Context
 	works                  *application.Works
 	tags                   *application.TagReader
+	library                *application.LibraryReader
 	tagManagement          *application.TagManagementReader
 	tagManager             *application.TagManager
 	editor                 *application.WorkEditor
@@ -82,6 +83,7 @@ func (a *App) startup(ctx context.Context) {
 	a.store = store
 	a.works = application.NewWorks(store, time.Now)
 	a.tags = application.NewTagReader(store)
+	a.library = application.NewLibraryReader(store)
 	a.tagManagement = application.NewTagManagementReader(store)
 	a.tagManager = application.NewTagManager(store)
 	a.editor = application.NewWorkEditor(store, time.Now)
@@ -109,6 +111,7 @@ func (a *App) shutdown(_ context.Context) {
 	}
 	a.works = nil
 	a.tags = nil
+	a.library = nil
 	a.tagManagement = nil
 	a.tagManager = nil
 	a.editor = nil
