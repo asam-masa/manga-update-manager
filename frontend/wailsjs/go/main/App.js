@@ -34,6 +34,10 @@ export function LoadDisplaySettings() {
   return window['go']['main']['App']['LoadDisplaySettings']();
 }
 
+export function LoadLibrarySnapshot() {
+  return window['go']['main']['App']['LoadLibrarySnapshot']();
+}
+
 export function LoadShowFutureSchedules() {
   return window['go']['main']['App']['LoadShowFutureSchedules']();
 }

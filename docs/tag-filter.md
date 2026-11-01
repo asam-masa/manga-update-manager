@@ -77,6 +77,8 @@ Storeの`LoadLibrarySnapshot(ctx)`は`LibrarySnapshot{Works, Tags, Links}`を返
 
 ### 公開API・計算・画面への接続
 
+#337でApplicationのLibraryReaderを経由した`LoadLibrarySnapshot()`を公開する。新規DTOの作品・タグ・関連IDは10進文字列、作品日時は日本時間RFC 3339 Nanoとし、一式の検証と変換完了までDB寿命を保持する。既存のWorkDTOと変更APIは維持する。[公開API契約と試験限界](./tag-api.md#一括取得apiissue-337親297)を参照する。画面の読取はまだ既存APIであり、新APIを追加しただけで条件計算・候補件数や遅延応答の統合を完了とはしない。
+
 設計PRのマージ後、#297を親として次の単位を具体化する。API層の変更が大きい場合は内部取得と公開APIをさらに分ける。
 
 1. 同一時点の一括取得と公開API：型・識別子・空/不正/部分結果・寿命・停止・別接続での途中変更・既存API互換を確認する。

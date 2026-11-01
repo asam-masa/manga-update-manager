@@ -2,6 +2,18 @@
 
 Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集、#310で削除確認画面、#320で管理用の取得、#314で管理の変更APIへ接続する。管理画面・絞り込みは後続である。
 
+## 一括取得API（Issue #337、親#297）
+
+`LoadLibrarySnapshot()`は`LibrarySnapshotDTO{works: LibraryWorkDTO[], tags: TagDTO[], links: WorkTagLinkDTO[]}`を返す。利用側の`LibraryReadRepository`を持つApplicationの`LibraryReader`を通じて、Storeの[同一時点取得](./tag-filter.md#内部一括取得issue-335)を1回だけ呼ぶ。初期化前・終了後は`database_unavailable`、読取や不正保存値は`storage_error`、DB停止は他原因に優先して`database_stopped`とし、既存の停止観測・安全なWails包装へ渡す。内部診断・パスを公開しない。
+
+`LibraryWorkDTO`は作品の全フィールドを持ち、新規の`id`は正のint64の10進文字列とする。`TagDTO.id`も従来どおり文字列、`WorkTagLinkDTO`は`{workID: string, tagID: string}`。登録・更新・最終アクセスは日本時間のRFC 3339 Nanoで小数秒の精度を維持し、東京の歴史的な夏時間も固定+09:00へ置換しない。予定日はYYYY-MM-DD、予定日と最終アクセスの未設定はnullとする。既存の数値IDの`WorkDTO`や各変更APIは変更しない。
+
+必須の3配列が全て取得済みであること、作品のドメイン規則と全文字列のUTF-8・日時の変換往復・ID昇順、タグの正確名・ID順・名前重複、関連のID順・重複・存在参照を一式で検証する。日本時間へ変換後の年は1〜9999とし、範囲外の日時を丸めない。空成功は全配列`[]`、未取得のnil、エラー付き部分値や不正値は全結果を破棄する。APIは読取開始からDTO変換終了までAppのDB寿命ロックを保持する。
+
+一時DBで空・共有・未使用・再起動後保持・既存ListWorks不変、合成Repositoryでint64上限・ナノ秒とJSON往復・歴史的夏時間、必須配列/不正/重複/孤立/部分値の破棄・コンテキスト伝達・開始前/終了後拒否・読取中の終了待ち・停止優先・診断非公開を確認する。生成TypeScriptモデルのJSON往復、既存WorkDTOと既知エラー包装の互換も試験する。生成型の任意string表示を実値のnull拒否とは扱わない。
+
+このAPIを画面へ接続したこと、IME/キー操作・遅延応答・絞り込みとの統合や実WebView2を確認したことは意味しない。次段では新しい文字列作品IDを既存の数値入力APIへ渡す際に安全な範囲を検証し、精度を落とす自動変換をしない。AND計算・候補件数・画面は後続、ADR-0020はPendingを維持する。
+
 ## 読取と識別子
 
 LoadTags()は未使用を含む全候補、LoadWorkTags(workID)は指定作品のタグをID昇順で返す。空はJSON []、要素はTagDTO{id: string, name: string}。作成・修復は行わず、AppのDB寿命ロックを処理完了まで保持し、ApplicationからStoreへ委譲する。

@@ -304,6 +304,85 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class WorkTagLinkDTO {
+	    workID: string;
+	    tagID: string;
+
+	    static createFrom(source: any = {}) {
+	        return new WorkTagLinkDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workID = source["workID"];
+	        this.tagID = source["tagID"];
+	    }
+	}
+	export class LibraryWorkDTO {
+	    id: string;
+	    url: string;
+	    title: string;
+	    siteName: string;
+	    thumbnailPath: string;
+	    notes: string;
+	    createdAt: string;
+	    updatedAt: string;
+	    lastAccessedAt?: string;
+	    scheduledDate?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new LibraryWorkDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.title = source["title"];
+	        this.siteName = source["siteName"];
+	        this.thumbnailPath = source["thumbnailPath"];
+	        this.notes = source["notes"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.lastAccessedAt = source["lastAccessedAt"];
+	        this.scheduledDate = source["scheduledDate"];
+	    }
+	}
+	export class LibrarySnapshotDTO {
+	    works: LibraryWorkDTO[];
+	    tags: TagDTO[];
+	    links: WorkTagLinkDTO[];
+
+	    static createFrom(source: any = {}) {
+	        return new LibrarySnapshotDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.works = this.convertValues(source["works"], LibraryWorkDTO);
+	        this.tags = this.convertValues(source["tags"], TagDTO);
+	        this.links = this.convertValues(source["links"], WorkTagLinkDTO);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
 	export class RemoveWorkCoverResult {
 	    work: WorkDTO;
 	    warnings: CoverWarningDTO[];
@@ -484,6 +563,7 @@ export namespace main {
 		    return a;
 		}
 	}
+
 
 
 
