@@ -53,6 +53,8 @@
 
 2026-11-02の#359ではPlaywright 1.64.1の基盤と2件のスモーク試験を追加した。画像比較・代表操作・CIの検証条件は残るためPendingを維持する。実行条件と保証範囲は[基盤の手順](../browser-ui-testing.md)を参照する。
 
+同日の#360では6画面の比較と配置検証を追加し、ローカルWindowsで3回反復・故障注入を確認した。[校正と残る検証](../verification/browser-visual-comparison.md)を記録し、代表操作・CI必須化が残るためPendingを維持する。
+
 ## References
 
 - [ブラウザー画面検証の設計](../browser-ui-testing.md)

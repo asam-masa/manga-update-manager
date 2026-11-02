@@ -2,7 +2,7 @@
 
 ## 現在の状態
 
-2026-11-02に合意した導入方針。Issue #359でPlaywright基盤と2件のスモーク試験を追加した。6画面の基準画像比較・代表操作・CI組み込みは未実装である。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)と親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)を参照する。基盤だけの成功で、既存の必要な手動確認を減らした扱いにしない。
+2026-11-02に合意した導入方針。Issue #359でPlaywright基盤と2件のスモーク試験、#360で6画面の画像比較・レイアウト検証と非ブロッキングのWindows校正ジョブを追加した。[6画面の条件・更新・校正手順](./verification/browser-visual-comparison.md)を参照する。代表操作とCI必須化は#361へ残す。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)と親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)に従い、未検証の範囲の手動確認を省略しない。
 
 ## 検証する境界
 

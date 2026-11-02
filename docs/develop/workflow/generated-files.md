@@ -14,6 +14,7 @@
 | `frontend/.vite/` | 管理しない | `wails dev`またはViteの実行 | 再生成できることを確認する |
 | `frontend/.vitest/`, `frontend/coverage/` | 管理しない | フロントエンドテスト | ソースとテスト結果をレビューする |
 | `frontend/playwright-report/`, `frontend/test-results/` | 管理しない | `npm --prefix frontend run test:browser` | 合成データの撮影画像と失敗時のトレースを確認する |
+| `frontend/e2e/visual.spec.ts-snapshots/` | 6基準PNGだけ管理する | 意図した表示変更時だけPlaywrightの`--update-snapshots` | [基準環境・旧版との差・画像の確認](../../verification/browser-visual-comparison.md) |
 | `build/bin/` | 管理しない | `wails build` | Windows向けビルド成功を確認する |
 
 ## 判断基準
