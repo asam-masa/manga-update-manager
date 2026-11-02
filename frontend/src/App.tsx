@@ -27,6 +27,9 @@ import {useJapanToday} from './use-japan-today';
 import {scheduledWorks} from './scheduled-works';
 import {useLibrarySnapshot} from './use-library-snapshot';
 import {validCreatedAt} from './tag-management';
+import {useTagSelection} from './use-tag-selection';
+import {filterLibrary} from './tag-filter';
+import {TagFilterPopup, SelectedTagFilters} from './TagFilter';
 import './App.css';
 
 const emptyForm = {url: '', title: '', siteName: '', notes: ''};
@@ -99,7 +102,17 @@ function App() {
     const listPanel = useRef<HTMLElement>(null);
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [candidateQuery, setCandidateQuery] = useState('');
+    const [tagFilterOpen, setTagFilterOpen] = useState(false);
+    const tagFilterButton = useRef<HTMLButtonElement>(null);
+    const tagSelection = useTagSelection(library.data, library.fresh, library.stopped);
+    const tagRevision = useRef(tagSelection.selectionRevision);
+    const registeredKey = useRef<string | null>(null);
     const navigationRevision = useRef(0);
+    if (tagRevision.current !== tagSelection.selectionRevision) {
+        tagRevision.current = tagSelection.selectionRevision;
+        ++navigationRevision.current; // Also protects navigation after automatic condition removal.
+    }
     const pageFocusPending = useRef(false);
     const registrationPage = useRef<{key: string; revision: number} | null>(null);
     const currentPageButton = useRef<HTMLButtonElement>(null);
@@ -208,6 +221,27 @@ function App() {
         }
     }
 
+    function changeTagPopup(open: boolean) {
+        if (modal.current) return;
+        ++navigationRevision.current;
+        setTagFilterOpen(open);
+    }
+    function changeCandidateQuery(query: string) {
+        if (modal.current) return;
+        ++navigationRevision.current;
+        setCandidateQuery(query);
+    }
+    function changeTag(id: string, checked: boolean) {
+        if (modal.current || !tagSelection.enabled) return;
+        ++navigationRevision.current;
+        tagSelection.select(id, checked);
+    }
+    function clearTags() {
+        if (modal.current || !tagSelection.enabled) return;
+        ++navigationRevision.current;
+        tagSelection.clear();
+    }
+
     async function register(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         // Close the gap before React renders the disabled submit button.
@@ -221,6 +255,7 @@ function App() {
         try {
             const created = await CreateWork({...form, thumbnailPath: ''});
             setForm(emptyForm);
+            registeredKey.current = identity(created);
             setRegisteredTitle(created.title);
             // A list failure must not invite a second insert after a successful save.
             const values = await loadWorks();
@@ -275,6 +310,7 @@ function App() {
     function startEdit(work: WorkView, button: HTMLButtonElement) {
         if (stoppedRef.current || removedWorks.current.has(identity(work)) || modal.current || editStopped || deleteStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
         ++navigationRevision.current;
+        setTagFilterOpen(false);
         modal.current = true;
         editOrigin.current = button;
         setEditing({...work});
@@ -282,6 +318,7 @@ function App() {
     function openTagManagement() {
         if (modal.current) return;
         ++navigationRevision.current;
+        setTagFilterOpen(false);
         modal.current = true; setTagManagementOpen(true);
     }
     function closeTagManagement() {
@@ -310,6 +347,7 @@ function App() {
     function startDelete(work: WorkView, button: HTMLButtonElement) {
         if (stoppedRef.current || removedWorks.current.has(identity(work)) || modal.current || deleteStopped || editStopped || opening.current.has(work.id) || coverActions.isPending(work.id)) return;
         ++navigationRevision.current;
+        setTagFilterOpen(false);
         modal.current = true; deleteOrigin.current = button; setDeleting({...work});
     }
     function closeDelete() {
@@ -328,12 +366,15 @@ function App() {
         setDeleteNotices((current) => ({...current, [identity(work)]: {work: {...work}, missing, warnings}}));
     }
 
-    const matchingWorks = works?.filter((work) => titleMatches(work.title, searchQuery));
+    const filtered = library.data && filterLibrary(library.data.snapshot, {selectedTagIDs: tagSelection.selectedIDs,
+        titleQuery: searchQuery, candidateQuery, order: workSort.order, today, showFuture: futureSchedules.visible});
+    const matchingIDs = new Set(filtered?.works.map((work) => work.id));
+    const matchingWorks = works?.filter((work) => matchingIDs.has(String(work.id)));
     const visibleWorks = matchingWorks ? workSort.order === 'scheduled_date'
         ? scheduledWorks(matchingWorks, today, futureSchedules.visible) : sortWorks(matchingWorks, workSort.order) : undefined;
     // Date changes retain the page; explicit future toggles reset it.
     const pageOrder = scheduled ? `${workSort.order}:${futureSchedules.visible}` : workSort.order;
-    const pagination = useWorkPagination(displayMode.mode, searchQuery, visibleWorks?.length ?? 0, pageOrder);
+    const pagination = useWorkPagination(displayMode.mode, JSON.stringify([searchQuery, tagSelection.selectionRevision]), visibleWorks?.length ?? 0, pageOrder);
     const pageWorks = visibleWorks?.slice(pagination.start, pagination.start + pagination.size);
     useLayoutEffect(() => {
         const target = registrationPage.current;
@@ -341,7 +382,7 @@ function App() {
         // settings restore, rather than the register handler's older snapshot.
         if (target && displayMode.ready && workSort.ready && scheduleReady) {
             registrationPage.current = null;
-            if (target.revision === navigationRevision.current && !modal.current) {
+            if (target.revision === navigationRevision.current && !modal.current && !tagFilterOpen) {
                 const index = visibleWorks?.findIndex((work) => identity(work) === target.key) ?? -1;
                 if (index >= 0) {
                     const page = Math.floor(index / pagination.size) + 1;
@@ -359,15 +400,22 @@ function App() {
     const progressTargets: CoverProgressTarget[] = Object.values(coverActions.states).flatMap((state) =>
         state.pending && state.operationID && state.kind ? [{operationID: state.operationID, workID: state.work.id, kind: state.kind, title: state.work.title}] : []);
     if (cleanupPending) progressTargets.push({operationID: 'startup-cleanup', workID: 0, kind: 'cleanup'});
-    const success = registeredTitle === null ? '' : titleMatches(registeredTitle, searchQuery)
-        ? '作品を登録しました。' : '作品を登録しました。検索条件に一致しないため非表示です。';
+    const hiddenByTags = (key: string) => {
+        const work = works?.find((value) => identity(value) === key);
+        if (!work || !library.fresh || !tagSelection.selectedIDs.length) return false;
+        const tags = new Set(library.data?.snapshot.links.filter((link) => link.workID === String(work.id)).map((link) => link.tagID));
+        return !tagSelection.selectedIDs.every((id) => tags.has(id));
+    };
+    const success = registeredTitle === null ? '' : !titleMatches(registeredTitle, searchQuery)
+        ? '作品を登録しました。検索条件に一致しないため非表示です。'
+        : registeredKey.current && hiddenByTags(registeredKey.current) ? '作品を登録しました。タグ条件に一致しないため非表示です。' : '作品を登録しました。';
     const notices: WorkNotice[] = [
         ...Object.entries(accessStates).map(([key, state]): WorkNotice => ({key: `access:${key}`, work: state.work, kind: 'access', pending: state.pending, error: state.error, success: state.success})),
         ...Object.entries(coverActions.states).filter(([, state]) => state.pending || state.notice).map(([key, state]): WorkNotice =>
             ({key: `cover:${key}`, work: state.work, kind: 'cover', pending: state.pending, ...state.notice})),
         ...Object.entries(editNotices).map(([key, state]): WorkNotice => ({key: `edit:${key}`, work: state.work, kind: 'edit', warnings: state.warnings,
             success: `「${state.work.title}」を保存しました。${!titleMatches(state.work.title, searchQuery) ? '検索条件に一致しないため非表示です。'
-                : scheduled && scheduledWorks([state.work], today, futureSchedules.visible).length === 0 ? '未来の予定を非表示にしているため、一覧には表示されません。' : ''}`})),
+                : scheduled && scheduledWorks([state.work], today, futureSchedules.visible).length === 0 ? '未来の予定を非表示にしているため、一覧には表示されません。' : hiddenByTags(identity(state.work)) ? 'タグ条件に一致しないため非表示です。' : ''}`})),
         ...Object.entries(deleteNotices).map(([key, state]): WorkNotice => ({key: `delete:${key}`, work: state.work, kind: 'delete', warnings: state.warnings,
             success: state.missing ? `「${state.work.title}」は既に存在しません。` : `「${state.work.title}」を削除しました。`})),
     ];
@@ -454,9 +502,18 @@ function App() {
                         <select id="work-sort" value={workSort.order} disabled={!workSort.ready} onChange={(event) => {
                             if (isWorkSort(event.target.value)) changeSort(event.target.value);
                         }}>{workSortOptions.map(([order, label]) => <option key={order} value={order}>{label}</option>)}</select>
+                        <TagFilterPopup open={tagFilterOpen} setOpen={changeTagPopup} available={library.data !== null}
+                            enabled={tagSelection.enabled} candidates={filtered?.candidates ?? []} totalTags={library.data?.snapshot.tags.length ?? 0}
+                            selectedIDs={tagSelection.selectedIDs} trigger={tagFilterButton} onQuery={changeCandidateQuery} onSelect={changeTag} />
                         {scheduled && <label className="future-schedules"><input type="checkbox" checked={futureSchedules.visible} disabled={!futureSchedules.ready}
                             onChange={(event) => changeFuture(event.target.checked)} />未来の予定を表示</label>}
                     </div>
+                    <SelectedTagFilters tags={tagSelection.selectedTags} enabled={tagSelection.enabled} trigger={tagFilterButton}
+                        onRemove={(id) => changeTag(id, false)} onClear={clearTags} />
+                    {tagSelection.notice && <section key={tagSelection.notice.id} className="message cover-result" aria-label="タグ条件の変更">
+                        <p role="status">{tagSelection.notice.message}</p>
+                        <button type="button" className="secondary-button" onClick={() => {tagSelection.dismissNotice(); tagFilterButton.current?.focus();}}>条件変更のお知らせを閉じる</button>
+                    </section>}
                     {!displayMode.ready && <p role="status">表示形式を読み込んでいます…</p>}
                     {displayMode.saving && <p role="status">表示形式を保存しています…</p>}
                     {displayMode.warning && <p className="message error-message" role="alert">{displayMode.warning}</p>}
@@ -480,8 +537,11 @@ function App() {
                         {works !== null && visibleWorks !== undefined && <>
                             {works.length > 0 && visibleWorks.length === 0 && !loading && !listError &&
                                 <div className="empty-state" role="status">
-                                    <h3>{scheduled && !futureSchedules.visible ? '表示条件に一致する作品がありません' : '検索条件に一致する作品がありません'}</h3>
-                                    <p>{scheduled && !futureSchedules.visible ? '検索文字を変更するか、未来の予定を表示してください。' : '検索文字を変更するか、空欄にして全作品を表示してください。'}</p>
+                                    <h3>{tagSelection.selectedIDs.length || (scheduled && !futureSchedules.visible) ? '表示条件に一致する作品がありません' : '検索条件に一致する作品がありません'}</h3>
+                                    <p>{tagSelection.selectedIDs.length ? 'タグ条件を減らすか、検索文字・予定条件を変更してください。'
+                                        : scheduled && !futureSchedules.visible ? '検索文字を変更するか、未来の予定を表示してください。' : '検索文字を変更するか、空欄にして全作品を表示してください。'}</p>
+                                    {tagSelection.selectedIDs.length > 0 && <button type="button" className="secondary-button" disabled={!tagSelection.enabled}
+                                        onClick={clearTags}>タグ条件をすべて解除</button>}
                                 </div>}
                             <WorkList orderKey={scheduled ? `${pageOrder}:${today}` : workSort.order} mode={displayMode.mode} works={pageWorks ?? []} showEmpty={works.length === 0 && !loading && !listError} onOpen={openWork} isOpening={(work) => listStopped || removedWorks.current.has(identity(work)) || (accessStates[identity(work)]?.pending ?? false)}
                                 scheduleSort={{active: scheduled, disabled: !workSort.ready, select: () => changeSort('scheduled_date')}}

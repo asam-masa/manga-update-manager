@@ -198,10 +198,10 @@ export function TagManagementDialog({stopped, onStopped, onClose, notices = [], 
                                 <button type="button" className="secondary-button" disabled={!fresh || reading || writing || blocked} onClick={() => {setEdit({...edit, expected: {...currentTag!}}); focus.current = 'input';}}>現在の名前を確認して編集を続ける</button></div>}
                             {missing && <p>このタグは存在しません。入力を控えてキャンセルしてください。</p>}
                         </form> : tag.name}</th><td>{workCount === null ? '未確認' : `${workCount}作品`}</td><td>
-                        {edit?.expected.id === tag.id ? <div className="tag-management-actions">
+                        {edit?.expected.id === tag.id ? <div key="editing" className="tag-management-actions">
                             <button type="submit" form="tag-rename-form" className="primary-button" disabled={!canSave}>保存</button>
                             <button type="button" className="secondary-button" disabled={writing} onClick={cancelEdit}>キャンセル</button>
-                        </div> : <div className="tag-management-actions"><button id={`rename-tag-${tag.id}`} type="button" className="secondary-button" aria-label={`「${tag.name}」の名前変更`}
+                        </div> : <div key="viewing" className="tag-management-actions"><button id={`rename-tag-${tag.id}`} type="button" className="secondary-button" aria-label={`「${tag.name}」の名前変更`}
                             disabled={!fresh || reading || writing || blocked || edit !== null} onClick={() => {setEdit({expected: {...tag}, original: tag.name, name: tag.name}); setError(''); focus.current = 'input';}}>名前変更</button>
                             <button type="button" className="danger-button" aria-label={`「${tag.name}」を削除`}
                                 disabled={!fresh || reading || writing || blocked || edit !== null} onClick={() => {
