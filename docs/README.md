@@ -23,6 +23,7 @@
 - [生成物の管理](./develop/workflow/generated-files.md)
 - [コードレビュー観点](./develop/quality/code-review.md)
 - [テスト方針](./develop/quality/testing.md)
+- [ブラウザー画面検証の設計（合意済み・未導入）](./browser-ui-testing.md)
 - [日本語執筆ガイド](./develop/quality/japanese-writing.md)
 
 ## Architecture Decision Records
