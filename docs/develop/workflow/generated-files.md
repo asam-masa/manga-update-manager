@@ -13,6 +13,7 @@
 | `frontend/dist/` | 管理しない | `npm --prefix frontend run build` | ビルド成功を確認する |
 | `frontend/.vite/` | 管理しない | `wails dev`またはViteの実行 | 再生成できることを確認する |
 | `frontend/.vitest/`, `frontend/coverage/` | 管理しない | フロントエンドテスト | ソースとテスト結果をレビューする |
+| `frontend/playwright-report/`, `frontend/test-results/` | 管理しない | `npm --prefix frontend run test:browser` | 合成データの撮影画像と失敗時のトレースを確認する |
 | `build/bin/` | 管理しない | `wails build` | Windows向けビルド成功を確認する |
 
 ## 判断基準
