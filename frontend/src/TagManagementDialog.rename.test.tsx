@@ -31,6 +31,15 @@ async function boot(query = '') {
 }
 const input = () => screen.getByRole('textbox', {name: '新しいタグ名'}) as HTMLInputElement;
 const save = () => screen.getByRole('button', {name: '保存'}) as HTMLButtonElement;
+it('編集開始ボタンを保存ボタンへ再利用せず、開始だけでは改名を送信しない', async () => {
+    render(<Harness />);
+    const start = await screen.findByRole('button', {name: '「マンガ」の名前変更'});
+    await userEvent.click(start);
+    expect(input().value).toBe('マンガ');
+    expect(start.isConnected).toBe(false);
+    expect(save()).not.toBe(start);
+    expect(rename).not.toHaveBeenCalled();
+});
 async function typeName(name: string) {fireEvent.change(input(), {target: {value: name}});}
 beforeEach(() => {
     vi.clearAllMocks(); load.mockReset().mockResolvedValue(initial); rename.mockReset().mockResolvedValue(result('新しいタグ'));
