@@ -1,6 +1,8 @@
 # タグの公開API
 
-Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集、#310で削除確認画面、#320で管理用の取得、#314で管理の変更APIへ接続する。管理画面・絞り込みは後続である。
+Issue #303、親#295/#30。[内部保存](./tag-storage.md)をApplicationのTagReaderとWailsへ接続する。判断は[ADR-0020](./adr/0020-confirm-tags-with-work-edits.md)。#306で作品編集、#310で削除確認画面、#320で管理用の取得、#314で管理の変更APIへ接続した。
+
+管理画面は#327/#329/#331で一覧・名前変更・削除へ、一覧のAND絞り込みは#351で一括取得APIを使う候補UIへ接続済みである。操作契約は[タグ管理](./tag-management.md)と[タグ絞り込み](./tag-filter.md)、各段階の実機検証は[一覧設計の参照先](./library-design.md#タグ管理とand絞り込みの接続状況)を参照する。APIの追加、画面接続、個別機能の実機確認と、ADR-0020の機能全体照合は区別する。
 
 ## 一括取得API（Issue #337、親#297）
 
