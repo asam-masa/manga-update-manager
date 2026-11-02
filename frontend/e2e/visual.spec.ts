@@ -37,6 +37,17 @@ for (const width of [1200, 600]) {
             if (mode === 'rows') {
                 const overflow = await page.locator('.work-rows-scroll').evaluate((node) => node.scrollWidth > node.clientWidth);
                 expect(overflow).toBe(width === 600);
+                if (overflow) {
+                    const scroller = page.locator('.work-rows-scroll');
+                    await expect(scroller).toHaveCSS('overflow-x', /^(auto|scroll)$/);
+                    expect(await scroller.evaluate((node) => {
+                        const before = node.scrollLeft;
+                        node.scrollLeft = node.scrollWidth;
+                        const moved = node.scrollLeft > before;
+                        node.scrollLeft = before;
+                        return moved;
+                    }), 'Horizontal content must actually be scrollable').toBe(true);
+                }
                 const backgrounds = await items.evaluateAll((nodes) => nodes.slice(0, 2).map((node) => getComputedStyle(node).backgroundColor));
                 expect(backgrounds[0]).not.toBe(backgrounds[1]);
             } else {
@@ -62,11 +73,16 @@ for (const width of [1200, 600]) {
             const {root} = await session.send('DOM.getDocument');
             const {nodeId} = await session.send('DOM.querySelector', {nodeId: root.nodeId, selector: '.work-title'});
             const {fonts} = await session.send('CSS.getPlatformFontsForNode', {nodeId});
+            const fallbackFonts: Record<string, unknown> = {};
+            for (const selector of ['.work-actions-trigger', '.reload-button', '.cover-placeholder > span']) {
+                const found = await session.send('DOM.querySelector', {nodeId: root.nodeId, selector});
+                if (found.nodeId) fallbackFonts[selector] = (await session.send('CSS.getPlatformFontsForNode', {nodeId: found.nodeId})).fonts;
+            }
             await session.detach();
             const environmentPath = testInfo.outputPath('environment.json');
             await writeFile(environmentPath, JSON.stringify({
                 platform: process.platform, release: release(), node: process.version, browser: browser.version(),
-                width, height: 900, scale: 1, locale: 'ja-JP', timezone: 'Asia/Tokyo', fonts,
+                width, height: 900, scale: 1, locale: 'ja-JP', timezone: 'Asia/Tokyo', fonts, fallbackFonts,
             }, null, 2));
             await testInfo.attach('environment', {path: environmentPath, contentType: 'application/json'});
             await expect(page).toHaveScreenshot(`${mode}-${width}.png`, {fullPage: true, animations: 'disabled', caret: 'hide', scale: 'css'});
