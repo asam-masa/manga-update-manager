@@ -37,4 +37,4 @@ ID・保存名を検証し、不正値や資源解放失敗があれば部分一
 ## 参照
 
 - [SQLite外部キー](https://www.sqlite.org/foreignkeys.html)
-- [採用ドライバーの接続フック](https://pkg.go.dev/modernc.org/sqlite@v1.60.1#Driver.RegisterConnectionHook)
+- [採用ドライバーの接続フック](https://pkg.go.dev/modernc.org/sqlite@v1.61.1#Driver.RegisterConnectionHook)

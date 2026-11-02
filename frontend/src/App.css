@@ -29,6 +29,26 @@ h3 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
 .future-schedules input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; flex: none; }
 .schedule-sort { border: 0; background: transparent; color: inherit; padding: 4px 0; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .search-controls select { background: #fff; border: 1px solid #acb8c4; border-radius: 6px; color: inherit; padding: 10px; min-height: 40px; max-width: 100%; }
+.tag-filter-anchor { position: relative; }
+.tag-filter-anchor > button { min-height: 40px; }
+.tag-filter-popup { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: min(24rem, calc(100vw - 48px));
+    background: white; border: 1px solid #acb8c4; border-radius: 8px; box-shadow: 0 8px 24px #16324f30; padding: 14px; }
+.tag-filter-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.tag-filter-popup input[type="search"] { width: 100%; }
+.tag-filter-popup p { font-size: 0.8rem; overflow-wrap: anywhere; }
+.tag-filter-candidates { max-height: min(16rem, 40vh); overflow-y: auto; margin-top: 10px; border-top: 1px solid #dfe3e8; }
+.tag-filter-candidates label { display: flex; align-items: center; gap: 8px; font-weight: 400; padding: 8px 4px; margin: 0; }
+.tag-filter-candidates label:hover { background: #e8f1f7; }
+.tag-filter-candidates input[type="checkbox"] { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; }
+.tag-filter-candidates label > span { min-width: 0; overflow-wrap: anywhere; }
+.tag-filter-count { margin-left: auto; flex-shrink: 0; font-size: 0.75rem; color: #52606d; }
+.selected-tag-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.selected-tag-filters .tag-chip { margin: 0; }
+@media (max-width: 760px) {
+    .tag-filter-anchor { flex: 1 1 100%; }
+    .tag-filter-anchor > button { width: 100%; }
+    .tag-filter-popup { left: 0; right: auto; width: min(24rem, 100%); }
+}
 .work-pagination { margin-top: 12px; }
 .page-summary { color: #52606d; font-size: 0.75rem; margin: 0 0 6px; }
 .page-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
