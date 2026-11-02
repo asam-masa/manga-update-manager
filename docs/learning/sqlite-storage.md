@@ -42,7 +42,11 @@ Go標準ライブラリの`time/tzdata`を実行ファイルへ含めること�
 
 ADR-0004に従い、CGo不要の`modernc.org/sqlite`とGo標準の`database/sql`を使用します。Issue #19ではGo 1.25設定を維持するため、Go 1.25を要求するv1.58.0を固定しました。当時はGo 1.26を要求するv1.60.1を対象外にしました。
 
-[ADR-0015](../adr/0015-separate-go-minimum-and-validation-version.md)でGo設定を1.26へ更新した後、[PR #65](https://github.com/asam-masa/manga-update-manager/pull/65)でv1.60.1への更新を検証しました。ドライバーだけでなく、上流が指定する`modernc.org/libc` v1.77.1との一致も確認します。
+[ADR-0015](../adr/0015-separate-go-minimum-and-validation-version.md)でGo設定を1.26へ更新した後、[PR #65](https://github.com/asam-masa/manga-update-manager/pull/65)でv1.60.1への更新を検証しました。当時の上流が指定した`modernc.org/libc` v1.77.1との一致も確認しました。
+
+[PR #353](https://github.com/asam-masa/manga-update-manager/pull/353)ではv1.61.1と対応するlibc v1.79.0を検証します。保存形式だけでなく、待機の終わり方も依存更新で変わります。今回は長いbusy_timeout中のCommitを短いcontext期限で中断する処理が追加されたため、別接続の読取ロックで実際に待たせました。同じ試験が旧版では約10秒待って失敗、新版では約1秒で終了することを確認しました。
+
+ドライバーが失敗時にRollbackを試みても、アプリ側がその成否を確認できるとは限りません。既存の「Commit失敗は結果不明として停止し、成功データを返さない」扱いを維持します。[更新確認の範囲](../verification/sqlite-1-61-1-update.md)を参照してください。
 
 同じドライバーでDBを再オープンするテストだけでは、更新前後の互換性を直接確認できません。今回は旧版で合成DBを作り、新版で作品・最終アクセス・表示設定を読み書きして再オープンし、旧版でも読み直しました。日時の小数秒、URL重複のエラー変換、適用済みマイグレーション数、`PRAGMA integrity_check`も確認しました。利用者のDBには触れていません。この結果は検証した合成DBに限り、任意の既存DBや将来の更新の互換性を保証しません。
 
