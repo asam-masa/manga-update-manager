@@ -6,6 +6,8 @@ export default defineConfig({
     workers: 1,
     retries: 0,
     forbidOnly: !!process.env.CI,
+    updateSnapshots: 'none',
+    expect: {toHaveScreenshot: {maxDiffPixels: 0, threshold: 0.2}},
     reporter: [['list'], ['html', {open: 'never'}]],
     use: {
         ...devices['Desktop Chrome'],

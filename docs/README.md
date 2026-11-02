@@ -36,6 +36,7 @@
 
 ## 検証
 
+- [代表6画面のブラウザー画像比較](./verification/browser-visual-comparison.md)
 - [基本並び順の検証](./verification/work-sort.md)
 - [一覧ページ切替の検証](./verification/work-pagination.md)
 - [3形式と表示設定の実WebView2確認](./verification/library-layouts.md)
