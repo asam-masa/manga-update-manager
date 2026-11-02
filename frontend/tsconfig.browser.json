@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {"composite": false, "types": ["node"], "allowImportingTsExtensions": true},
+  "include": ["playwright.config.ts", "e2e/**/*.ts"],
+  "references": []
+}

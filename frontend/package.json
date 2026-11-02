@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "test:browser": "tsc -p tsconfig.browser.json && npm run build:browser-test && playwright test",
+    "build:browser-test": "tsc && tsc -p tsconfig.node.json --noEmit && vite build --config e2e/vite.config.ts",
     "dev": "vite",
     "build": "tsc && tsc -p tsconfig.node.json --noEmit && vite build",
     "preview": "vite preview"
@@ -14,6 +16,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",

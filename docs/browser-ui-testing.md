@@ -2,7 +2,7 @@
 
 ## 現在の状態
 
-2026-11-02に合意した導入方針。Playwrightの依存追加・試験実装・基準画像・CIは未導入である。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)と親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)を参照する。現時点で既存の必要な手動確認を減らした扱いにしない。
+2026-11-02に合意した導入方針。Issue #359でPlaywright基盤と2件のスモーク試験を追加した。6画面の基準画像比較・代表操作・CI組み込みは未実装である。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)と親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)を参照する。基盤だけの成功で、既存の必要な手動確認を減らした扱いにしない。
 
 ## 検証する境界
 
@@ -45,3 +45,33 @@ Codexは初回の6基準画像を実際に開いて確認する。以後の通�
 | [#361](https://github.com/asam-masa/manga-update-manager/issues/361) | 代表操作とWindows CIの必須チェック | シナリオ・artifact・失敗の伝達・必要な外部設定 |
 
 画像比較の段階でもWindowsで基準作成と校正を行う。正式なCI必須化を待って基準環境を決めることはしない。各PRは既存試験と製品ビルドを維持し、導入済み範囲だけを結果として記録する。実Wails Spikeはこの順序を止めない。
+
+## 基盤の実行手順（#359）
+
+Playwright Test 1.64.1（Apache-2.0）を開発用依存として固定する。ブラウザー操作・アサーション・ブラウザー管理を揃えて使えるため採用した。Node.js要件は20以上で、プロジェクトのNode.js 24で満たす。取得元は[公式npmパッケージ](https://www.npmjs.com/package/@playwright/test/v/1.64.1)。
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend exec -- playwright install chromium
+npm --prefix frontend run test:browser
+```
+
+ブラウザーの取得にはネットワークと専用キャッシュへの書き込みが必要になる。通常のブラウザー設定やプロファイルは変更しない。試験はheadless Chromiumを使い、各テストはPlaywrightの独立したブラウザーコンテキストで実行する。
+
+`test:browser`は試験コードの型確認、製品と同じ入口・設定を使うproductionビルド、Playwrightの順に実行する。`e2e/vite.config.ts`はモジュール解析時の混入検査だけを製品設定へ加える。`e2e/`やPlaywright本体へのimportが製品の依存グラフへ入ったら、tree shaking前にビルドを失敗させる。通常の`npm --prefix frontend run build`は変更しない。
+
+Playwrightが`127.0.0.1:4179`でVite previewを起動し、終了時に起動したサーバーを終了する。既存サーバーを再利用せず、ポートが使用中なら失敗する。手動で別アプリを停止する必要はない。ブラウザー要求はこのoriginに限定し、`/__covers/works/1`はテスト側で合成SVGを返す。他のoriginへの要求と未定義の画像要求は遮断して試験を失敗させる。
+
+`e2e/fixture.ts`がページのスクリプト実行前に`window.go.main.App`と起動時のイベント購読境界を注入する。未対応APIは成功を返さず試験を失敗させる。イベントは現在のスモークに必要な購読・解除だけの代替で、画像選択完了イベントの実配信を検証したことにはしない。日時は2026-11-02 09:00（日本時間）に固定し、画面のタイマーは進める。登録フォームの表示変更はそのページ内の合成状態だけへ保存する。
+
+成功時もスモーク画面をHTMLレポートへ添付する。失敗時は撮影画像とトレースも残る。`frontend/playwright-report/index.html`を確認し、必要なら`npm --prefix frontend exec -- playwright show-report frontend/playwright-report`でレポートを開く（GUI起動は環境の承認に従う）。レポートと`frontend/test-results/`はGitへ追加しない。これは画像比較の基準画像ではない。
+
+## 基盤の検証結果（2026-11-02）
+
+Windows / Node.js 24.22.1 / Playwright 1.64.1の同梱Chromiumで、2件のスモーク試験が成功した。合成表紙と未設定時の仮画像、登録フォームの表示を撮影画像でも確認した。通常ビルドと混入検査付きビルドの出力3ファイルはSHA-256がすべて一致した。
+
+一時的な故障注入では、製品入口からテスト用fixtureをimportすると出力前にビルドが失敗した。未対応APIの呼び出しと外部HTTP要求も、テスト側で例外を握りつぶしても試験を失敗させた。後者の2件では失敗画像とトレースが生成された。一時コードは除去し、通常の2件が再び成功したことを確認した。
+
+既存Vitestは36ファイル・437件、`go test ./...`・`go vet ./...`・通常フロントエンドビルド・Wails 2.17.1の配布用ビルドが成功した。ローカルPATHのCLIは2.14.0だったため、配布ビルドは`go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.1 build -m -nosyncgomod`で版指定した。システムのCLI設定は変更していない。
+
+今回の保証はブラウザー上の合成境界に限る。実Wails接続、IME、実保存、6画面の画像比較、PlaywrightのCI実行は未検証・未実装のままである。
