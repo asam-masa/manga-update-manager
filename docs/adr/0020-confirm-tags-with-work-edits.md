@@ -1,7 +1,7 @@
 # ADR-0020: タグの作成と付与を作品編集の保存時に確定する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-10-27
 - Related: [#30](https://github.com/asam-masa/manga-update-manager/issues/30)、[#293](https://github.com/asam-masa/manga-update-manager/issues/293)
 
@@ -216,6 +216,8 @@ Appの一覧読取と確定済み操作後の再取得を一括取得hookへ接�
 - 合成保存先の実WebView2で候補選択・保存・取消・管理・キー操作・3形式と再起動時解除
 
 ## References
+
+2026-11-03のIssue #372で[タグ機能全体の検証照合](../verification/tag-feature-summary.md)を実施した。保存・公開API・編集/削除確認・管理・AND/予定/検索/ページと専用保存先の実WebView2記録を対応付け、全体検証条件を満たしたためVerifiedへ更新する。上記Pendingは各段階の履歴である。物理故障・全IME/解像度・実Wails自動E2Eは未検証であり、合成試験と区別する。
 
 - [ADR-0005](./0005-define-library-behavior.md)
 - [ADR-0018](./0018-edit-and-delete-works.md)
