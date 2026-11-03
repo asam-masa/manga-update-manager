@@ -156,8 +156,11 @@ type fixture struct {
 }
 
 func setup(t *testing.T) *fixture {
+	return setupAt(t, t.TempDir())
+}
+
+func setupAt(t *testing.T, root string) *fixture {
 	t.Helper()
-	root := t.TempDir()
 	dir := filepath.Join(root, "save")
 	if err := os.Mkdir(dir, 0700); err != nil {
 		t.Fatal(err)
@@ -177,6 +180,15 @@ func setup(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { closeFixture(t, f) })
+	// Temp paths can contain DOS 8.3 aliases (e.g. a CI user profile). Compare
+	// names in the representation returned for this newly created handle.
+	// This is fixture normalization, not a product path acceptance policy.
+	f.temp, err = finalName(f.file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.dir = filepath.Dir(f.temp)
+	f.final = filepath.Join(f.dir, "probe.zip")
 	f.id, err = fileID(f.file)
 	if err != nil {
 		t.Fatal(err)
@@ -515,4 +527,43 @@ func TestDirectoryRelativeRenameProbe(t *testing.T) {
 	t.Log("RootDirectory + relative name accepted on this host; not a cross-version guarantee")
 	closeFixture(t, f)
 	content(t, filepath.Join(f.dir, "relative.zip"), f.data)
+}
+
+func TestShortPathFixture(t *testing.T) {
+	root := t.TempDir()
+	p, err := windows.UTF16PtrFromString(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := make([]uint16, 32768)
+	n, err := windows.GetShortPathName(p, &b[0], uint32(len(b)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n >= uint32(len(b)) {
+		t.Fatal("short path buffer too small")
+	}
+	alias := windows.UTF16ToString(b[:n])
+	long := make([]uint16, 32768)
+	longN, err := windows.GetLongPathName(p, &long[0], uint32(len(long)))
+	if err != nil || longN >= uint32(len(long)) {
+		t.Fatal("long path conversion", longN, err)
+	}
+	if strings.EqualFold(alias, windows.UTF16ToString(long[:longN])) {
+		t.Skip("8.3 alias unavailable; volume settings unchanged")
+	}
+	f := setupAt(t, alias)
+	if err := renameNoReplace(f.file, f.final); err != nil {
+		t.Fatal(err)
+	}
+	name, err := finalName(f.file)
+	if err != nil || !strings.EqualFold(name, f.final) {
+		t.Fatal(name, f.final, err)
+	}
+	id, err := fileID(f.file)
+	if err != nil || id != f.id {
+		t.Fatal(id, err)
+	}
+	closeFixture(t, f)
+	content(t, f.final, f.data)
 }
