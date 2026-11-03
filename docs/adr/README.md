@@ -27,4 +27,5 @@
 | [0019](./0019-use-manual-japan-schedule-dates.md) | 更新予定を日本の暦日として手入力する | Accepted | Pending | 2026-10-25 | [#31](https://github.com/asam-masa/manga-update-manager/issues/31)、[#262](https://github.com/asam-masa/manga-update-manager/issues/262) |
 | [0020](./0020-confirm-tags-with-work-edits.md) | タグの作成と付与を作品編集の保存時に確定する | Accepted | Verified | 2026-10-27 | [#30](https://github.com/asam-masa/manga-update-manager/issues/30)、[#293](https://github.com/asam-masa/manga-update-manager/issues/293) |
 | [0021](./0021-verify-react-ui-with-playwright.md) | ブラウザー上の実React画面をPlaywrightで検証する | Accepted | Verified | 2026-11-02 | [#357](https://github.com/asam-masa/manga-update-manager/issues/357)、[#358](https://github.com/asam-masa/manga-update-manager/issues/358) |
+| [0022](./0022-manual-backup-and-replacement-restore.md) | 手動バックアップと退避付き一式復元から始める | Accepted | Pending | 2026-11-03 | #378、#379 |
 
