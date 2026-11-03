@@ -2,6 +2,8 @@
 
 ## 結果
 
+現行Wails v2.17.1の2026-11-03再調査は[別記録](./webview2-cdp-recheck.md)を参照する。以下は2026-10-10のv2.14.0の実測記録である。
+
 2026-10-10のIssue [#35](https://github.com/asam-masa/manga-update-manager/issues/35)では、現在のWailsで公式の環境変数方式によるCDP接続口を確認できませんでした。アプリは起動しましたが、15秒間の確認で接続口は開きませんでした。Playwrightによる実アプリE2Eは未実施です。
 
 通常アプリと依存ライブラリは変更していません。接続の前提が満たされないため、テスト専用のGo実装、Playwright依存、E2Eテスト、CIも追加していません。これは調査結果であり、E2Eが不要という判断やPlaywrightの採用Decisionではありません。
