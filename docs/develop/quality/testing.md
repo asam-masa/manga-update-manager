@@ -35,7 +35,7 @@ Goのテストは`go test ./...`、静的解析は`go vet ./...`で実行しま�
 
 [ADR-0021](../../adr/0021-verify-react-ui-with-playwright.md)に従い、Playwrightで実React画面を合成API・画像から検証する方針です。操作・レイアウト検証に加え、小型・行一覧・カードの通常幅／狭い幅をWindowsの統一環境で画像比較します。製品ビルドへ差し替えを含めず、既存Vitest・Go試験を維持します。具体的な導入順序と境界は[ブラウザー画面検証の設計](../../browser-ui-testing.md)を参照してください。
 
-スモーク2件と[6画面の画像比較・レイアウト検証](../../verification/browser-visual-comparison.md)、[代表操作5件と手動確認の対応表](../../verification/browser-operations.md)を`npm --prefix frontend run test:browser`で実行します。Windows CIの`Browser checks`は13件を3回ずつ検証し、失敗をジョブへ伝えます。GitHub側の[必須チェック追加](../workflow/browser-required-checks.md)は別途承認・適用待ちです。自動化が実装・検証された範囲から、通常の画面変更はPlaywright成功とCodexによる撮影画像の確認を標準にします。基準画像は初回に確認し、意図した変更のときだけ更新します。未導入・未検証の試験を理由に必要な手動確認を省略しません。
+スモーク2件と[6画面の画像比較・レイアウト検証](../../verification/browser-visual-comparison.md)、[代表操作5件と手動確認の対応表](../../verification/browser-operations.md)を`npm --prefix frontend run test:browser`で実行します。Windows CIの`Browser checks`は13件を3回ずつ検証し、失敗をジョブへ伝えます。GitHub側の[必須チェック](../workflow/browser-required-checks.md)も2026-11-03に個別承認後の適用と読み戻しを確認済みです。自動化が実装・検証された範囲から、通常の画面変更はPlaywright成功とCodexによる撮影画像の確認を標準にします。基準画像は初回に確認し、意図した変更のときだけ更新します。未導入・未検証の試験を理由に必要な手動確認を省略しません。
 
 新デザインの初回合意、実WebView2・IME・ネイティブ選択・実保存など未自動化の境界に影響する場合は、対象と自動化できない理由を添えて手動確認します。ブラウザーでの合成API成功を実Wails・DB結合の成功とは扱いません。実Wails接続の再調査は別Spikeとします。
 

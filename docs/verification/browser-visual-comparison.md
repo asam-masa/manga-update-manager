@@ -56,7 +56,7 @@ CIを基準に更新する場合は、通常比較で失敗したartifactの実�
 
 ## Windows校正と失敗の調査
 
-初期の#360では非ブロッキングの`Browser visual calibration`ジョブで8件を3回反復した。#361では`Browser checks`へ改め、[代表操作5件](./browser-operations.md)を加えた13件を3回反復し、失敗をCIへ伝える。`Test browser operations and snapshots`ステップの成功も確認する。GitHub上でマージを止める[必須チェック設定](../develop/workflow/browser-required-checks.md)は承認・適用待ちであり、CIの成功と区別する。
+初期の#360では非ブロッキングの`Browser visual calibration`ジョブで8件を3回反復した。#361では`Browser checks`へ改め、[代表操作5件](./browser-operations.md)を加えた13件を3回反復し、失敗をCIへ伝える。`Test browser operations and snapshots`ステップの成功も確認する。GitHub上の[必須チェック設定](../develop/workflow/browser-required-checks.md)も2026-11-03に個別承認後の適用・読み戻しを確認した。CIの成功と外部設定の検証結果を区別して記録する。
 
 撮影・差分・トレース・環境情報・基準画像を、公式`actions/upload-artifact` v7.0.2のコミット固定で7日間保持する。標準のartifactとして校正結果を取得するために採用した。対象は合成データの出力だけであり、DB・利用者画像・通常プロファイルは含めない。取得と入力仕様は[公式Action](https://github.com/actions/upload-artifact/tree/v7.0.2)を参照する。
 

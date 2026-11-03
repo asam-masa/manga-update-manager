@@ -6,4 +6,4 @@
 
 また、CIコマンドが非0で終わること、ジョブが失敗すること、GitHubがマージを拒否することは別の段階です。`continue-on-error`を外すだけではGitHubの必須チェックは設定されません。今回の調査でもclassic protectionは404でしたが、別のrulesetは有効でした。設定方式を確認し、既存の保護を保持した追加案を作り、個別承認後に読み戻す必要があります。
 
-正本は[ブラウザー検証設計](../browser-ui-testing.md)、[代表操作の検証](../verification/browser-operations.md)、[必須チェック設定案](../develop/workflow/browser-required-checks.md)、[ADR-0021](../adr/0021-verify-react-ui-with-playwright.md)です。
+正本は[ブラウザー検証設計](../browser-ui-testing.md)、[代表操作の検証](../verification/browser-operations.md)、[必須チェック設定と適用記録](../develop/workflow/browser-required-checks.md)、[ADR-0021](../adr/0021-verify-react-ui-with-playwright.md)です。
