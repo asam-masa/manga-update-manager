@@ -35,6 +35,7 @@
 
 ## 一覧
 
+- [JSONを読めることと、形式を検証できることを分ける](./backup-manifest.md)
 - [見た目・操作・マージ条件を分ける](./browser-check-boundaries.md)
 - [Wailsアプリの画面とブラウザーの境界](./wails-runtime.md)
 - [作品モデルとSQLite保存を分離する](./sqlite-storage.md)
