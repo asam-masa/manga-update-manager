@@ -1,6 +1,6 @@
 # バックアップ形式v1の契約
 
-Issue #389、親#378。[初回設計](./backup-restore.md)を具体化する。#390で[目録検証](./verification/backup-manifest.md)、#391で[ZIPの限定読込](./verification/backup-archive.md)を実装した。実DB・画像の意味的検証、ファイル出力、作成・復元の接続は未実装であり、以下は後続実装と試験の基準も含む。
+Issue #389、親#378。[初回設計](./backup-restore.md)を具体化する。#390で[目録検証](./verification/backup-manifest.md)、#391で[ZIPの限定読込](./verification/backup-archive.md)、#397で[WriterへのZIP書込み](./verification/backup-writer.md)を実装した。実DB・画像の意味的検証、実ファイルへの保存・公開、製品の作成・復元への接続は未実装であり、以下は後続実装と試験の基準も含む。
 
 ## 構成と目録
 
