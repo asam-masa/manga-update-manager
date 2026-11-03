@@ -2,7 +2,7 @@
 
 ## 現在の状態
 
-2026-11-02に合意した導入方針。Issue #359でPlaywright基盤と2件のスモーク試験、#360で6画面の画像比較・レイアウト検証を追加した。#361では[代表操作5件](./verification/browser-operations.md)と、失敗をジョブへ伝える`Browser checks`へ進めた。[6画面の条件・更新手順](./verification/browser-visual-comparison.md)も参照する。GitHub側の必須チェックは[外部設定案](./develop/workflow/browser-required-checks.md)の個別承認・適用待ちである。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)と親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)に従い、未検証の範囲の手動確認を省略しない。
+2026-11-02に合意した導入方針。Issue #359でPlaywright基盤と2件のスモーク試験、#360で6画面の画像比較・レイアウト検証を追加した。#361では[代表操作5件](./verification/browser-operations.md)と、失敗をジョブへ伝える`Browser checks`へ進めた。[6画面の条件・更新手順](./verification/browser-visual-comparison.md)も参照する。2026-11-03に利用者の個別承認を受け、GitHub側の[必須チェック設定](./develop/workflow/browser-required-checks.md)を適用・読み戻し確認した。[ADR-0021](./adr/0021-verify-react-ui-with-playwright.md)のValidationはVerifiedとし、親Issue [#357](https://github.com/asam-masa/manga-update-manager/issues/357)のブラウザー検証導入を完了した。実Wails接続は別Spikeであり、未検証の範囲の手動確認を省略しない。
 
 ## 検証する境界
 

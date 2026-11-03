@@ -1,7 +1,7 @@
 # ADR-0021: ブラウザー上の実React画面をPlaywrightで検証する
 
 - Status: Accepted
-- Validation Status: Pending
+- Validation Status: Verified
 - Date: 2026-11-02
 - Related: [#357](https://github.com/asam-masa/manga-update-manager/issues/357)、[#358](https://github.com/asam-masa/manga-update-manager/issues/358)
 
@@ -56,6 +56,17 @@
 同日の#360では6画面の比較と配置検証を追加し、ローカルWindowsで3回反復・故障注入を確認した。[校正と残る検証](../verification/browser-visual-comparison.md)を記録し、代表操作・CI必須化が残るためPendingを維持する。
 
 2026-11-03の#361では[代表操作5件](../verification/browser-operations.md)を追加した。ローカルで3回反復の15件と、Esc故障の検出を確認した。CIではスモーク・画像比較を含む13件を3回反復し、非0終了を`Browser checks`へ伝える。CI結果はPRに記録する。mainの既存rulesetには必須ステータスチェックがなく、[追加案](../develop/workflow/browser-required-checks.md)の個別承認・適用と読み戻しが残るためPendingを維持する。合成APIの成功を実Wails・DB成功とは扱わない。
+
+同日の外部設定承認後、[PR #367](https://github.com/asam-masa/manga-update-manager/pull/367)で必須チェックの適用・読み戻しを完了した。マージ後の[Issue #368](https://github.com/asam-masa/manga-update-manager/issues/368)で次の全条件を照合し、ValidationをVerifiedへ更新する。上記のPendingは各段階の履歴である。
+
+| 検証条件 | 確認した根拠と結果 |
+| --- | --- |
+| 実React画面と合成境界、製品成果物の分離 | #359の基盤、製品入口を使うビルド、テストモジュール混入防止を維持。#361のCIで混入防止付きビルド・スモークも成功 |
+| 同一Windows条件で6画面を反復比較し、変化を検出 | #360で背景変更と横スクロール不可能な故障を検出。#361の[run 41561064257](https://github.com/asam-masa/manga-update-manager/actions/runs/41561064257)でWindows 10.0.26100・Chromium 156.0.8078.4の比較を含む13件×3回が成功。基準PNG6枚は未変更 |
+| 操作・比較のCI実行と必須チェックへの伝達 | ローカルのEsc・並び順変更の故障で非0終了を確認。CIはcontinue-on-errorなし。個別承認後にruleset 24450508へGitHub Actions発行の2チェックを追加し、mainの有効ルールとPR #367のrequired欄で確認。既存保護を保持 |
+| 出力確認と残る手動確認の説明 | 初回6画像と失敗証跡、#361のCI撮影・環境記録・artifactを確認。[代表操作と手動境界の対応表](../verification/browser-operations.md#手動確認との対応)を記録 |
+
+CIの対象headは`f794a1459f38ff2228a83a67da41931acd15baf7`。マージコミット`1b434ed4c7e4f419e17b4536f0aac665b3a1462d`とのファイル差分はない。CIへ故障を入れた実行や、失敗状態での実マージは行っていない。VerifiedはこのADRのブラウザー検証導入条件を満たした意味であり、全操作や全Windows環境の保証ではない。実Wails接続・IME・ネイティブ選択・実DB保存の結合と新デザインの初回合意は、引き続き別の確認対象である。
 
 ## References
 

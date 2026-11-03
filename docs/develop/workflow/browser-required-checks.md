@@ -1,14 +1,14 @@
-# ブラウザー検証の必須チェック設定案
+# ブラウザー検証の必須チェック設定と適用記録
 
 ## 現在の状態
 
-2026-11-03にmainの有効ルールとrepository ruleset `24450508`（Protect main）を読み取った。既定ブランチ対象・active・例外なしで、削除禁止、強制push禁止、PR必須、線形履歴を設定済み。`required_status_checks`は未設定である。classic branch protectionの404だけでは保護なしと判断しない。
+2026-11-03に利用者の個別承認を受け、repository ruleset `24450508`（Protect main）へ`Windows checks`と`Browser checks`の必須ルールを追加した。既定ブランチ対象・active・例外なしと、既存の削除禁止、強制push禁止、PR必須、線形履歴およびPR設定を保持した。適用前は`required_status_checks`が未設定だった。classic branch protectionの404だけでは保護なしと判断しない。
 
-Issue [#361](https://github.com/asam-masa/manga-update-manager/issues/361)は外部保護設定の個別承認を要求している。この文書は未適用の提案であり、CIジョブの変更だけでマージが阻止されると報告しない。
+Issue [#361](https://github.com/asam-masa/manga-update-manager/issues/361)と[PR #367](https://github.com/asam-masa/manga-update-manager/pull/367)へ承認・適用・確認結果を記録した。CIジョブを追加しただけの状態と、GitHub側の必須設定の完了を区別する。
 
-## 追加する内容
+## 追加した内容
 
-既存rulesetのルール・対象・例外・PR設定は保持し、次のルール1件を追加する。GitHub Actionsのapp ID `15368`は既存mainのcheck-runsから確認した。新しい`Browser checks`もPRのcheck-runsで同じ発行元を確認してから適用する。
+既存rulesetのルール・対象・例外・PR設定を保持し、次のルール1件を追加した。GitHub Actionsのapp ID `15368`は既存mainとPR #367の両check-runsで確認した。
 
 ```json
 {
@@ -24,9 +24,17 @@ Issue [#361](https://github.com/asam-masa/manga-update-manager/issues/361)は外
 }
 ```
 
-2チェックの成功を要求し、待機・失敗中はマージできなくする案である。`strict_required_status_checks_policy: false`は最新mainへの追従を別の必須条件にはしない。PR更新後のチェックは引き続き必要となる。旧`Browser visual calibration`は指定しない。新しいチェックが存在しない古いPRは、適用前にmain取り込み等によるワークフロー実行が必要になる場合がある。PRの自動マージは有効にしない。
+2チェックの成功を要求し、待機・失敗中のマージを制限する設定である。`strict_required_status_checks_policy: false`は最新mainへの追従を別の必須条件にはしない。PR更新後のチェックは引き続き必要となる。旧`Browser visual calibration`は指定していない。新しいチェックが存在しない古いPRは、main取り込み等によるワークフロー実行が必要になる場合がある。PRの自動マージは有効にしていない。
 
-## 承認後の適用と確認
+## 読み戻しと検証結果
+
+同日にrulesetとmainの有効ルールを再取得し、上記2チェック・発行元・strict設定・作成時の扱いを確認した。適用前後のJSON比較で、名前・対象・active・例外なしと既存4ルールの保持も確認した。`gh pr checks 367 --required`は両チェックを必須として返し、両方`SUCCESS`だった。PR #367のマージ後にも有効ルールと必須チェック結果を再確認した。
+
+[CI run 41561064257](https://github.com/asam-masa/manga-update-manager/actions/runs/41561064257)はhead `f794a1459f38ff2228a83a67da41931acd15baf7`で、ブラウザー39件と既存Windows checksが成功した。マージコミット`1b434ed4c7e4f419e17b4536f0aac665b3a1462d`とのファイル差分もない。失敗を伝える経路は、ローカルの故障注入による非0終了とCIの失敗を許容しない設定で確認した。失敗状態での実マージや、この版のCIへ故障を入れる検証は行っていない。
+
+## 今回の適用手順
+
+以下の手順で実施した。今後の設定変更や復旧を包括的に承認するものではない。
 
 1. PRの`Windows checks`と`Browser checks`、後者の操作・比較ステップ成功と証跡を確認する。
 2. この追加内容について利用者の個別承認を得る。

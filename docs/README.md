@@ -37,7 +37,7 @@
 ## 検証
 
 - [代表操作と手動確認の対応](./verification/browser-operations.md)
-- [CI必須チェックの外部設定案](./develop/workflow/browser-required-checks.md)
+- [CI必須チェックの外部設定と適用記録](./develop/workflow/browser-required-checks.md)
 - [代表6画面のブラウザー画像比較](./verification/browser-visual-comparison.md)
 - [基本並び順の検証](./verification/work-sort.md)
 - [一覧ページ切替の検証](./verification/work-pagination.md)

@@ -21,7 +21,7 @@ Wailsの`-s`はフロントエンドの再ビルドを省略します。`-m`と`
 
 同じ`windows-2025`上の独立ジョブで、Node.js 24・lockfileの依存・PlaywrightのChromiumを準備し、`npm --prefix frontend run test:browser -- --repeat-each=3`を実行します。スモーク2件・画像比較6件・代表操作5件の39件を検証し、非0終了はジョブを失敗させます。旧校正ジョブの`continue-on-error`は使いません。対象と手動確認の対応は[代表操作](../../verification/browser-operations.md)、基準環境は[画像比較](../../verification/browser-visual-comparison.md)に記録します。
 
-`Browser checks`と`Windows checks`は別のチェック名です。GitHubで成功をマージ条件にするには、[外部設定案](./browser-required-checks.md)の個別承認・適用・読み戻しが必要です。ジョブ追加だけを必須設定の完了としません。
+`Browser checks`と`Windows checks`は別のチェック名です。GitHub側の[外部設定](./browser-required-checks.md)も2026-11-03に個別承認を受けて適用し、両チェックがmain向けPRで必須となることを読み戻して確認しました。ジョブ追加だけを必須設定の完了としません。
 
 ## 安全性と結果の確認
 
