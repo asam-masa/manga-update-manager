@@ -5,6 +5,8 @@ import App from './App';
 import {CreateWork, LoadLibrarySnapshot, LoadTagUsage, LoadTagDeletePreview, RenameTag, DeleteTag, OpenWork} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
+vi.mock('./use-japan-today', () => ({useJapanToday: () => '2028-02-29'}));
+
 vi.mock('../wailsjs/go/main/App', () => ({
     LoadLibrarySnapshot: vi.fn(), CreateWork: vi.fn(), OpenWork: vi.fn(), RenameTag: vi.fn(), DeleteTag: vi.fn(), LoadTagUsage: vi.fn(), LoadTagDeletePreview: vi.fn(),
     LoadTags: async () => [], LoadWorkTags: async () => [], LoadCoverWarnings: async () => [], LoadCoverProgress: async () => [],
@@ -14,7 +16,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
 }));
 const stamp = '2026-11-01T00:00:00+09:00';
 const work = (id: number) => ({id: String(id), title: `作品${id}`, url: `https://example.com/${id}`, siteName: '', notes: '', thumbnailPath: '',
-    createdAt: stamp, updatedAt: stamp, scheduledDate: null, lastAccessedAt: null});
+    createdAt: stamp, updatedAt: stamp, scheduledDate: null as string | null, lastAccessedAt: null});
 function fixture() {return {works: Array.from({length: 31}, (_, i) => work(i + 1)),
     tags: [{id: '1', name: 'マンガ'}, {id: '2', name: '連載中'}, {id: '3', name: '未使用'}],
     links: Array.from({length: 31}, (_, i) => [
@@ -49,6 +51,34 @@ it('全件から候補追加後のAND件数を数え、選択の即時反映と0
     expect(screen.getByText('表示条件に一致する作品がありません')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', {name: 'タグ条件をすべて解除'}));
     expect(titles()).toHaveLength(20); expect(current()).toBe('1');
+});
+
+it('検索・複数タグ・未来OFFを全件へ適用して整列後にページ分割する', async () => {
+    saved = {works: Array.from({length: 45}, (_, i) => ({...work(i + 1),
+        title: i < 41 ? `作品${i + 1}` : `別${i + 1}`,
+        scheduledDate: i === 0 ? '2028-03-01' : i === 1 ? '2028-02-28' : i === 2 ? '2028-02-29' : null})),
+        tags: fixture().tags,
+        links: Array.from({length: 45}, (_, i) => [
+            ...(i < 43 ? [{workID: String(i + 1), tagID: '1'}] : []),
+            ...(i < 40 || i === 41 ? [{workID: String(i + 1), tagID: '2'}] : []),
+        ]).flat()};
+    await boot();
+    await userEvent.type(screen.getByRole('searchbox', {name: '漫画名で検索'}), '作品');
+    await userEvent.click(trigger());
+    await userEvent.click(checkbox('マンガ')); await userEvent.click(checkbox('連載中'));
+    expect(checkbox('マンガ').parentElement?.textContent).toContain('40件');
+    await userEvent.keyboard('{Escape}');
+    await userEvent.selectOptions(screen.getByRole('combobox', {name: '並び順'}), 'scheduled_date');
+    await userEvent.click(screen.getByRole('checkbox', {name: '未来の予定を表示'}));
+    expect(titles()).toEqual(['作品3', '作品2', ...Array.from({length: 18}, (_, i) => `作品${i + 4}`)]);
+    await userEvent.click(screen.getAllByRole('button', {name: '次へ'})[0]);
+    expect(current()).toBe('2');
+    expect(titles()).toEqual(Array.from({length: 19}, (_, i) => `作品${i + 22}`));
+    await userEvent.click(screen.getByRole('checkbox', {name: '未来の予定を表示'}));
+    expect(current()).toBe('1'); expect(titles().slice(0, 4)).toEqual(['作品3', '作品2', '作品1', '作品4']);
+    expect(screen.getByRole('searchbox', {name: '漫画名で検索'})).toHaveProperty('value', '作品');
+    expect(screen.getByRole('group', {name: '選択中のタグ条件'}).textContent).toContain('マンガ');
+    expect(screen.getByRole('group', {name: '選択中のタグ条件'}).textContent).toContain('連載中');
 });
 
 it('候補検索のIMEは確定まで反映せず、確定後も作品とページを変えない', async () => {
