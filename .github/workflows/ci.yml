@@ -61,11 +61,9 @@ jobs:
       - name: Build Windows application
         run: wails build -s -m -nosyncgomod
 
-  # Calibration only. Required browser checks and representative operations are #361.
-  browser-visual-calibration:
-    name: Browser visual calibration
+  browser-checks:
+    name: Browser checks
     runs-on: windows-2025
-    continue-on-error: true
     timeout-minutes: 15
     defaults:
       run:
@@ -85,13 +83,13 @@ jobs:
         run: npm --prefix frontend ci
       - name: Install Chromium
         run: npm --prefix frontend exec -- playwright install chromium
-      - name: Compare visual snapshots
+      - name: Test browser operations and snapshots
         run: npm --prefix frontend run test:browser -- --repeat-each=3
-      - name: Upload calibration evidence
+      - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-visual-calibration
+          name: browser-checks
           retention-days: 7
           if-no-files-found: error
           path: |

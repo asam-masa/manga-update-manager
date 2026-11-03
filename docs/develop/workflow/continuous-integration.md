@@ -2,7 +2,7 @@
 
 [Windows CI](../../../.github/workflows/ci.yml)は、main向けPRとmainへのpushで自動実行します。mainへのマージ後は手動実行もできます。判断の背景は[ADR-0009](../../adr/0009-verify-windows-build-in-ci.md)を参照してください。
 
-## 検証内容
+## Windows checks
 
 Windows 2025のGitHub-hosted runnerで、次の順に実行します。
 
@@ -17,13 +17,19 @@ Windows 2025のGitHub-hosted runnerで、次の順に実行します。
 
 Wailsの`-s`はフロントエンドの再ビルドを省略します。`-m`と`-nosyncgomod`はビルド時のモジュール調整を省略します。これにより、CI中に`npm install`や依存版の変更を行いません。Wailsの依存版を更新するときは、ワークフローのCLI版も合わせます。
 
+## Browser checks
+
+同じ`windows-2025`上の独立ジョブで、Node.js 24・lockfileの依存・PlaywrightのChromiumを準備し、`npm --prefix frontend run test:browser -- --repeat-each=3`を実行します。スモーク2件・画像比較6件・代表操作5件の39件を検証し、非0終了はジョブを失敗させます。旧校正ジョブの`continue-on-error`は使いません。対象と手動確認の対応は[代表操作](../../verification/browser-operations.md)、基準環境は[画像比較](../../verification/browser-visual-comparison.md)に記録します。
+
+`Browser checks`と`Windows checks`は別のチェック名です。GitHubで成功をマージ条件にするには、[外部設定案](./browser-required-checks.md)の個別承認・適用・読み戻しが必要です。ジョブ追加だけを必須設定の完了としません。
+
 ## 安全性と結果の確認
 
 - Actionsは公式リリースに対応する完全なコミットSHAへ固定します。更新時は版コメントも更新します。
 - トークン権限は`contents: read`だけにし、checkoutは認証情報を保持しません。秘密情報や利用者のDB・画像を渡しません。
 - `pull_request_target`は使いません。PRのコードは使い捨てのrunnerで実行します。
-- キャッシュ対象はGoとnpmの依存です。実行ファイルの配布や成果物の公開は行いません。
+- キャッシュ対象はGoとnpmの依存です。実行ファイルの配布は行いません。ブラウザーの合成データのレポート・結果・基準画像だけをartifact `browser-checks`として7日間保存します。失敗時もアップロードします。
 - 失敗時は最初に失敗したステップのログを調べます。PRには実行URL、結果、未確認事項を記録します。
-- 新しい実行で古い同一refの実行をキャンセルします。ジョブは30分で打ち切ります。
+- 新しい実行で古い同一refの実行をキャンセルします。Windows checksは30分、Browser checksは15分で打ち切ります。
 
 CIの成功は実WebView2、IME、既定ブラウザー、利用者データの操作を保証しません。必要な実機確認は別に行います。自動マージとブランチ保護の変更は対象外です。依存更新の提案と採用は[依存更新運用](./dependency-updates.md)に従います。

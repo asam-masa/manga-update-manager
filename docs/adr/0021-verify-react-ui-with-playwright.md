@@ -55,6 +55,8 @@
 
 同日の#360では6画面の比較と配置検証を追加し、ローカルWindowsで3回反復・故障注入を確認した。[校正と残る検証](../verification/browser-visual-comparison.md)を記録し、代表操作・CI必須化が残るためPendingを維持する。
 
+2026-11-03の#361では[代表操作5件](../verification/browser-operations.md)を追加した。ローカルで3回反復の15件と、Esc故障の検出を確認した。CIではスモーク・画像比較を含む13件を3回反復し、非0終了を`Browser checks`へ伝える。CI結果はPRに記録する。mainの既存rulesetには必須ステータスチェックがなく、[追加案](../develop/workflow/browser-required-checks.md)の個別承認・適用と読み戻しが残るためPendingを維持する。合成APIの成功を実Wails・DB成功とは扱わない。
+
 ## References
 
 - [ブラウザー画面検証の設計](../browser-ui-testing.md)
