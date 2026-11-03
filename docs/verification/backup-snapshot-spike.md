@@ -2,6 +2,8 @@
 
 Issue #380。2026-11-03、Wails設計ではなく保存候補を30分上限で調査した。modernc.org/sqlite v1.61.1とdatabase/sql、Go標準archive/zipを使用し、新規依存は追加していない。以下は推奨案であり採用済み仕様ではない。
 
+その後、利用者はZIP＋版付きJSON目録＋VACUUM INTOを承認し、[形式v1](../backup-format.md)を具体化した。#390/#391の入力検証も実装済みで、現在の進捗は[初回設計](../backup-restore.md)と[ADR-0022のValidation](../adr/0022-manual-backup-and-replacement-restore.md#validation)を参照する。以下の比較・未決定・次の判断は調査時点の記録として残す。後続の合意は、本Spikeの試験範囲や回復保証を拡張するものではない。
+
 ## 比較と推奨
 
 | 候補 | 利点 | 負担・限界 |
