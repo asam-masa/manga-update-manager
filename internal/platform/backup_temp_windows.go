@@ -37,7 +37,7 @@ func (e *BackupTempError) Error() string {
 }
 func (e *BackupTempError) Unwrap() error { return e.Err }
 
-// BackupTemp retains one new empty file and its parents. Close releases them;
+// BackupTemp retains one newly created file and its parents. Close releases them;
 // it neither deletes nor publishes the file. The raw handle stays private.
 type BackupTemp struct {
 	file      *os.File
@@ -45,6 +45,8 @@ type BackupTemp struct {
 	path      string
 	identity  BackupTempIdentity
 	closeFile func() error
+	mu        sync.Mutex
+	closed    bool
 	once      sync.Once
 	err       error
 }
@@ -54,6 +56,9 @@ func (t *BackupTemp) Identity() BackupTempIdentity { return t.identity }
 
 func (t *BackupTemp) Close() error {
 	t.once.Do(func() {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		t.closed = true
 		if t.closeFile != nil {
 			if err := t.closeFile(); err != nil {
 				t.err = errors.Join(t.err, ErrBackupTempRelease, err)
@@ -66,9 +71,66 @@ func (t *BackupTemp) Close() error {
 	return t.err
 }
 
+func (t *BackupTemp) Write(p []byte) (int, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.file == nil {
+		return 0, os.ErrClosed
+	}
+	return t.file.Write(p)
+}
+
+func (t *BackupTemp) ReadAt(p []byte, offset int64) (int, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.file == nil {
+		return 0, os.ErrClosed
+	}
+	return t.file.ReadAt(p, offset)
+}
+
+func (t *BackupTemp) Sync() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.file == nil {
+		return os.ErrClosed
+	}
+	return t.file.Sync()
+}
+
+func (t *BackupTemp) Size() (int64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.file == nil {
+		return 0, os.ErrClosed
+	}
+	info, err := t.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+// VerifyIdentity rechecks the held file, not the file currently named by Path.
+func (t *BackupTemp) VerifyIdentity() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.file == nil {
+		return os.ErrClosed
+	}
+	actual, err := identifyBackupTemp(t.file)
+	if err != nil {
+		return err
+	}
+	if actual != t.identity {
+		return errors.New("backup temporary identity changed")
+	}
+	return nil
+}
+
 // CreateBackupTemp creates a dedicated random name next to destination without
 // overwriting anything. Failure after creation preserves the incomplete file
-// and returns its location. Writing, publication and owned cleanup come later.
+// and returns its location. Publication and owned cleanup come later.
 func CreateBackupTemp(ctx context.Context, destination string) (*BackupTemp, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
