@@ -11,13 +11,23 @@ import (
 // The frontend calls this after an initial paint opportunity. Repeated calls join
 // one execution and return copies of retained warnings, never retry deletion.
 func (a *App) LoadCoverWarnings() ([]CoverWarningDTO, error) {
-	<-a.startupFinished // No App lock while waiting for the startup callback.
+	// This wait must not delay close: shutdown can be its only release when the
+	// startup callback has not run. Backup orchestration waits for startup too.
+	<-a.startupFinished
+	end, admissionErr := a.operationGate.BeginNormal()
+	closing := errors.Is(admissionErr, application.ErrOperationsClosing)
+	if admissionErr != nil && !closing {
+		return nil, normalOperationError(admissionErr)
+	}
+	if end != nil {
+		defer end()
+	}
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.covers == nil {
 		return nil, unavailableError()
 	}
-	a.coverCleanupOnce.Do(func() {
+	cleanup := func() {
 		if !a.coverCleanupPhase.CompareAndSwap(0, 1) {
 			return
 		}
@@ -43,7 +53,14 @@ func (a *App) LoadCoverWarnings() ([]CoverWarningDTO, error) {
 			}
 			a.coverCleanupWarnings = append(a.coverCleanupWarnings, CoverWarningDTO{Code: code, Message: message})
 		}
-	})
+	}
+	if closing {
+		// Join any already running publication, but never start cleanup after
+		// shutdown admission closed. Preserve late warning reads as observations.
+		a.coverCleanupOnce.Do(func() {})
+	} else {
+		a.coverCleanupOnce.Do(cleanup)
+	}
 	result := make([]CoverWarningDTO, len(a.coverCleanupWarnings))
 	copy(result, a.coverCleanupWarnings)
 	return result, nil
