@@ -26,10 +26,28 @@ type RemoveWorkCoverResult struct {
 	Warnings []CoverWarningDTO `json:"warnings"`
 }
 
+// Preserve the existing image API's closing code. Backup pauses use the same
+// common transport as the other APIs; they are not image safety stops.
+func (a *App) beginCoverOperation() (func(), error) {
+	end, err := a.beginNormalOperation()
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Code == "database_unavailable" {
+		return nil, coverAPIError(application.ErrCoverClosing)
+	}
+	return end, err
+}
+
 func (a *App) RemoveWorkCover(workID int64) (RemoveWorkCoverResult, error) {
+	end, err := a.beginCoverOperation()
+	if err != nil {
+		return RemoveWorkCoverResult{}, err
+	}
+	defer end()
 	return a.removeWorkCover(workID, nil)
 }
 
+// The public caller retains one normal ticket through this call and any
+// progress-record release; do not acquire another ticket in this shared worker.
 func (a *App) removeWorkCover(workID int64, progress application.CoverProgress) (RemoveWorkCoverResult, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -57,12 +75,22 @@ func chooseCover(ctx context.Context) (string, error) {
 }
 
 func (a *App) SelectWorkCover(workID int64) (SelectWorkCoverResult, error) {
+	end, err := a.beginCoverOperation()
+	if err != nil {
+		return SelectWorkCoverResult{}, err
+	}
+	defer end()
 	return a.selectWorkCover(workID, nil)
 }
 
 // SelectWorkCoverWithOperation keeps source paths inside Go. The opaque ID is
 // only for correlating notifications; it grants no authority over an operation.
 func (a *App) SelectWorkCoverWithOperation(workID int64, operationID string) (SelectWorkCoverResult, error) {
+	end, err := a.beginCoverOperation()
+	if err != nil {
+		return SelectWorkCoverResult{}, err
+	}
+	defer end()
 	if !validCoverOperationID(operationID) {
 		return SelectWorkCoverResult{}, invalidCoverOperationID()
 	}
@@ -90,6 +118,8 @@ func (a *App) selectWorkCover(workID int64, selectionDone func()) (SelectWorkCov
 }
 
 func (a *App) selectWorkCoverWithProgress(workID int64, selectionDone func(), progress application.CoverProgress) (SelectWorkCoverResult, error) {
+	// The public caller owns normal admission, including selection notifications
+	// and progress release after this shared worker returns.
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.covers == nil {
