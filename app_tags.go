@@ -20,6 +20,11 @@ type TagEditInput struct {
 }
 
 func (a *App) LoadTags() ([]TagDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tags == nil {
@@ -34,6 +39,11 @@ func (a *App) LoadTags() ([]TagDTO, error) {
 }
 
 func (a *App) LoadWorkTags(id int64) ([]TagDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tags == nil {

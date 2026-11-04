@@ -8,6 +8,11 @@ import (
 )
 
 func (a *App) LoadWorkSort() (string, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return "", err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {
@@ -29,6 +34,11 @@ func workSortReadError() error {
 }
 
 func (a *App) SetWorkSort(order string) error {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {

@@ -9,6 +9,11 @@ import (
 
 // Separate reads keep an unknown mode from breaking the existing form preference.
 func (a *App) LoadWorkListMode() (string, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return "", err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {
@@ -30,6 +35,11 @@ func workListModeReadError() error {
 }
 
 func (a *App) SetWorkListMode(mode string) error {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {

@@ -17,6 +17,11 @@ type TagChangeResult struct {
 }
 
 func (a *App) RenameTag(expected TagDTO, name string) (TagChangeResult, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return TagChangeResult{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tagManager == nil {
@@ -39,6 +44,11 @@ func (a *App) RenameTag(expected TagDTO, name string) (TagChangeResult, error) {
 }
 
 func (a *App) DeleteTag(expected TagDeletePreviewDTO) (TagChangeResult, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return TagChangeResult{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tagManager == nil {
