@@ -55,6 +55,9 @@ func (t *BackupTemp) publishNoReplace(ctx context.Context, ops backupPublication
 	if t.sourceName != "" && t.finalBase != "" {
 		r.FinalPath = filepath.Join(filepath.Dir(t.sourceName), t.finalBase)
 	}
+	if t.discardAttempted {
+		return r, ErrBackupDiscardAttempted
+	}
 	if t.closed || t.file == nil {
 		return r, os.ErrClosed
 	}
