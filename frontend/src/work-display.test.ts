@@ -2,6 +2,13 @@ import {describe, expect, it} from 'vitest';
 import {apiErrorCode, apiErrorMessage, isDatabaseStopped, registrationDate, scheduledDateLabel} from './work-display';
 
 describe('表示境界', () => {
+    it('バックアップ中の案内を包装後も表示し、DB停止とは扱わない', () => {
+        const message = 'バックアップの開始待ちまたは処理中です。結果を確認してください。';
+        const error = new Error('manga-update-manager:api-error:v1:' + JSON.stringify({code: 'backup_in_progress', message}));
+        expect(apiErrorCode(error)).toBe('backup_in_progress');
+        expect(apiErrorMessage(error, '案内')).toBe(message);
+        expect(isDatabaseStopped(error)).toBe(false);
+    });
     it.each(['0001-01-01', '2028-02-29', '9999-12-31'])('予定日%sを暦日のまま表示する', (value) => {
         expect(scheduledDateLabel(value)).toBe(value.replaceAll('-', '/'));
     });
