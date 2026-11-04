@@ -49,6 +49,9 @@ type BackupTemp struct {
 	publishAttempted bool
 	publication      BackupPublication
 	publishErr       error
+	discardAttempted bool
+	discardResult    BackupDiscardResult
+	discardErr       error
 	closeFile        func() error
 	mu               sync.Mutex
 	closed           bool
@@ -61,14 +64,25 @@ func (t *BackupTemp) Path() string                 { return t.path }
 func (t *BackupTemp) Identity() BackupTempIdentity { return t.identity }
 
 func (t *BackupTemp) Close() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.closeLocked(nil)
+}
+
+// Caller holds mu. A discard can check absence after file Close while parents
+// are still retained. All release/check results are cached; none are retried.
+func (t *BackupTemp) closeLocked(checkAbsent func() error) error {
 	t.once.Do(func() {
-		t.mu.Lock()
-		defer t.mu.Unlock()
 		t.closed = true
+		var fileErr error
 		if t.closeFile != nil {
-			if err := t.closeFile(); err != nil {
-				t.err = errors.Join(t.err, ErrBackupTempRelease, err)
+			fileErr = t.closeFile()
+			if fileErr != nil {
+				t.err = errors.Join(t.err, ErrBackupTempRelease, fileErr)
 			}
+		}
+		if fileErr == nil && checkAbsent != nil {
+			t.err = errors.Join(t.err, checkAbsent())
 		}
 		if t.directory != nil {
 			t.err = errors.Join(t.err, t.directory.Close())
@@ -85,6 +99,9 @@ func (t *BackupTemp) Write(p []byte) (int, error) {
 	}
 	if t.publishAttempted {
 		return 0, ErrBackupPublishAttempted
+	}
+	if t.discardAttempted {
+		return 0, ErrBackupDiscardAttempted
 	}
 	return t.file.Write(p)
 }
