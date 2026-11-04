@@ -40,17 +40,23 @@ func (e *BackupTempError) Unwrap() error { return e.Err }
 // BackupTemp retains one newly created file and its parents. Close releases them;
 // it neither deletes nor publishes the file. The raw handle stays private.
 type BackupTemp struct {
-	file      *os.File
-	directory io.Closer
-	path      string
-	identity  BackupTempIdentity
-	closeFile func() error
-	mu        sync.Mutex
-	closed    bool
-	once      sync.Once
-	err       error
+	file             *os.File
+	directory        io.Closer
+	path             string
+	identity         BackupTempIdentity
+	sourceName       string
+	finalBase        string
+	publishAttempted bool
+	publication      BackupPublication
+	publishErr       error
+	closeFile        func() error
+	mu               sync.Mutex
+	closed           bool
+	once             sync.Once
+	err              error
 }
 
+// Path is the original temporary name; publication's FinalPath is separate.
 func (t *BackupTemp) Path() string                 { return t.path }
 func (t *BackupTemp) Identity() BackupTempIdentity { return t.identity }
 
@@ -76,6 +82,9 @@ func (t *BackupTemp) Write(p []byte) (int, error) {
 	defer t.mu.Unlock()
 	if t.closed || t.file == nil {
 		return 0, os.ErrClosed
+	}
+	if t.publishAttempted {
+		return 0, ErrBackupPublishAttempted
 	}
 	return t.file.Write(p)
 }
@@ -130,7 +139,7 @@ func (t *BackupTemp) VerifyIdentity() error {
 
 // CreateBackupTemp creates a dedicated random name next to destination without
 // overwriting anything. Failure after creation preserves the incomplete file
-// and returns its location. Publication and owned cleanup come later.
+// and returns its location. Publication and owned cleanup are separate steps.
 func CreateBackupTemp(ctx context.Context, destination string) (*BackupTemp, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -158,6 +167,7 @@ func createBackupTemp(ctx context.Context, destination string, token [16]byte, i
 	if err != nil {
 		return nil, err
 	}
+	temp.finalBase = parsed.Name
 	temp.path = filepath.Join(parsed.Directory, ".manga-update-backup-"+hex.EncodeToString(token[:])+".partial")
 	if strings.EqualFold(temp.path, destination) {
 		return nil, ErrInvalidBackupDestination
@@ -178,6 +188,10 @@ func createBackupTemp(ctx context.Context, destination string, token [16]byte, i
 	temp.file = os.NewFile(uintptr(h), temp.path)
 	temp.closeFile = temp.file.Close
 	temp.identity, err = identify(temp.file)
+	if err != nil {
+		return nil, err
+	}
+	temp.sourceName, err = backupHandleName(temp.file)
 	if err != nil {
 		return nil, err
 	}
