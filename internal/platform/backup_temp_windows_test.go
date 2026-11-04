@@ -168,3 +168,46 @@ func TestCreateBackupTempCancelledBeforeCreation(t *testing.T) {
 		t.Fatalf("cancel created output: %v %v", entries, err)
 	}
 }
+
+func TestBackupTempIOIdentityAndClosedState(t *testing.T) {
+	temp, err := CreateBackupTemp(context.Background(), filepath.Join(t.TempDir(), "backup.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := temp.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if n, err := temp.Write([]byte("data")); n != 4 || err != nil {
+		t.Fatalf("write %d %v", n, err)
+	}
+	if err := temp.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if size, err := temp.Size(); size != 4 || err != nil {
+		t.Fatalf("size %d %v", size, err)
+	}
+	var data [4]byte
+	if n, err := temp.ReadAt(data[:], 0); n != 4 || err != nil || string(data[:]) != "data" {
+		t.Fatalf("read %q %d %v", data, n, err)
+	}
+	if err := temp.VerifyIdentity(); err != nil {
+		t.Fatal(err)
+	}
+	temp.identity.FileID[0] ^= 0xff
+	if err := temp.VerifyIdentity(); err == nil {
+		t.Fatal("accepted mismatched identity")
+	}
+	if err := temp.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, writeErr := temp.Write([]byte("must not write"))
+	_, readErr := temp.ReadAt(data[:], 0)
+	_, sizeErr := temp.Size()
+	for _, err := range []error{writeErr, readErr, sizeErr, temp.Sync(), temp.VerifyIdentity()} {
+		if !errors.Is(err, os.ErrClosed) {
+			t.Fatalf("closed operation returned %v", err)
+		}
+	}
+}

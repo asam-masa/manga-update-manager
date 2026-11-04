@@ -88,7 +88,17 @@
 
 作成後の識別失敗・取消では、部分的な成功オブジェクトを返さず解放を試みる。`BackupTempError`のPath・Createdと元原因から、新規作成が成功したかと残置候補の場所を確認できる。Createdは識別の成功や所有の再確認を表さない。この先行段階では成功Close・失敗・取消とも削除せず、空の未完成ファイルを残す。#399の所有確認後の片付けは後続で実装し、名前やCreatedだけで削除しない。通常保存経路へ接続する前に片付けと利用者への残置案内を含めて完成させる。
 
-合成一時領域で、完成先/同名一時の非上書き、書込再open拒否、同じIDの確認、親保持とClose後解放、識別失敗・作成後取消の保全、Close失敗の模型を検証する。根拠は[CREATE_NEWと共有モード](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)、[FILE_ID_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_info)。ZIP書込み・Sync・読戻し・公開・所有確認後削除・異常終了残置整理は未実装で、製品保存操作へは未接続。実USB・電源断・Close失敗の実測や全競合への保証ではなく、ADR-0022はPendingを維持する。
+合成一時領域で、完成先/同名一時の非上書き、書込再open拒否、同じIDの確認、親保持とClose後解放、識別失敗・作成後取消の保全、Close失敗の模型を検証する。根拠は[CREATE_NEWと共有モード](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)、[FILE_ID_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_info)。#412時点ではZIP書込み・Sync・読戻しも未実装で、現在は次節#414で先行する。公開・所有確認後削除・異常終了残置整理と製品保存操作への接続は残る。実USB・電源断・Close失敗の実測や全競合への保証ではなく、ADR-0022はPendingを維持する。
+
+### ZIPの書込み・同期・読戻し準備（#414、2026-11-04）
+
+`application.PrepareBackupArchive`は、呼出し側が排他的に所有する空の一時ファイルに対し、識別確認・空であることの確認→WriteArchiveによるZIP最終化→Sync→ValidateArchiveによる本文照合→識別再確認・取消確認の順で処理する。全件成功時だけ目録を返し、書込・同期・読戻し・識別失敗や取消では準備失敗と元の原因を返し、部分目録を返さない。既存内容がある一時ファイルは上書き・追記せず拒否する。
+
+platformの`BackupTemp`は同じハンドルへのWrite/ReadAt/Sync/Size/VerifyIdentityを提供し、個々のI/OとCloseを排他する。Close後のI/Oは拒否する。Applicationとbackupはraw handleや実ファイルパスによる再openを必要としない。呼出し側は準備全体の間、他の書込みやCloseを並行実行せず、入力データの整合した取得も別途行う。
+
+成功・失敗とも準備処理はClose・削除・公開を行わず、所有者が一時ファイルと親の保持を継続し、後続で各結果と解放失敗を扱う。成功後に内容を変更すれば検証結果を流用できない。取消は各処理と読戻しのReadAt間で協調的に確認し、ブロック中のOS操作を強制中断できるという保証ではない。Sync成功は電源断後の耐久性、形式検証成功はSQLite互換や画像の正常性を保証しない。
+
+合成ファイルでZIP往復と保持、模型で各段階の順序・失敗・破損・取消を確認する。通常DB/画像の取得・受付停止、公開・所有確認後の片付け、UIは後続であり、ADR-0022はPendingを維持する。
 
 ### 復元と退避保持の追加合意（#385、2026-11-03）
 
