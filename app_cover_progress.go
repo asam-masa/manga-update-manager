@@ -107,6 +107,11 @@ func validCoverOperationID(id string) bool {
 }
 
 func (a *App) RemoveWorkCoverWithOperation(workID int64, operationID string) (RemoveWorkCoverResult, error) {
+	end, err := a.beginCoverOperation()
+	if err != nil {
+		return RemoveWorkCoverResult{}, err
+	}
+	defer end()
 	if !validCoverOperationID(operationID) {
 		return RemoveWorkCoverResult{}, invalidCoverOperationID()
 	}
