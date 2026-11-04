@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/platform"
 	"github.com/asam-masa/manga-update-manager/internal/storage"
@@ -256,6 +257,13 @@ func TestCoverHTTPStartupWaitCanCancel(t *testing.T) {
 	if data, err := a.readHTTPCover(ctx, 1); data != nil || !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
+	backupCtx, stopBackup := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stopBackup()
+	op, err := a.operationGate.BeginBackup(backupCtx)
+	if err != nil {
+		t.Fatal("cancelled startup wait retained admission", err)
+	}
+	op.End()
 	a.shutdown(context.Background())
 	if data, err := a.readHTTPCover(context.Background(), 1); data != nil || err == nil {
 		t.Fatal("read after shutdown")

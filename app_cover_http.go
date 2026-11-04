@@ -19,13 +19,20 @@ type coverHTTPReader interface {
 	Read(context.Context, int64) ([]byte, error)
 }
 
-// This lock protects DB lifetime only during the buffered read, not transmission.
+// Admission and the App lock protect the buffered read and release, not sending.
 func (a *App) readHTTPCover(ctx context.Context, id int64) ([]byte, error) {
 	select {
 	case <-a.startupFinished:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+	// Do not count the startup wait: closing must be able to reach shutdown,
+	// which also releases this wait if the startup callback never ran.
+	end, err := a.operationGate.BeginNormal()
+	if err != nil {
+		return nil, err
+	}
+	defer end()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.coverReader == nil || a.stopped {
