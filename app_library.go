@@ -36,6 +36,11 @@ type LibrarySnapshotDTO struct {
 }
 
 func (a *App) LoadLibrarySnapshot() (LibrarySnapshotDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return LibrarySnapshotDTO{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.library == nil {

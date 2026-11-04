@@ -30,6 +30,11 @@ type EditWorkResult struct {
 }
 
 func (a *App) EditWork(id int64, input EditWorkInput) (EditWorkResult, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return EditWorkResult{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.editor == nil {

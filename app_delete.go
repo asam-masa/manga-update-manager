@@ -25,6 +25,11 @@ type DeleteWorkResult struct {
 }
 
 func (a *App) DeleteWork(id int64, expected DeleteWorkInput) (DeleteWorkResult, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return DeleteWorkResult{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.deleter == nil {

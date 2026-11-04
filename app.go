@@ -33,6 +33,7 @@ type App struct {
 	coverReader            coverHTTPReader
 	coverOperations        application.CoverOperations
 	workOperations         application.WorkOperations
+	operationGate          application.OperationGate
 	coverProgress          coverProgressState
 	chooseCover            func(context.Context) (string, error)
 	coverSelectionFinished func(context.Context, int64, string)
@@ -40,6 +41,7 @@ type App struct {
 	workBusyNotice         func(context.Context)
 	deleteBusyNotice       func(context.Context)
 	tagBusyNotice          func(context.Context)
+	backupBusyNotice       func(context.Context)
 	openURL                func(string) error
 	store                  *storage.Store
 	dataDirectory          func() (string, error)
@@ -54,7 +56,7 @@ type App struct {
 
 // NewApp creates the Wails application boundary.
 func NewApp() *App {
-	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, deleteBusyNotice: deleteBusyNotice, tagBusyNotice: tagBusyNotice, startupFinished: make(chan struct{})}
+	return &App{dataDirectory: platform.DataDirectory, openURL: platform.OpenURL, chooseCover: chooseCover, coverSelectionFinished: emitCoverSelectionFinished, coverBusyNotice: coverBusyNotice, workBusyNotice: workBusyNotice, deleteBusyNotice: deleteBusyNotice, tagBusyNotice: tagBusyNotice, backupBusyNotice: backupBusyNotice, startupFinished: make(chan struct{})}
 }
 
 // Status confirms that the frontend can call the Go boundary.
@@ -235,6 +237,11 @@ func workDTO(work manga.Work) WorkDTO {
 }
 
 func (a *App) OpenWork(id int64) (WorkDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return WorkDTO{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.opener == nil {
@@ -257,6 +264,11 @@ func (a *App) OpenWork(id int64) (WorkDTO, error) {
 }
 
 func (a *App) CreateWork(input CreateWorkInput) (WorkDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return WorkDTO{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.works == nil {
@@ -278,6 +290,11 @@ func (a *App) CreateWork(input CreateWorkInput) (WorkDTO, error) {
 }
 
 func (a *App) ListWorks() ([]WorkDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.works == nil {

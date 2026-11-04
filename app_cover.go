@@ -169,15 +169,24 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	a.mu.RLock()
 	// No cleanup has begun yet: closing can discard the pending startup ticket.
 	// Once claimed, normal close must not cancel or wait out the running cleanup.
-	done, err := a.workOperations.RequestClose(func() (<-chan struct{}, error) {
-		if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {
-			_ = a.coverCleanupTicket.End()
-		}
-		return a.coverOperations.RequestClose()
+	var done <-chan struct{}
+	normalDone, err := a.operationGate.RequestClose(func() error {
+		var closeErr error
+		done, closeErr = a.workOperations.RequestClose(func() (<-chan struct{}, error) {
+			if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {
+				_ = a.coverCleanupTicket.End()
+			}
+			return a.coverOperations.RequestClose()
+		})
+		return closeErr
 	})
 	a.mu.RUnlock()
 	if err != nil {
-		if errors.Is(err, application.ErrWorkDeleting) {
+		if errors.Is(err, application.ErrOperationsClosing) {
+			return true // The first close decision owns both drain waits.
+		} else if errors.Is(err, application.ErrBackupBusy) {
+			a.backupBusyNotice(ctx)
+		} else if errors.Is(err, application.ErrWorkDeleting) {
 			a.deleteBusyNotice(ctx)
 		} else if errors.Is(err, application.ErrTagBusy) {
 			a.tagBusyNotice(ctx)
@@ -188,8 +197,13 @@ func (a *App) beforeClose(ctx context.Context) bool {
 		}
 		return true
 	}
+	<-normalDone
 	<-done
 	return false
+}
+
+func backupBusyNotice(ctx context.Context) {
+	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "バックアップを処理中です", Message: "バックアップの開始待ち・処理中は終了できません。保存または取消の結果を確認してから、もう一度閉じてください。"})
 }
 
 func workBusyNotice(ctx context.Context) {
