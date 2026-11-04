@@ -30,6 +30,11 @@ type TagDeletePreviewDTO struct {
 }
 
 func (a *App) LoadTagUsage() ([]TagUsageDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tagManagement == nil {
@@ -54,6 +59,11 @@ func (a *App) LoadTagUsage() ([]TagUsageDTO, error) {
 }
 
 func (a *App) LoadTagDeletePreview(id string) (TagDeletePreviewDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return TagDeletePreviewDTO{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.tagManagement == nil {

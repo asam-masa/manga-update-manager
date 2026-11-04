@@ -7,6 +7,11 @@ import (
 )
 
 func (a *App) LoadShowFutureSchedules() (bool, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return false, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {
@@ -28,6 +33,11 @@ func futureSchedulesReadError() error {
 }
 
 func (a *App) SetShowFutureSchedules(visible bool) error {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {

@@ -11,6 +11,11 @@ type DisplaySettingsDTO struct {
 }
 
 func (a *App) LoadDisplaySettings() (DisplaySettingsDTO, error) {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return DisplaySettingsDTO{}, err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {
@@ -32,6 +37,11 @@ func displaySettingsReadError() error {
 }
 
 func (a *App) SetRegistrationFormVisible(visible bool) error {
+	finish, err := a.beginNormalOperation()
+	if err != nil {
+		return err
+	}
+	defer finish()
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	if a.display == nil {
