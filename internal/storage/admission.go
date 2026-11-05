@@ -10,6 +10,17 @@ import (
 // ErrDBStopped rejects further SQL on this Store. It does not mean rollback.
 var ErrDBStopped = errors.New("database operations stopped")
 
+// CheckAdmission observes the stop latch, not database health or I/O permission.
+// The caller must separately drain operations; actual I/O still uses begin.
+func (s *Store) CheckAdmission() error {
+	s.admission.mu.Lock()
+	defer s.admission.mu.Unlock()
+	if s.admission.stopped {
+		return ErrDBStopped
+	}
+	return nil
+}
+
 type dbAdmission struct {
 	once    sync.Once
 	mu      sync.Mutex

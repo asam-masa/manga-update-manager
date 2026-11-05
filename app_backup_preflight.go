@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+
+	"github.com/asam-masa/manga-update-manager/internal/application"
 )
 
 var errBackupCleanupUnverified = errors.New("backup startup cleanup unverified")
@@ -28,4 +30,43 @@ func (a *App) prepareBackupCleanup(ctx context.Context) ([]CoverWarningDTO, erro
 		return warnings, errors.Join(errBackupCleanupUnverified, ctx.Err())
 	}
 	return warnings, ctx.Err()
+}
+
+// beginBackup holds the reservation through acquisition, saving and all resource
+// release by its caller. No public Wails API exposes this internal entry yet.
+func (a *App) beginBackup(ctx context.Context) (*application.BackupOperation, []CoverWarningDTO, error) {
+	warnings, err := a.prepareBackupCleanup(ctx)
+	if err != nil {
+		return nil, warnings, err
+	}
+	op, err := a.operationGate.BeginBackup(ctx)
+	if err != nil {
+		return nil, warnings, err
+	}
+	if err := a.checkBackupState(ctx); err != nil {
+		op.End()
+		return nil, warnings, err
+	}
+	return op, warnings, nil
+}
+
+func (a *App) checkBackupState(ctx context.Context) error {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if a.stopped || a.store == nil || a.covers == nil {
+		return unavailableError()
+	}
+	if a.coverCleanupPhase.Load() != 1 {
+		return errBackupCleanupUnverified
+	}
+	if err := a.store.CheckAdmission(); err != nil {
+		return err
+	}
+	if err := a.coverOperations.CheckIdle(); err != nil {
+		return err
+	}
+	return ctx.Err()
 }
