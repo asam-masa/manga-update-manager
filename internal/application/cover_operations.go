@@ -179,6 +179,23 @@ func (op *CoverOperation) End() error {
 	return nil
 }
 
+// CheckIdle observes admission after the caller drains outer operations. It does
+// not grant a stage or file permission, and never clears stop/closing state.
+func (g *CoverOperations) CheckIdle() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.stopped {
+		return ErrCoverStopped
+	}
+	if g.closing {
+		return ErrCoverClosing
+	}
+	if len(g.active) != 0 {
+		return ErrCoverBusy
+	}
+	return nil
+}
+
 // Stop rejects new tickets without cancelling or completing existing tickets.
 // Callers must separately stop those operations at safe stage boundaries.
 func (g *CoverOperations) Stop() {
