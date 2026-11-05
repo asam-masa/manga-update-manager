@@ -19,9 +19,24 @@ func workDirectoryOps(t *testing.T) backupWorkDirectoryOps {
 	return backupWorkDirectoryOps{createBackupDirectoryProc.Find, createBackupDirectoryHandle, identifyBackupWorkDirectory, backupHandleName}
 }
 
+// CI's TEMP may contain an 8.3 alias. Positive fixtures use the same normalized
+// DOS spelling required by the boundary; aliases have a separate refusal test.
+func workDirectoryRoot(t *testing.T) string {
+	t.Helper()
+	f, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, nameErr := backupHandleName(f)
+	if err := errors.Join(nameErr, f.Close()); err != nil {
+		t.Fatal(err)
+	}
+	return name
+}
+
 func TestBackupWorkDirectoryLifetimeAndCollision(t *testing.T) {
 	ops := workDirectoryOps(t)
-	root := t.TempDir()
+	root := workDirectoryRoot(t)
 	dir := filepath.Join(root, "日本語 作業")
 	if err := os.Mkdir(dir, 0700); err != nil {
 		t.Fatal(err)
@@ -77,7 +92,7 @@ func TestBackupWorkDirectoryPostCreationFailures(t *testing.T) {
 	for _, kind := range []string{"identity", "name", "cancel"} {
 		t.Run(kind, func(t *testing.T) {
 			ops := workDirectoryOps(t)
-			dir := t.TempDir()
+			dir := workDirectoryRoot(t)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			failure := errors.New("synthetic inspection failure")
@@ -145,5 +160,38 @@ func TestBackupWorkDirectoryCloseErrorsCached(t *testing.T) {
 	}
 	if order != "child;parent;" {
 		t.Fatal(order)
+	}
+}
+
+func TestBackupWorkDirectoryRejectsShortAlias(t *testing.T) {
+	ops := workDirectoryOps(t)
+	dir := workDirectoryRoot(t)
+	input, err := windows.UTF16PtrFromString(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]uint16, 32768)
+	n, err := windows.GetShortPathName(input, &buf[0], uint32(len(buf)))
+	if err != nil {
+		t.Skipf("short alias unavailable: %v", err)
+	}
+	if n == 0 || n >= uint32(len(buf)) {
+		t.Fatal("invalid alias length")
+	}
+	short := windows.UTF16ToString(buf[:n])
+	if strings.EqualFold(short, dir) {
+		t.Skip("volume did not provide a distinct short alias")
+	}
+	d, err := createBackupWorkDirectory(context.Background(), short, [16]byte{}, ops)
+	var detail *BackupWorkDirectoryError
+	if d != nil || !errors.Is(err, ErrBackupWorkDirectoryIdentity) || !errors.As(err, &detail) || !detail.Created {
+		t.Fatal(d, err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatal("alias failure removed created directory", entries, err)
+	}
+	if err := os.Rename(dir, dir+"-moved"); err != nil {
+		t.Fatal("alias refusal retained handles", err)
 	}
 }
