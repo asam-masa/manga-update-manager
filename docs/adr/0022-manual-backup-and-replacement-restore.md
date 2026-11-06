@@ -66,6 +66,8 @@
 
 #472で[DBコピー出力の新規作成・識別・保持](../backup-restore.md#dbコピー出力の新規作成識別保持4722026-11-06)を先行する。保持中作業フォルダーでCREATE_NEW・READ/WRITE同共有により空ファイルを作り、識別・正規名等を確認する。作成後失敗は削除せず作成観測・候補場所・解放原因を返す。合成SQLiteのVACUUM INTOと片付け往復を限定確認するが、StoreコピーAPI・通常経路・実データ/画像/ZIP統合は後続でPendingを維持する。
 
+#474で[StoreのSQLiteコピーAPI](../backup-restore.md#storeのsqliteコピーapi4742026-11-06)を先行する。既存の接続受付・解放に沿ってVACUUM INTOをパラメーター付きで実行し、停止/取消・SQL失敗を保持する。出力の準備/保持/片付けと通常操作停止は呼出し側の責務である。合成DBで作品・タグ・設定等のコピーを限定確認するが、Application・実データ/画像/ZIP・API/UIは未接続のためPendingを維持する。
+
 ## Consequences
 
 2026-11-04、#416で[完成名への切替方式と結果の区別](../backup-restore.md#完成名への切替方式と結果の区別4162026-11-04)を利用者が承認した。検証済み一時ファイルを閉じず、同じハンドルの公開APIによる非上書き名前変更で、最初に選んだ保存先内の完成名へ切り替える。具体方式はSetFileInformationByHandle(FileRenameInfo)・ReplaceIfExists=FALSEとする。別フォルダー、上書き、コピー置換や非公開APIへフォールバックしない。上記#399時点の具体方式未採用は、この合意で更新する。
