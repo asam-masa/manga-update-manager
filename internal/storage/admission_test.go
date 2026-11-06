@@ -34,6 +34,7 @@ func TestStoppedStoreRejectsEveryOperation(t *testing.T) {
 			return err
 		},
 		"get":            func() error { _, err := s.WorkByID(ctx, 1); return err },
+		"database-copy":  func() error { return s.CopyDatabase(ctx, "unused.sqlite") },
 		"list":           func() error { _, err := s.ListWorks(ctx); return err },
 		"access":         func() error { return s.RecordLastAccess(ctx, 1, time.Now()) },
 		"edit":           func() error { _, err := s.EditWork(ctx, w.ID, textOf(w), time.Now()); return err },
