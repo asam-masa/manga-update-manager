@@ -42,14 +42,17 @@ func (e *BackupWorkDirectoryError) Unwrap() error { return e.Err }
 // Paths and IDs are observations, never permission to reopen or remove a path.
 // Do not copy. Close only releases; it never deletes any work artifacts.
 type BackupWorkDirectory struct {
-	file      *os.File
-	parent    io.Closer
-	path      string
-	identity  BackupWorkDirectoryIdentity
-	closeFile func() error
-	mu        sync.Mutex
-	closed    bool
-	err       error
+	file             *os.File
+	parent           io.Closer
+	path             string
+	identity         BackupWorkDirectoryIdentity
+	closeFile        func() error
+	mu               sync.Mutex
+	closed           bool
+	err              error
+	discardAttempted bool
+	discardResult    BackupWorkDirectoryDiscardResult
+	discardErr       error
 }
 
 func (d *BackupWorkDirectory) Path() string                          { return d.path }
@@ -58,16 +61,26 @@ func (d *BackupWorkDirectory) Identity() BackupWorkDirectoryIdentity { return d.
 func (d *BackupWorkDirectory) Close() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	return d.closeLocked(nil)
+}
+
+// Caller holds mu. Absence is checked only after successful child Close and
+// before parent release. All release/check observations are cached once.
+func (d *BackupWorkDirectory) closeLocked(absent func() error) error {
 	if !d.closed {
 		d.closed = true
+		var releaseErr error
 		if d.closeFile != nil {
-			d.err = errors.Join(d.err, d.closeFile())
+			releaseErr = d.closeFile()
+		}
+		if releaseErr == nil && absent != nil {
+			d.err = absent()
 		}
 		if d.parent != nil {
-			d.err = errors.Join(d.err, d.parent.Close())
+			releaseErr = errors.Join(releaseErr, d.parent.Close())
 		}
-		if d.err != nil {
-			d.err = errors.Join(ErrBackupWorkDirectoryRelease, d.err)
+		if releaseErr != nil {
+			d.err = errors.Join(d.err, ErrBackupWorkDirectoryRelease, releaseErr)
 		}
 	}
 	return d.err
