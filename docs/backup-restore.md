@@ -306,6 +306,16 @@ storage.Store.CopyDatabaseは既存のbegin/finishを通し、接続取得後の
 
 合成DBで作品・タグ・関連・設定のコピーとquick_check、元情報の保全、非空の既存出力拒否と失敗後継続を確認する。停止/取消と接続枠占有中の拒否、SQL失敗と受付解放を試験する。Applicationからの呼出し・実データ/画像/ZIP統合・API/UIは未接続で、ADR-0022はPendingを維持する。
 
+### コピー先DBの読み取り専用検証（#476、2026-11-06）
+
+利用者は、コピー成功後にintegrity_checkとforeign_key_checkを必須とする方針を承認した。quick_checkは一意制約とインデックス内容の検査を省略し、integrity_checkも外部キーを検査しないため両検査を組み合わせる。手動バックアップでの検査範囲を優先し、通常操作の停止時間が増える負担を受け入れる。自動修復・移行や全ドメイン規則の検証は行わない。
+
+storage.ValidateDatabaseCopyは呼出し側が識別・保持するコピーの絶対パスから、エスケープしたfile URIを生成し、mode=ro・cache=privateで開く。不在ファイルを作成せず、Store.Openの移行処理を呼ばない。同じ読取トランザクションでintegrity_checkがokの1行、foreign_key_checkが0行の場合だけ合格とする。検査の詳細値はエラー文へ転載しない。取消・Rows解放・Rollback・DB接続解放の失敗を保持し、検証成功へ読み替えない。
+
+合成DBの正常・外部キー違反・破損・不存在・特殊文字パス、非変更と書込拒否、結果行数/値と解放失敗を検証する。構造上正しい空のDBや別スキーマを、この検査だけでアプリ互換DBとは判断できない。ファイル所有・後日の不変性・全ドメイン規則を保証せず、Application・保存/警告との統合は後続である。ADR-0022はPendingを維持する。
+
+根拠: [SQLite PRAGMA](https://www.sqlite.org/pragma.html#pragma_integrity_check)、[URIと読み取り専用指定](https://sqlite.org/c3ref/open.html)。
+
 ### 受付停止・完了待ちの制御部品（#428、2026-11-04）
 
 `application.OperationGate`は、通常操作の受付、バックアップの予約/実行、終了判定を同じmutexで順序付ける。通常操作は並行受付し、返した終了通知を各操作の後処理・資源解放まで保持する。終了通知を重複して呼んでも二重に減算しない。DBや画像の段階許可を置き換える部品ではない。
