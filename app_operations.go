@@ -14,6 +14,9 @@ func (a *App) beginNormalOperation() (func(), error) {
 }
 
 func normalOperationError(err error) error {
+	if errors.Is(err, application.ErrOperationsStopped) {
+		return databaseStoppedError()
+	}
 	if errors.Is(err, application.ErrOperationsPaused) {
 		return &APIError{Code: "backup_in_progress", Message: "バックアップの開始待ちまたは処理中です。完了または取消の結果を確認してから、もう一度操作してください。"}
 	}

@@ -8,6 +8,7 @@ import (
 )
 
 var errBackupCleanupUnverified = errors.New("backup startup cleanup unverified")
+var errBackupReleaseUnverified = errors.New("backup resource release unverified")
 
 // prepareBackupCleanup does not reserve backup admission or permit acquisition.
 // The caller must subsequently reserve, drain, and check DB/image stop state.
@@ -69,4 +70,17 @@ func (a *App) checkBackupState(ctx context.Context) error {
 		return err
 	}
 	return ctx.Err()
+}
+
+// finishBackup owns a live ticket returned by this App's beginBackup. Call only
+// after all cleanup/release attempts finish, using ReleaseConfirmed from the
+// owned result/error. Keep original operation errors and warnings separately.
+// Operation cancellation is not evidence about release or restart permission.
+func (a *App) finishBackup(op *application.BackupOperation, releaseConfirmed bool) error {
+	err := a.checkBackupState(context.Background())
+	if !releaseConfirmed {
+		err = errors.Join(errBackupReleaseUnverified, err)
+	}
+	op.EndWithResume(err == nil)
+	return err
 }
