@@ -9,6 +9,17 @@ import (
 
 var errBackupDBReacquire = errors.New("backup DB cleanup handle not verified")
 
+// Presence of this error confirms the candidate acquisition observation, not
+// release of the caller's reference/data/parents or permission to delete a path.
+type backupDBReacquireError struct {
+	acquired bool
+	closed   bool
+	err      error
+}
+
+func (e *backupDBReacquireError) Error() string { return e.err.Error() }
+func (e *backupDBReacquireError) Unwrap() error { return e.err }
+
 type backupDBReacquireOps struct {
 	open     func(string) (*os.File, error)
 	identity func(*os.File) (BackupTempIdentity, error)
@@ -27,6 +38,16 @@ func reacquireBackupDB(name string, reference *os.File, id BackupTempIdentity, b
 }
 
 func verifyBackupDBReacquisition(name string, reference *os.File, id BackupTempIdentity, baseline backupDBBaseline, ops backupDBReacquireOps) (result *os.File, err error) {
+	var file *os.File
+	defer func() {
+		if err != nil {
+			var closeErr error
+			if file != nil {
+				closeErr = ops.close(file)
+			}
+			err = &backupDBReacquireError{acquired: file != nil, closed: file != nil && closeErr == nil, err: errors.Join(errBackupDBReacquire, err, closeErr)}
+		}
+	}()
 	if baseline.size < 0 || baseline.size > backupDBBaselineMaxBytes {
 		return nil, errBackupDBReacquire
 	}
@@ -34,15 +55,10 @@ func verifyBackupDBReacquisition(name string, reference *os.File, id BackupTempI
 	if err != nil || refID != id {
 		return nil, errors.Join(errBackupDBReacquire, err)
 	}
-	file, err := ops.open(name)
+	file, err = ops.open(name)
 	if err != nil {
 		return nil, errors.Join(errBackupDBReacquire, err)
 	}
-	defer func() {
-		if err != nil {
-			err = errors.Join(errBackupDBReacquire, err, ops.close(file))
-		}
-	}()
 	actual, err := ops.baseline(file, id, name)
 	if err != nil {
 		return nil, err

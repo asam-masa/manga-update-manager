@@ -78,6 +78,13 @@ func TestBackupDBReacquireNative(t *testing.T) {
 			} else if got != nil || !errors.Is(err, errBackupDBReacquire) {
 				t.Fatal(got, err)
 			}
+			if mode != "unchanged" {
+				var detail *backupDBReacquireError
+				wantAcquired := mode == "replacement" || mode == "mutation"
+				if !errors.As(err, &detail) || detail.acquired != wantAcquired || detail.closed != wantAcquired {
+					t.Fatalf("missing native release observation: %v", err)
+				}
+			}
 			if gotID, err := identifyBackupTemp(reference); mode != "hardlink" && (err != nil || gotID != id) {
 				t.Fatal("reference released/changed", gotID, err)
 			}
@@ -101,7 +108,7 @@ func TestBackupDBReacquireNative(t *testing.T) {
 func TestBackupDBReacquireFaults(t *testing.T) {
 	fault := errors.New("verification failed")
 	closeFault := errors.New("close failed")
-	for _, mode := range []string{"reference-before", "reference-after", "open", "baseline", "mismatch", "close"} {
+	for _, mode := range []string{"reference-before", "reference-id", "reference-after", "open", "open-close", "baseline", "mismatch", "close", "negative", "oversize"} {
 		t.Run(mode, func(t *testing.T) {
 			identityCalls, opens, closes := 0, 0, 0
 			candidate, reference := new(os.File), new(os.File)
@@ -112,6 +119,9 @@ func TestBackupDBReacquireFaults(t *testing.T) {
 					if mode == "open" {
 						return nil, fault
 					}
+					if mode == "open-close" {
+						return candidate, fault
+					}
 					return candidate, nil
 				},
 				identity: func(f *os.File) (BackupTempIdentity, error) {
@@ -119,6 +129,9 @@ func TestBackupDBReacquireFaults(t *testing.T) {
 						t.Fatal("wrong reference")
 					}
 					identityCalls++
+					if mode == "reference-id" {
+						return BackupTempIdentity{}, nil
+					}
 					if mode == "reference-before" || mode == "reference-after" && identityCalls == 2 {
 						return BackupTempIdentity{}, fault
 					}
@@ -141,31 +154,42 @@ func TestBackupDBReacquireFaults(t *testing.T) {
 						t.Fatal("closed reference")
 					}
 					closes++
-					if mode == "close" {
+					if mode == "close" || mode == "open-close" {
 						return closeFault
 					}
 					return nil
 				},
 			}
-			got, err := verifyBackupDBReacquisition("copy", reference, id, backupDBBaseline{}, ops)
+			expected := backupDBBaseline{}
+			if mode == "negative" {
+				expected.size = -1
+			}
+			if mode == "oversize" {
+				expected.size = backupDBBaselineMaxBytes + 1
+			}
+			got, err := verifyBackupDBReacquisition("copy", reference, id, expected, ops)
 			if got != nil || !errors.Is(err, errBackupDBReacquire) {
 				t.Fatal(got, err)
 			}
 			wantCloses := 1
-			if mode == "reference-before" || mode == "open" {
+			if mode == "reference-before" || mode == "reference-id" || mode == "open" || mode == "negative" || mode == "oversize" {
 				wantCloses = 0
 			}
 			if closes != wantCloses {
 				t.Fatal("close count", closes)
 			}
-			if mode == "reference-before" && opens != 0 {
+			if (mode == "reference-before" || mode == "reference-id" || mode == "negative" || mode == "oversize") && opens != 0 {
 				t.Fatal("opened after refusal")
 			}
-			if mode != "mismatch" && !errors.Is(err, fault) {
+			if mode != "mismatch" && mode != "reference-id" && mode != "negative" && mode != "oversize" && !errors.Is(err, fault) {
 				t.Fatal("lost cause", err)
 			}
-			if mode == "close" && !errors.Is(err, closeFault) {
+			if (mode == "close" || mode == "open-close") && !errors.Is(err, closeFault) {
 				t.Fatal("lost release failure", err)
+			}
+			var detail *backupDBReacquireError
+			if !errors.As(err, &detail) || detail.acquired != (wantCloses == 1) || detail.closed != (wantCloses == 1 && mode != "close" && mode != "open-close") {
+				t.Fatalf("wrong candidate acquisition/release: %v", err)
 			}
 		})
 	}

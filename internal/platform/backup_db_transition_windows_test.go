@@ -132,6 +132,9 @@ func TestBackupDBTransitionFaults(t *testing.T) {
 				},
 			}
 			owner, result, err := moveBackupDBToCleanup(data, id, "candidate", ops)
+			if result.referenceAcquired != (mode != "baseline" && mode != "reference") || result.cleanupAcquisitionKnown != (mode != "acquire") || result.cleanupAcquired != (mode == "success") || result.cleanupClosed {
+				t.Fatalf("incorrect handle acquisition observation: %+v", result)
+			}
 			want := []string{"baseline"}
 			if mode != "baseline" {
 				want = append(want, "reference")
@@ -169,6 +172,53 @@ func TestBackupDBTransitionFaults(t *testing.T) {
 			}
 			if mode == "multiple" && !errors.Is(err, refCloseFault) {
 				t.Fatal("lost reference close cause", err)
+			}
+		})
+	}
+}
+
+func TestBackupDBTransitionReacquisitionDetails(t *testing.T) {
+	for _, mode := range []string{"unacquired", "released", "unreleased", "unknown"} {
+		t.Run(mode, func(t *testing.T) {
+			data, reference := new(os.File), new(os.File)
+			cause, closeFault := errors.New("reacquisition cause"), errors.New("candidate close failed")
+			dataCloses, refCloses := 0, 0
+			id := BackupTempIdentity{VolumeSerial: 1}
+			ops := backupDBTransitionOps{
+				baseline:  func(*os.File, BackupTempIdentity, string) (backupDBBaseline, error) { return backupDBBaseline{}, nil },
+				reference: func(string) (*os.File, error) { return reference, nil },
+				identity:  func(*os.File) (BackupTempIdentity, error) { return id, nil },
+				close: func(f *os.File) error {
+					if f == data {
+						dataCloses++
+					} else if f == reference {
+						refCloses++
+					} else {
+						t.Fatal("unexpected close")
+					}
+					return nil
+				},
+				acquire: func(string, *os.File, BackupTempIdentity, backupDBBaseline) (*backupDBCleanup, error) {
+					if mode == "unknown" {
+						return nil, cause
+					}
+					err := error(cause)
+					if mode == "unreleased" {
+						err = errors.Join(err, closeFault)
+					}
+					return nil, errors.Join(errBackupDBReacquire, &backupDBReacquireError{acquired: mode != "unacquired", closed: mode == "released", err: err})
+				},
+			}
+			owner, tr, err := moveBackupDBToCleanup(data, id, "candidate", ops)
+			if owner != nil || !errors.Is(err, cause) || !errors.Is(err, errBackupDBTransition) || dataCloses != 1 || refCloses != 1 {
+				t.Fatal(owner, tr, err, dataCloses, refCloses)
+			}
+			if mode == "unreleased" && !errors.Is(err, closeFault) {
+				t.Fatal("lost candidate release cause", err)
+			}
+			r := publicBackupDatabaseTransition(tr)
+			if !r.DataClosed || !r.ReferenceAcquired || !r.ReferenceClosed || r.CleanupHandleAcquisitionKnown != (mode != "unknown") || r.CleanupHandleAcquired != (mode == "released" || mode == "unreleased") || r.CleanupHandleClosed != (mode == "released") {
+				t.Fatalf("incorrect public observations: %+v", r)
 			}
 		})
 	}
