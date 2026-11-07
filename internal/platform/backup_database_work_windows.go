@@ -39,21 +39,41 @@ type BackupDatabaseCleanupResult struct {
 	DirectoryAttempted  bool
 	FileCloseError      error
 	DirectoryCloseError error
+	DirectoryRelease    BackupWorkDirectoryReleaseResult
 }
 
-// Work was created, but output ownership was not returned. CreatedOutput=false
-// does not prove absence. Artifacts are preserved, never guessed safe to delete.
+// ReleaseConfirmed covers only resources owned by this DB work. Errors and
+// retained artifacts remain meaningful; this is not application resume permission.
+func (r BackupDatabaseCleanupResult) ReleaseConfirmed() bool {
+	t := r.Transition
+	return t.DataClosed &&
+		(!t.ReferenceAcquired || t.ReferenceClosed || r.File.ReferenceHandleClosed) &&
+		t.CleanupHandleAcquisitionKnown &&
+		(!t.CleanupHandleAcquired || t.CleanupHandleClosed || r.File.DeleteHandleClosed) &&
+		r.DirectoryRelease.Confirmed()
+}
+
+// Ownership was not returned; work creation itself may have failed. CreatedOutput
+// is not proof of acquisition, release or absence. Artifacts are preserved.
 type BackupDatabaseWorkError struct {
-	WorkPath      string
-	OutputPath    string
-	CreatedOutput bool
-	Err           error
+	WorkPath               string
+	OutputPath             string
+	CreatedOutput          bool
+	OutputAcquisitionKnown bool
+	OutputAcquired         bool
+	OutputClosed           bool
+	DirectoryRelease       BackupWorkDirectoryReleaseResult
+	Err                    error
 }
 
 func (e *BackupDatabaseWorkError) Error() string {
 	return fmt.Sprintf("prepare backup DB work %q: %v", e.WorkPath, e.Err)
 }
 func (e *BackupDatabaseWorkError) Unwrap() error { return e.Err }
+
+func (e *BackupDatabaseWorkError) ReleaseConfirmed() bool {
+	return e.OutputAcquisitionKnown && (!e.OutputAcquired || e.OutputClosed) && e.DirectoryRelease.Confirmed()
+}
 
 // Do not copy. The owner calls Cleanup only after SQLite and all consumers have
 // finished. Read/verify/cleanup serialize; a path is an observation, not ownership.
@@ -69,7 +89,12 @@ type BackupDatabaseWork struct {
 func CreateBackupDatabaseWork(ctx context.Context, directory string) (*BackupDatabaseWork, error) {
 	work, err := CreateBackupWorkDirectory(ctx, directory)
 	if err != nil {
-		return nil, err
+		detail := &BackupDatabaseWorkError{OutputAcquisitionKnown: true, Err: err}
+		var workErr *BackupWorkDirectoryError
+		if errors.As(err, &workErr) {
+			detail.WorkPath, detail.DirectoryRelease = workErr.Path, workErr.Release
+		}
+		return nil, detail
 	}
 	return assembleBackupDatabaseWork(ctx, work, createBackupDBOutput)
 }
@@ -81,8 +106,11 @@ func assembleBackupDatabaseWork(ctx context.Context, work *BackupWorkDirectory, 
 		var outputErr *backupDBOutputError
 		if errors.As(err, &outputErr) {
 			detail.CreatedOutput = outputErr.created
+			detail.OutputAcquisitionKnown = true
+			detail.OutputAcquired, detail.OutputClosed = outputErr.acquired, outputErr.closed
 		}
 		detail.Err = errors.Join(err, work.Close())
+		detail.DirectoryRelease = work.ReleaseResult()
 		return nil, detail
 	}
 	return &BackupDatabaseWork{work: work, output: out}, nil
@@ -143,6 +171,7 @@ func (w *BackupDatabaseWork) Cleanup() (BackupDatabaseCleanupResult, error) {
 	w.result.Directory.Path = w.work.Path()
 	if err != nil {
 		w.result.DirectoryCloseError = w.work.Close()
+		w.result.DirectoryRelease = w.work.ReleaseResult()
 		w.err = errors.Join(err, w.result.DirectoryCloseError)
 		return w.result, w.err
 	}
@@ -152,6 +181,7 @@ func (w *BackupDatabaseWork) Cleanup() (BackupDatabaseCleanupResult, error) {
 	w.result.DirectoryAttempted = final.directoryAttempted
 	w.result.FileCloseError = final.fileCloseError
 	w.result.DirectoryCloseError = final.directoryCloseError
+	w.result.DirectoryRelease = w.work.ReleaseResult()
 	w.err = err
 	return w.result, w.err
 }

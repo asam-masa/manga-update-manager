@@ -77,7 +77,7 @@ func TestBackupDBOutputRefusesReuseAndHolds(t *testing.T) {
 		t.Fatal(got, err)
 	} else {
 		var detail *backupDBOutputError
-		if !errors.As(err, &detail) || detail.created || detail.path != out.path {
+		if !errors.As(err, &detail) || detail.created || detail.acquired || detail.closed || detail.path != out.path {
 			t.Fatal(err)
 		}
 	}
@@ -130,6 +130,9 @@ func TestBackupDBOutputCreationFaults(t *testing.T) {
 			if out != nil || !errors.As(err, &detail) || !detail.created || detail.path != filepath.Join(work.Path(), "database.sqlite") {
 				t.Fatal(out, err)
 			}
+			if !detail.acquired || detail.closed != (mode != "closed") {
+				t.Fatalf("incorrect output release: %+v", detail)
+			}
 			if _, err := captured.Write([]byte("x")); !errors.Is(err, os.ErrClosed) {
 				t.Fatal("handle not closed", err)
 			}
@@ -154,5 +157,10 @@ func TestBackupDBOutputCreationFaults(t *testing.T) {
 	cancel()
 	if out, err := createBackupDBOutput(ctx, nil); out != nil || !errors.Is(err, context.Canceled) {
 		t.Fatal(out, err)
+	} else {
+		var detail *backupDBOutputError
+		if !errors.As(err, &detail) || detail.acquired || detail.closed || detail.created {
+			t.Fatal("missing pre-acquisition observation", err)
+		}
 	}
 }
