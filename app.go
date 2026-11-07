@@ -45,6 +45,7 @@ type App struct {
 	openURL                func(string) error
 	store                  *storage.Store
 	dataDirectory          func() (string, error)
+	dataDirectoryPath      string
 	stopped                bool
 	startupFinished        chan struct{}
 	startupFinishedOnce    sync.Once
@@ -83,6 +84,7 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 	a.store = store
+	a.dataDirectoryPath = directory
 	a.works = application.NewWorks(store, time.Now)
 	a.tags = application.NewTagReader(store)
 	a.library = application.NewLibraryReader(store)

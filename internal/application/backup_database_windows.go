@@ -11,7 +11,8 @@ import (
 
 var ErrBackupDatabase = errors.New("backup database preparation or use failed")
 
-type backupDatabaseWork interface {
+// BackupDatabaseWork is the owned work consumed by UseBackupDatabase.
+type BackupDatabaseWork interface {
 	io.ReaderAt
 	Path() string
 	Size() (int64, error)
@@ -35,7 +36,7 @@ type BackupDatabaseResult struct {
 // The caller holds application admission until all cleanup results are handled.
 // use is synchronous and must not retain the reader or publish a completed backup.
 // Stage observations do not mean publication or authorize resuming normal work.
-func UseBackupDatabase(ctx context.Context, work backupDatabaseWork, copier backupDatabaseCopier, validate func(context.Context, string) error, use func(context.Context, io.ReaderAt, int64) error) (result BackupDatabaseResult, err error) {
+func UseBackupDatabase(ctx context.Context, work BackupDatabaseWork, copier backupDatabaseCopier, validate func(context.Context, string) error, use func(context.Context, io.ReaderAt, int64) error) (result BackupDatabaseResult, err error) {
 	defer func() {
 		result.OperationError = err
 		result.Cleanup, result.CleanupError = work.Cleanup()
@@ -104,7 +105,7 @@ func UseBackupDatabase(ctx context.Context, work backupDatabaseWork, copier back
 	return result, ctx.Err()
 }
 
-func verifyBackupDatabaseSize(work backupDatabaseWork, want int64) error {
+func verifyBackupDatabaseSize(work BackupDatabaseWork, want int64) error {
 	if err := work.VerifyIdentity(); err != nil {
 		return err
 	}
