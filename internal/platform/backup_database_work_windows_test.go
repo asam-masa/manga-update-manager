@@ -46,6 +46,9 @@ func TestBackupDatabaseWorkPublicLifecycle(t *testing.T) {
 		t.Fatal(n, string(header), err)
 	}
 	result, err := w.Cleanup()
+	if !result.Transition.ReferenceAcquired || !result.Transition.CleanupHandleAcquisitionKnown || !result.Transition.CleanupHandleAcquired || result.Transition.CleanupHandleClosed {
+		t.Fatalf("transition ownership transfer not recorded: %+v", result.Transition)
+	}
 	if err != nil || !result.File.Absent || !result.Directory.Absent || !result.Transition.DataClosed || !result.File.DeleteHandleClosed || !result.File.ReferenceHandleClosed {
 		t.Fatal(result, err)
 	}

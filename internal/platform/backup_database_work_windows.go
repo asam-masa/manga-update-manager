@@ -11,10 +11,14 @@ import (
 )
 
 type BackupDatabaseTransitionResult struct {
-	BaselineConfirmed bool
-	ReferenceVerified bool
-	DataClosed        bool
-	ReferenceClosed   bool
+	BaselineConfirmed             bool
+	ReferenceVerified             bool
+	DataClosed                    bool
+	ReferenceClosed               bool
+	ReferenceAcquired             bool
+	CleanupHandleAcquisitionKnown bool
+	CleanupHandleAcquired         bool
+	CleanupHandleClosed           bool
 }
 
 type BackupDatabaseFileCleanupResult struct {
@@ -26,7 +30,8 @@ type BackupDatabaseFileCleanupResult struct {
 }
 
 // Observations only; none authorize deleting later same-named objects or resuming
-// application operations. Transition and finalization describe distinct handles.
+// application operations. Transition and finalization describe distinct phases;
+// finalization closes the handles transferred by a successful transition.
 type BackupDatabaseCleanupResult struct {
 	Transition          BackupDatabaseTransitionResult
 	File                BackupDatabaseFileCleanupResult
@@ -133,7 +138,7 @@ func (w *BackupDatabaseWork) Cleanup() (BackupDatabaseCleanupResult, error) {
 	}
 	w.finished = true
 	owner, tr, err := transitionBackupDB(w.output.file, w.output.id, w.output.path)
-	w.result.Transition = BackupDatabaseTransitionResult{tr.baselineConfirmed, tr.referenceVerified, tr.dataClosed, tr.referenceClosed}
+	w.result.Transition = publicBackupDatabaseTransition(tr)
 	w.result.File.Path = w.output.path
 	w.result.Directory.Path = w.work.Path()
 	if err != nil {
@@ -149,4 +154,12 @@ func (w *BackupDatabaseWork) Cleanup() (BackupDatabaseCleanupResult, error) {
 	w.result.DirectoryCloseError = final.directoryCloseError
 	w.err = err
 	return w.result, w.err
+}
+
+func publicBackupDatabaseTransition(tr backupDBTransitionResult) BackupDatabaseTransitionResult {
+	return BackupDatabaseTransitionResult{
+		BaselineConfirmed: tr.baselineConfirmed, ReferenceVerified: tr.referenceVerified,
+		DataClosed: tr.dataClosed, ReferenceClosed: tr.referenceClosed, ReferenceAcquired: tr.referenceAcquired,
+		CleanupHandleAcquisitionKnown: tr.cleanupAcquisitionKnown, CleanupHandleAcquired: tr.cleanupAcquired, CleanupHandleClosed: tr.cleanupClosed,
+	}
 }

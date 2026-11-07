@@ -10,11 +10,15 @@ import (
 var errBackupDBTransition = errors.New("backup DB cleanup transition failed")
 
 type backupDBTransitionResult struct {
-	path              string
-	baselineConfirmed bool
-	referenceVerified bool
-	dataClosed        bool
-	referenceClosed   bool
+	path                    string
+	baselineConfirmed       bool
+	referenceVerified       bool
+	referenceAcquired       bool
+	dataClosed              bool
+	referenceClosed         bool
+	cleanupAcquisitionKnown bool
+	cleanupAcquired         bool
+	cleanupClosed           bool
 }
 
 type backupDBTransitionOps struct {
@@ -38,6 +42,8 @@ func transitionBackupDB(data *os.File, id BackupTempIdentity, name string) (*bac
 
 func moveBackupDBToCleanup(data *os.File, id BackupTempIdentity, name string, ops backupDBTransitionOps) (owner *backupDBCleanup, result backupDBTransitionResult, err error) {
 	result.path = name
+	// No cleanup acquisition has been attempted yet.
+	result.cleanupAcquisitionKnown = true
 	var reference *os.File
 	dataCloseAttempted := false
 	defer func() {
@@ -61,6 +67,7 @@ func moveBackupDBToCleanup(data *os.File, id BackupTempIdentity, name string, op
 	}
 	result.baselineConfirmed = true
 	reference, err = ops.reference(name)
+	result.referenceAcquired = reference != nil
 	if err != nil {
 		return nil, result, err
 	}
@@ -78,7 +85,19 @@ func moveBackupDBToCleanup(data *os.File, id BackupTempIdentity, name string, op
 	if err != nil {
 		return nil, result, err
 	}
+	result.cleanupAcquisitionKnown = false
 	owner, err = ops.acquire(name, reference, id, baseline)
+	if err != nil {
+		var detail *backupDBReacquireError
+		if errors.As(err, &detail) {
+			result.cleanupAcquisitionKnown = true
+			result.cleanupAcquired = detail.acquired
+			result.cleanupClosed = detail.closed
+		}
+	} else if owner != nil {
+		result.cleanupAcquisitionKnown = true
+		result.cleanupAcquired = true
+	}
 	return owner, result, err
 }
 
