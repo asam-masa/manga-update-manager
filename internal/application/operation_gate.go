@@ -8,6 +8,7 @@ import (
 
 var ErrOperationsPaused = errors.New("normal operations paused for backup")
 var ErrOperationsClosing = errors.New("operations closing")
+var ErrOperationsStopped = errors.New("operations stopped pending restart")
 var ErrBackupBusy = errors.New("backup waiting or running")
 
 // OperationGate orders entry admission, not DB/image stage permission. Its zero
@@ -19,6 +20,7 @@ type OperationGate struct {
 	active  int
 	backup  *BackupOperation
 	closing bool
+	stopped bool
 	drained chan struct{}
 }
 
@@ -34,6 +36,9 @@ func (g *OperationGate) BeginNormal() (func(), error) {
 	defer g.mu.Unlock()
 	if g.closing {
 		return nil, ErrOperationsClosing
+	}
+	if g.stopped {
+		return nil, ErrOperationsStopped
 	}
 	if g.backup != nil {
 		return nil, ErrOperationsPaused
@@ -70,6 +75,10 @@ func (g *OperationGate) BeginBackup(ctx context.Context) (*BackupOperation, erro
 		g.mu.Unlock()
 		return nil, ErrOperationsClosing
 	}
+	if g.stopped {
+		g.mu.Unlock()
+		return nil, ErrOperationsStopped
+	}
 	if g.backup != nil {
 		g.mu.Unlock()
 		return nil, ErrBackupBusy
@@ -94,10 +103,21 @@ func (g *OperationGate) BeginBackup(ctx context.Context) (*BackupOperation, erro
 }
 
 func (op *BackupOperation) End() {
+	op.EndWithResume(true)
+}
+
+// EndWithResume is called once all cleanup attempts have finished. Resume must
+// include both resource release confirmation and the caller's DB/image checks.
+// A refusal latches admission stopped before releasing this reservation, but
+// still permits RequestClose. A stale/copied ticket cannot change any state.
+func (op *BackupOperation) EndWithResume(resume bool) {
 	g := op.owner
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.backup == op {
+		if !resume {
+			g.stopped = true
+		}
 		g.backup = nil
 	}
 }
