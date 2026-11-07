@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 
 	"golang.org/x/sys/windows"
@@ -20,6 +21,9 @@ func TestHoldBackupDirectoryRetainsParentsAndCreatesNothing(t *testing.T) {
 	guard, err := HoldBackupDirectory(context.Background(), filepath.Join(dir, "backup.zip"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if r := guard.ReleaseResult(); r.CloseAttempted || r.Confirmed() || r.Acquired == 0 || r.Released != 0 {
+		t.Fatalf("premature release confirmation: %+v", r)
 	}
 	t.Cleanup(func() {
 		if err := guard.Close(); err != nil {
@@ -37,6 +41,9 @@ func TestHoldBackupDirectoryRetainsParentsAndCreatesNothing(t *testing.T) {
 	}
 	if err := guard.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if r := guard.ReleaseResult(); !r.Confirmed() || r.Acquired == 0 {
+		t.Fatalf("release not confirmed: %+v", r)
 	}
 	if err := guard.Close(); err != nil {
 		t.Fatal(err)
@@ -84,7 +91,9 @@ func TestHoldBackupDirectoryRejectsReparseAncestor(t *testing.T) {
 
 func TestBackupDirectoryFailureAndRelease(t *testing.T) {
 	failure := errors.New("synthetic failure")
-	for _, stage := range []string{"remote", "unknown", "ram", "open", "check", "cancel", "release"} {
+	releaseFailure := errors.New("synthetic release failure")
+	otherReleaseFailure := errors.New("another release failure")
+	for _, stage := range []string{"remote", "unknown", "ram", "open", "check", "cancel", "release", "partial-release"} {
 		t.Run(stage, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -104,7 +113,7 @@ func TestBackupDirectoryFailureAndRelease(t *testing.T) {
 				},
 				open: func(path string) (windows.Handle, error) {
 					opened = append(opened, path)
-					if stage == "open" && len(opened) == 3 {
+					if (stage == "open" || stage == "partial-release") && len(opened) == 3 {
 						return 0, failure
 					}
 					return windows.Handle(len(opened)), nil
@@ -120,8 +129,11 @@ func TestBackupDirectoryFailureAndRelease(t *testing.T) {
 				},
 				close: func(h windows.Handle) error {
 					closed = append(closed, h)
-					if stage == "release" && h == 2 {
-						return failure
+					if stage == "release" || stage == "partial-release" {
+						if h == 1 {
+							return otherReleaseFailure
+						}
+						return releaseFailure
 					}
 					return nil
 				},
@@ -133,7 +145,7 @@ func TestBackupDirectoryFailureAndRelease(t *testing.T) {
 				if len(opened) != 0 || !errors.Is(err, ErrUnsafeBackupDirectory) {
 					t.Fatalf("drive not rejected: %v %v", opened, err)
 				}
-			case "open":
+			case "open", "partial-release":
 				want = []windows.Handle{2, 1}
 				if !errors.Is(err, failure) {
 					t.Fatal(err)
@@ -155,18 +167,82 @@ func TestBackupDirectoryFailureAndRelease(t *testing.T) {
 				want = []windows.Handle{3, 2, 1}
 				for i := 0; i < 2; i++ {
 					e := g.Close()
-					if !errors.Is(e, ErrBackupDirectoryRelease) || !errors.Is(e, failure) {
+					if !errors.Is(e, ErrBackupDirectoryRelease) || !errors.Is(e, releaseFailure) || !errors.Is(e, otherReleaseFailure) {
 						t.Fatalf("lost release error: %v", e)
+					}
+					if r := g.ReleaseResult(); r.Confirmed() || !r.CloseAttempted || r.Acquired != 3 || r.Released != 0 {
+						t.Fatalf("incorrect release failure result: %+v", r)
 					}
 				}
 			}
 			if stage != "release" && g != nil {
 				t.Fatal("partial guard returned")
 			}
+			if stage != "release" {
+				var e *BackupDirectoryHoldError
+				if !errors.As(err, &e) {
+					t.Fatalf("missing acquisition release result: %v", err)
+				}
+				wantReleased := len(want)
+				if stage == "partial-release" {
+					wantReleased = 0
+					if !errors.Is(err, ErrBackupDirectoryRelease) || !errors.Is(err, releaseFailure) || !errors.Is(err, otherReleaseFailure) {
+						t.Fatal("lost release failure")
+					}
+				}
+				if r := e.Release; !r.CloseAttempted || r.Acquired != len(want) || r.Released != wantReleased || r.Confirmed() != (stage != "partial-release") {
+					t.Fatalf("incorrect partial acquisition result: %+v", r)
+				}
+			}
 			if !reflect.DeepEqual(closed, want) {
 				t.Fatalf("release order/count: %v; want %v", closed, want)
 			}
 		})
+	}
+}
+
+func TestBackupDirectoryReleaseBeforeAcquisitionAndConcurrentClose(t *testing.T) {
+	if (BackupDirectoryReleaseResult{}).Confirmed() {
+		t.Fatal("zero value confirms release")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, tc := range []struct {
+		ctx   context.Context
+		path  string
+		cause error
+	}{{ctx, `C:\backup.zip`, context.Canceled}, {context.Background(), "relative.zip", ErrInvalidBackupDestination}} {
+		g, err := holdBackupDirectory(tc.ctx, tc.path, backupDirectoryOps{})
+		var e *BackupDirectoryHoldError
+		if g != nil || !errors.Is(err, tc.cause) || !errors.As(err, &e) || !e.Release.Confirmed() || e.Release.Acquired != 0 {
+			t.Fatalf("early refusal lost no-acquisition observation: %v %v", g, err)
+		}
+	}
+	var calls []windows.Handle
+	failure := errors.New("second handle release failed")
+	g := &BackupDirectoryGuard{handles: []windows.Handle{1, 2, 3}, close: func(h windows.Handle) error {
+		calls = append(calls, h)
+		if h == 2 {
+			return failure
+		}
+		return nil
+	}}
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := g.Close(); !errors.Is(err, failure) {
+				t.Error(err)
+			}
+			if r := g.ReleaseResult(); r.Acquired != 3 || r.Released != 2 || !r.CloseAttempted || r.Confirmed() {
+				t.Errorf("incorrect concurrent release snapshot: %+v", r)
+			}
+		}()
+	}
+	wg.Wait()
+	if !reflect.DeepEqual(calls, []windows.Handle{3, 2, 1}) {
+		t.Fatalf("release retry or skipped parent: %v", calls)
 	}
 }
 

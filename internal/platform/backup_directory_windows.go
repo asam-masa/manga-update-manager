@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,29 +14,65 @@ import (
 var ErrUnsafeBackupDirectory = errors.New("unsupported or unsafe backup directory")
 var ErrBackupDirectoryRelease = errors.New("backup directory release failed")
 
-type backupDirectoryGuard struct {
-	handles []windows.Handle
-	close   func(windows.Handle) error
-	once    sync.Once
-	err     error
+// BackupDirectoryReleaseResult describes only this owner's parent holds.
+// It is not permission to resume application operations or remove any path.
+type BackupDirectoryReleaseResult struct {
+	Acquired       int
+	Released       int
+	CloseAttempted bool
 }
 
-func (g *backupDirectoryGuard) Close() error {
-	g.once.Do(func() {
+func (r BackupDirectoryReleaseResult) Confirmed() bool {
+	return r.CloseAttempted && r.Acquired >= 0 && r.Released == r.Acquired
+}
+
+// BackupDirectoryHoldError also reports release after partial acquisition.
+type BackupDirectoryHoldError struct {
+	Release BackupDirectoryReleaseResult
+	Err     error
+}
+
+func (e *BackupDirectoryHoldError) Error() string { return e.Err.Error() }
+func (e *BackupDirectoryHoldError) Unwrap() error { return e.Err }
+
+// BackupDirectoryGuard owns the retained parents. Do not copy.
+type BackupDirectoryGuard struct {
+	handles  []windows.Handle
+	close    func(windows.Handle) error
+	mu       sync.Mutex
+	closed   bool
+	released int
+	err      error
+}
+
+func (g *BackupDirectoryGuard) Close() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.closed {
+		g.closed = true
 		for i := len(g.handles) - 1; i >= 0; i-- {
 			if err := g.close(g.handles[i]); err != nil {
 				g.err = errors.Join(g.err, ErrBackupDirectoryRelease, err)
+			} else {
+				g.released++
 			}
 		}
-	})
+	}
 	return g.err
+}
+
+// ReleaseResult waits for any in-progress Close and returns a value snapshot.
+func (g *BackupDirectoryGuard) ReleaseResult() BackupDirectoryReleaseResult {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return BackupDirectoryReleaseResult{Acquired: len(g.handles), Released: g.released, CloseAttempted: g.closed}
 }
 
 // HoldBackupDirectory validates the destination's existing local NTFS parents
 // and retains them without delete sharing until Close. It does not open/create
 // the destination file, authorize deletion, or prove write/publish capability.
 // Drive remapping and hostile attribute changes are outside this guarantee.
-func HoldBackupDirectory(ctx context.Context, destination string) (io.Closer, error) {
+func HoldBackupDirectory(ctx context.Context, destination string) (*BackupDirectoryGuard, error) {
 	return holdBackupDirectory(ctx, destination, backupDirectoryOps{
 		drive: func(root string) uint32 {
 			p, _ := windows.UTF16PtrFromString(root) // Already lexically checked.
@@ -65,7 +100,14 @@ type backupDirectoryOps struct {
 	close func(windows.Handle) error
 }
 
-func holdBackupDirectory(ctx context.Context, destination string, ops backupDirectoryOps) (result io.Closer, err error) {
+func holdBackupDirectory(ctx context.Context, destination string, ops backupDirectoryOps) (result *BackupDirectoryGuard, err error) {
+	guard := &BackupDirectoryGuard{close: ops.close}
+	defer func() {
+		if err != nil {
+			cause := errors.Join(err, guard.Close())
+			err = &BackupDirectoryHoldError{Release: guard.ReleaseResult(), Err: cause}
+		}
+	}()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -83,12 +125,6 @@ func holdBackupDirectory(ctx context.Context, destination string, ops backupDire
 			paths = append(paths, filepath.Join(paths[len(paths)-1], part))
 		}
 	}
-	guard := &backupDirectoryGuard{close: ops.close}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, guard.Close())
-		}
-	}()
 	for _, path := range paths {
 		if err := ctx.Err(); err != nil {
 			return nil, err
