@@ -16,7 +16,7 @@ func workDirectoryOps(t *testing.T) backupWorkDirectoryOps {
 	if err := createBackupDirectoryProc.Find(); err != nil {
 		t.Skipf("positive capability test: %v", err)
 	}
-	return backupWorkDirectoryOps{createBackupDirectoryProc.Find, createBackupDirectoryHandle, identifyBackupWorkDirectory, backupHandleName}
+	return backupWorkDirectoryOps{find: createBackupDirectoryProc.Find, create: createBackupDirectoryHandle, identify: identifyBackupWorkDirectory, name: backupHandleName}
 }
 
 // CI's TEMP may contain an 8.3 alias. Positive fixtures use the same normalized
@@ -76,6 +76,9 @@ func TestBackupWorkDirectoryLifetimeAndCollision(t *testing.T) {
 		if err := d.Close(); err != nil {
 			t.Fatal(err)
 		}
+		if r := d.ReleaseResult(); !r.Confirmed() || !r.HandleAcquired || !r.HandleClosed || r.Parents.Acquired == 0 {
+			t.Fatalf("release not confirmed: %+v", r)
+		}
 	}
 	if err := d.VerifyIdentity(); !errors.Is(err, os.ErrClosed) {
 		t.Fatal(err)
@@ -113,7 +116,7 @@ func TestBackupWorkDirectoryPostCreationFailures(t *testing.T) {
 			}
 			d, err := createBackupWorkDirectory(ctx, dir, [16]byte{}, ops)
 			var detail *BackupWorkDirectoryError
-			if d != nil || !errors.Is(err, want) || !errors.As(err, &detail) || !detail.Created {
+			if d != nil || !errors.Is(err, want) || !errors.As(err, &detail) || !detail.Created || !detail.Release.Confirmed() || !detail.Release.HandleAcquired {
 				t.Fatal(d, err)
 			}
 			entries, err := os.ReadDir(dir)
