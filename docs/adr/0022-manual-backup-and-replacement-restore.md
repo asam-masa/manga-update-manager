@@ -72,6 +72,8 @@
 
 2026-11-07、#478で[Application向けDB作業領域の所有境界](../backup-restore.md#application向けdb作業領域の所有境界4782026-11-07)を先行する。platformがフォルダー・出力のOS所有をまとめ、読取り/識別と一度だけのCleanup、段階別観測と原因を公開する。生ハンドルをApplicationへ渡さず、コピー・検証・利用の順序は後続Applicationが担当する。合成SQLiteと失敗模型の限定検証で、通常経路・画像/ZIP・API/UIは未接続のためPendingを維持する。
 
+2026-11-07、#480で[ApplicationのDBコピー・検証・利用順序](../backup-restore.md#applicationのdbコピー検証利用順序4802026-11-07)を接続する。空出力確認後にコピー・識別/サイズ・readonly DB検証・同期読取利用・再確認を行い、全経路でCleanupする。段階観測と元処理/片付けの原因を分離する。実部品の合成往復と順序模型で限定確認するが、App開始経路・画像/ZIP・完成名公開・API/UIは後続のためPendingを維持する。
+
 ## Consequences
 
 2026-11-04、#416で[完成名への切替方式と結果の区別](../backup-restore.md#完成名への切替方式と結果の区別4162026-11-04)を利用者が承認した。検証済み一時ファイルを閉じず、同じハンドルの公開APIによる非上書き名前変更で、最初に選んだ保存先内の完成名へ切り替える。具体方式はSetFileInformationByHandle(FileRenameInfo)・ReplaceIfExists=FALSEとする。別フォルダー、上書き、コピー置換や非公開APIへフォールバックしない。上記#399時点の具体方式未採用は、この合意で更新する。
