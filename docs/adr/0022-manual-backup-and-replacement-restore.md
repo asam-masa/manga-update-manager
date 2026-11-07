@@ -70,6 +70,8 @@
 
 2026-11-06、#476で[コピー先DBの読み取り専用検証](../backup-restore.md#コピー先dbの読み取り専用検証4762026-11-06)を採用する。quick_check中心の案より検査範囲を優先し、コピー先にintegrity_checkとforeign_key_checkを必須とする。停止時間増を受け入れ、同じ読取トランザクション・読み取り専用接続で検査し、失敗では保存へ進めない。自動修復・移行や全ドメイン規則は対象外。検証部品を合成DBと故障模型で確認するが、Applicationとの接続・スキーマ互換/実データ/画像/ZIP統合は後続でPendingを維持する。
 
+2026-11-07、#478で[Application向けDB作業領域の所有境界](../backup-restore.md#application向けdb作業領域の所有境界4782026-11-07)を先行する。platformがフォルダー・出力のOS所有をまとめ、読取り/識別と一度だけのCleanup、段階別観測と原因を公開する。生ハンドルをApplicationへ渡さず、コピー・検証・利用の順序は後続Applicationが担当する。合成SQLiteと失敗模型の限定検証で、通常経路・画像/ZIP・API/UIは未接続のためPendingを維持する。
+
 ## Consequences
 
 2026-11-04、#416で[完成名への切替方式と結果の区別](../backup-restore.md#完成名への切替方式と結果の区別4162026-11-04)を利用者が承認した。検証済み一時ファイルを閉じず、同じハンドルの公開APIによる非上書き名前変更で、最初に選んだ保存先内の完成名へ切り替える。具体方式はSetFileInformationByHandle(FileRenameInfo)・ReplaceIfExists=FALSEとする。別フォルダー、上書き、コピー置換や非公開APIへフォールバックしない。上記#399時点の具体方式未採用は、この合意で更新する。
