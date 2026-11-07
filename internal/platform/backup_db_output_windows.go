@@ -19,9 +19,11 @@ type backupDBOutput struct {
 
 // Created is an observation, not deletion permission. False is not proof of absence.
 type backupDBOutputError struct {
-	path    string
-	created bool
-	err     error
+	path     string
+	created  bool
+	acquired bool
+	closed   bool
+	err      error
 }
 
 func (e *backupDBOutputError) Error() string {
@@ -36,23 +38,27 @@ func createBackupDBOutput(ctx context.Context, work *BackupWorkDirectory) (*back
 }
 
 func prepareBackupDBOutput(ctx context.Context, work *BackupWorkDirectory, create func(string) (*os.File, error), observe func(*os.File) (backupDBObservation, error)) (output *backupDBOutput, err error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := work.VerifyIdentity(); err != nil {
-		return nil, err
-	}
-	name := filepath.Join(work.Path(), "database.sqlite")
+	name := ""
 	created := false
 	var file *os.File
 	defer func() {
 		if err != nil {
+			closed := false
 			if file != nil {
-				err = errors.Join(err, file.Close())
+				closeErr := file.Close()
+				closed = closeErr == nil
+				err = errors.Join(err, closeErr)
 			}
-			err = &backupDBOutputError{path: name, created: created, err: err}
+			err = &backupDBOutputError{path: name, created: created, acquired: file != nil, closed: closed, err: err}
 		}
 	}()
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err = work.VerifyIdentity(); err != nil {
+		return nil, err
+	}
+	name = filepath.Join(work.Path(), "database.sqlite")
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
