@@ -35,7 +35,7 @@ func backupAppRoot(t *testing.T) string {
 }
 
 func TestUseBackupDatabaseLifecycle(t *testing.T) {
-	for _, mode := range []string{"success", "use-error", "cancel", "source-stopped", "database-stopped", "retained-child"} {
+	for _, mode := range []string{"success", "use-error", "cancel", "source-stopped", "database-stopped", "retained-child", "sql-release"} {
 		t.Run(mode, func(t *testing.T) {
 			a := testApp(t, backupAppRoot(t))
 			a.backupBusyNotice = func(context.Context) {}
@@ -72,6 +72,9 @@ func TestUseBackupDatabaseLifecycle(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
+				if mode == "sql-release" {
+					return errors.Join(cause, storage.ErrDatabaseCopyRelease)
+				}
 				if mode == "use-error" || mode == "source-stopped" || mode == "database-stopped" {
 					return cause
 				}
@@ -100,7 +103,7 @@ func TestUseBackupDatabaseLifecycle(t *testing.T) {
 			if mode == "success" && (err != nil || !r.Database.Consumed) {
 				t.Fatal(r, err)
 			}
-			if (mode == "use-error" || mode == "source-stopped" || mode == "database-stopped") && (!errors.Is(err, cause) || !errors.Is(r.Database.OperationError, cause)) {
+			if (mode == "use-error" || mode == "source-stopped" || mode == "database-stopped" || mode == "sql-release") && (!errors.Is(err, cause) || !errors.Is(r.Database.OperationError, cause)) {
 				t.Fatal("lost use cause", r, err)
 			}
 			if mode == "cancel" && !errors.Is(err, context.Canceled) {
@@ -114,10 +117,16 @@ func TestUseBackupDatabaseLifecycle(t *testing.T) {
 					t.Fatal("retained child lost", err)
 				}
 			}
-			if mode == "source-stopped" || mode == "database-stopped" {
+			if mode == "source-stopped" || mode == "database-stopped" || mode == "sql-release" {
 				want := application.ErrCoverStopped
 				if mode == "database-stopped" {
 					want = storage.ErrDBStopped
+				}
+				if mode == "sql-release" {
+					want = errBackupReleaseUnverified
+					if !errors.Is(err, storage.ErrDatabaseCopyRelease) {
+						t.Fatal("SQL release cause lost", err)
+					}
 				}
 				if !errors.Is(r.FinishError, want) {
 					t.Fatal("source stop lost", r.FinishError)

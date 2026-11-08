@@ -44,6 +44,9 @@ func TestValidateDatabaseCopyReadOnlyAndPreserves(t *testing.T) {
 			if (err == nil) != (mode == "valid") || err != nil && !errors.Is(err, ErrDatabaseCopyValidation) {
 				t.Fatal(err)
 			}
+			if errors.Is(err, ErrDatabaseCopyRelease) {
+				t.Fatal("ordinary validation rejection marked unreleased", err)
+			}
 			after, err := os.ReadFile(path)
 			if err != nil || sha256.Sum256(after) != sha256.Sum256(before) {
 				t.Fatal("copy changed", err)
@@ -77,7 +80,7 @@ func TestValidateDatabaseCopyMissingAndCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(bounded(t))
 	cancel()
-	if err := ValidateDatabaseCopy(ctx, path); !errors.Is(err, context.Canceled) {
+	if err := ValidateDatabaseCopy(ctx, path); !errors.Is(err, context.Canceled) || errors.Is(err, ErrDatabaseCopyRelease) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"", "relative.sqlite", "file:copy.sqlite?mode=rw"} {
@@ -123,7 +126,7 @@ func TestValidateDatabaseCopyCancellationDuringClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateDatabaseCopy(ctx, db); !errors.Is(err, context.Canceled) {
+	if err := validateDatabaseCopy(ctx, db); !errors.Is(err, context.Canceled) || errors.Is(err, ErrDatabaseCopyRelease) {
 		t.Fatal("cancellation lost", err)
 	}
 }
@@ -148,7 +151,7 @@ func TestValidateDatabaseCopyCleanupFaults(t *testing.T) {
 			if mode == "connection" {
 				cause = validationCloseFault
 			}
-			if !errors.Is(err, cause) {
+			if !errors.Is(err, cause) || !errors.Is(err, ErrDatabaseCopyRelease) {
 				t.Fatal("cleanup failure hidden", err)
 			}
 			if err := db.Ping(); err == nil {
@@ -161,6 +164,7 @@ func TestValidateDatabaseCopyCleanupFaults(t *testing.T) {
 type validationResultDriver struct {
 	integrity []string
 	foreign   []string
+	nextErr   error
 }
 
 func (d validationResultDriver) Open(name string) (driver.Conn, error) {
@@ -178,7 +182,7 @@ type validationResultConn struct {
 
 func (c validationResultConn) QueryContext(_ context.Context, q string, _ []driver.NamedValue) (driver.Rows, error) {
 	if q == "PRAGMA integrity_check" {
-		return &validationResultRows{values: append([]string(nil), c.results.integrity...)}, nil
+		return &validationResultRows{values: append([]string(nil), c.results.integrity...), nextErr: c.results.nextErr}, nil
 	}
 	if q == "PRAGMA foreign_key_check" {
 		return &validationResultRows{values: append([]string(nil), c.results.foreign...)}, nil
@@ -186,12 +190,20 @@ func (c validationResultConn) QueryContext(_ context.Context, q string, _ []driv
 	return nil, errors.New("unexpected validation query")
 }
 
-type validationResultRows struct{ values []string }
+type validationResultRows struct {
+	values  []string
+	nextErr error
+}
 
 func (*validationResultRows) Columns() []string { return []string{"result"} }
 func (*validationResultRows) Close() error      { return nil }
 func (r *validationResultRows) Next(out []driver.Value) error {
 	if len(r.values) == 0 {
+		if r.nextErr != nil {
+			err := r.nextErr
+			r.nextErr = nil
+			return err
+		}
 		return io.EOF
 	}
 	out[0] = r.values[0]
@@ -207,8 +219,26 @@ func TestValidateDatabaseCopyRequiresExactResults(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := validateDatabaseCopy(bounded(t), db); !errors.Is(err, ErrDatabaseCopyValidation) {
+		if err := validateDatabaseCopy(bounded(t), db); !errors.Is(err, ErrDatabaseCopyValidation) || errors.Is(err, ErrDatabaseCopyRelease) {
 			t.Fatal("invalid results accepted", tc, err)
 		}
+	}
+}
+
+func TestValidateDatabaseCopyAmbiguousIterationStopsRelease(t *testing.T) {
+	_, path := managedRecordStore(t)
+	cause := errors.New("synthetic iteration failure with successful Close")
+	name := fmt.Sprintf("copy-iteration-%d", faultDriverID.Add(1))
+	sql.Register(name, validationResultDriver{integrity: []string{"ok"}, nextErr: cause})
+	db, err := sql.Open(name, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = validateDatabaseCopy(bounded(t), db)
+	if !errors.Is(err, cause) || !errors.Is(err, ErrDatabaseCopyRelease) {
+		t.Fatal("ambiguous iteration lost", err)
+	}
+	if err := db.Ping(); err == nil {
+		t.Fatal("DB not closed")
 	}
 }

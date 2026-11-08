@@ -104,7 +104,7 @@ func TestDatabaseCopyCoversEmptyAndInvalidRecords(t *testing.T) {
 				}
 				return
 			}
-			if got != nil || !errors.Is(err, ErrDatabaseCopyCovers) {
+			if got != nil || !errors.Is(err, ErrDatabaseCopyCovers) || errors.Is(err, ErrDatabaseCopyRelease) {
 				t.Fatal(got, err)
 			}
 		})
@@ -125,7 +125,7 @@ func TestDatabaseCopyCoversPathAndCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(bounded(t))
 	cancel()
 	got, err := DatabaseCopyCovers(ctx, missing, 10)
-	if got != nil || !errors.Is(err, context.Canceled) {
+	if got != nil || !errors.Is(err, context.Canceled) || errors.Is(err, ErrDatabaseCopyRelease) {
 		t.Fatal(got, err)
 	}
 }
@@ -158,6 +158,9 @@ func TestDatabaseCopyCoversCleanupFailureDiscardsResults(t *testing.T) {
 			got, err := readDatabaseCopyCovers(ctx, db, 10)
 			if got != nil || !errors.Is(err, cause) {
 				t.Fatal(got, err)
+			}
+			if errors.Is(err, ErrDatabaseCopyRelease) != (mode != "cancel-close") {
+				t.Fatal("wrong release classification", err)
 			}
 			if err := db.Ping(); err == nil {
 				t.Fatal("connection not closed")

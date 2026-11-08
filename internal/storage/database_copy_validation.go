@@ -50,14 +50,14 @@ func databaseCopyReadOnlyDSN(path string) (string, error) {
 }
 
 func validateDatabaseCopy(ctx context.Context, db *sql.DB) (err error) {
-	defer func() { err = errors.Join(err, db.Close(), ctx.Err()) }()
+	defer func() { err = errors.Join(err, databaseCopyReleaseError(db.Close()), ctx.Err()) }()
 	// mode=ro enforces read-only even though this transaction uses default options.
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, tx.Rollback(), ctx.Err())
+		err = errors.Join(err, databaseCopyReleaseError(tx.Rollback()), ctx.Err())
 	}()
 	if err = checkCopyIntegrity(ctx, tx); err != nil {
 		return err
@@ -70,7 +70,7 @@ func checkCopyIntegrity(ctx context.Context, q rowQueryer) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
+	defer func() { err = errors.Join(err, databaseCopyReleaseError(rows.Close())) }()
 	count := 0
 	for rows.Next() {
 		var value string
@@ -83,7 +83,7 @@ func checkCopyIntegrity(ctx context.Context, q rowQueryer) (err error) {
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return err
+		return databaseCopyReleaseError(err)
 	}
 	if count != 1 {
 		return ErrDatabaseCopyValidation
@@ -96,9 +96,9 @@ func checkCopyForeignKeys(ctx context.Context, q rowQueryer) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
+	defer func() { err = errors.Join(err, databaseCopyReleaseError(rows.Close())) }()
 	if rows.Next() {
 		return ErrDatabaseCopyValidation
 	}
-	return rows.Err()
+	return databaseCopyReleaseError(rows.Err())
 }

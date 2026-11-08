@@ -58,6 +58,8 @@ func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, i
 		return result, err
 	}
 	result.Database, err = application.UseBackupDatabase(ctx, work, store, storage.ValidateDatabaseCopy, use)
-	released = result.Database.Cleanup.ReleaseConfirmed()
+	// The work's Windows handles do not establish release of SQL readers opened
+	// while validating or consuming the copy. Keep ambiguous SQL cleanup stopped.
+	released = result.Database.Cleanup.ReleaseConfirmed() && !errors.Is(err, storage.ErrDatabaseCopyRelease)
 	return result, err
 }
