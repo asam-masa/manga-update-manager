@@ -17,16 +17,21 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-// The test is the caller: production image operations are not wired yet.
+func coverStorageTestContext(t *testing.T) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	return ctx
+}
+
+// The test drives Store error notification directly, independently of production wiring.
 func TestCoverStorageErrorNotification(t *testing.T) {
 	for _, mode := range []string{"success", "busy", "input-rejection"} {
 		for _, remove := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/remove=%t", mode, remove), func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
 				path := filepath.Join(t.TempDir(), "fixture.sqlite")
 				dsn := path + "?_pragma=journal_mode(DELETE)&_pragma=busy_timeout(0)"
-				store, err := storage.Open(ctx, dsn)
+				store, err := storage.Open(coverStorageTestContext(t), dsn)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -36,18 +41,22 @@ func TestCoverStorageErrorNotification(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				work, err = store.CreateWork(ctx, work)
+				work, err = store.CreateWork(coverStorageTestContext(t), work)
 				if err != nil {
 					t.Fatal(err)
 				}
 				const id = "0123456789abcdef0123456789abcdef"
-				if err := store.ReserveManagedCover(ctx, id); err != nil {
+				if err := store.ReserveManagedCover(coverStorageTestContext(t), id); err != nil {
 					t.Fatal(err)
 				}
 				// Synthetic metadata; no image ownership or file safety is asserted.
-				if err := store.ConfirmManagedCover(ctx, id, storage.ManagedCoverInfo{ByteSize: 1}); err != nil {
+				if err := store.ConfirmManagedCover(coverStorageTestContext(t), id, storage.ManagedCoverInfo{ByteSize: 1}); err != nil {
 					t.Fatal(err)
 				}
+				// One context spans the observer Tx and the tested change. Do not
+				// cancel the observer before the SQLITE_BUSY assertion and rollback.
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
 				var reader *sql.Tx
 				if mode == "busy" {
 					observer, err := sql.Open("sqlite", path)
@@ -165,12 +174,12 @@ func TestCoverStorageErrorNotification(t *testing.T) {
 				if err := store.Close(); err != nil {
 					t.Fatal(err)
 				}
-				reopened, err := storage.Open(ctx, dsn)
+				reopened, err := storage.Open(coverStorageTestContext(t), dsn)
 				if err != nil {
 					t.Fatal(err)
 				}
 				defer reopened.Close()
-				after, err := reopened.WorkByID(ctx, work.ID)
+				after, err := reopened.WorkByID(coverStorageTestContext(t), work.ID)
 				if err != nil || !reflect.DeepEqual(after, want) {
 					t.Fatalf("persisted state: %#v %v", after, err)
 				}
