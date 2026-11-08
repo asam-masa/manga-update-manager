@@ -39,7 +39,7 @@ func DatabaseCopyCovers(ctx context.Context, path string, maxImages int) (covers
 
 func readDatabaseCopyCovers(ctx context.Context, db *sql.DB, maxImages int) (covers []ManagedCover, err error) {
 	defer func() {
-		err = errors.Join(err, db.Close(), ctx.Err())
+		err = errors.Join(err, databaseCopyReleaseError(db.Close()), ctx.Err())
 		if err != nil {
 			covers = nil
 		}
@@ -48,7 +48,7 @@ func readDatabaseCopyCovers(ctx context.Context, db *sql.DB, maxImages int) (cov
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, tx.Rollback(), ctx.Err()) }()
+	defer func() { err = errors.Join(err, databaseCopyReleaseError(tx.Rollback()), ctx.Err()) }()
 	return referencedCopyCovers(ctx, tx, maxImages)
 }
 
@@ -62,7 +62,7 @@ func referencedCopyCovers(ctx context.Context, q rowQueryer, maxImages int) (cov
 		return nil, err
 	}
 	defer func() {
-		err = errors.Join(err, rows.Close(), ctx.Err())
+		err = errors.Join(err, databaseCopyReleaseError(rows.Close()), ctx.Err())
 		if err != nil {
 			covers = nil
 		}
@@ -81,5 +81,5 @@ func referencedCopyCovers(ctx context.Context, q rowQueryer, maxImages int) (cov
 		}
 		covers = append(covers, cover)
 	}
-	return covers, rows.Err()
+	return covers, databaseCopyReleaseError(rows.Err())
 }
