@@ -40,13 +40,13 @@ func managementReadFixture(t *testing.T) (*Store, string, manga.Work, manga.Work
 }
 
 func TestTagManagementReadsAndReopen(t *testing.T) {
-	ctx := bounded(t)
+	// Bound each operation, not fixture creation and the entire assertion sequence.
 	empty, _ := managedRecordStore(t)
-	if got, err := empty.ListTagUsage(ctx); err != nil || got == nil || len(got) != 0 {
+	if got, err := empty.ListTagUsage(bounded(t)); err != nil || got == nil || len(got) != 0 {
 		t.Fatal(got, err)
 	}
 	s, path, w, other := managementReadFixture(t)
-	before, err := s.ListWorks(ctx)
+	before, err := s.ListWorks(bounded(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,38 +55,38 @@ func TestTagManagementReadsAndReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []TagUsage{{Tag: manga.Tag{ID: 1, Name: "共有"}, WorkCount: 2}, {Tag: manga.Tag{ID: 2, Name: "未使用"}}}
-	if got, err := s.ListTagUsage(ctx); err != nil || !reflect.DeepEqual(got, want) {
+	if got, err := s.ListTagUsage(bounded(t)); err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatal(got, err)
 	}
-	preview, err := s.PreviewTagDelete(ctx, 1)
+	preview, err := s.PreviewTagDelete(bounded(t), 1)
 	if err != nil || preview.Tag != want[0].Tag || !reflect.DeepEqual(preview.Works, []TagWork{{w.ID, w.CreatedAt, w.Title}, {other.ID, other.CreatedAt, other.Title}}) {
 		t.Fatal(preview, err)
 	}
-	if got, err := s.PreviewTagDelete(ctx, 2); err != nil || got.Tag != want[1].Tag || got.Works == nil || len(got.Works) != 0 {
+	if got, err := s.PreviewTagDelete(bounded(t), 2); err != nil || got.Tag != want[1].Tag || got.Works == nil || len(got.Works) != 0 {
 		t.Fatal(got, err)
 	}
-	if got, err := s.PreviewTagDelete(ctx, 999); !errors.Is(err, ErrTagNotFound) || !reflect.DeepEqual(got, TagDeletePreview{}) {
+	if got, err := s.PreviewTagDelete(bounded(t), 999); !errors.Is(err, ErrTagNotFound) || !reflect.DeepEqual(got, TagDeletePreview{}) {
 		t.Fatal(got, err)
 	}
 	var afterChanges int64
 	if err := s.db.QueryRow("SELECT total_changes()").Scan(&afterChanges); err != nil || afterChanges != changes {
 		t.Fatal("read mutated database", changes, afterChanges, err)
 	}
-	if got, err := s.ListWorks(ctx); err != nil || !reflect.DeepEqual(got, before) {
+	if got, err := s.ListWorks(bounded(t)); err != nil || !reflect.DeepEqual(got, before) {
 		t.Fatal(got, err)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := Open(ctx, path)
+	reopened, err := Open(bounded(t), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if got, err := reopened.ListTagUsage(ctx); err != nil || !reflect.DeepEqual(got, want) {
+	if got, err := reopened.ListTagUsage(bounded(t)); err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatal(got, err)
 	}
-	if got, err := reopened.PreviewTagDelete(ctx, 1); err != nil || !reflect.DeepEqual(got, preview) {
+	if got, err := reopened.PreviewTagDelete(bounded(t), 1); err != nil || !reflect.DeepEqual(got, preview) {
 		t.Fatal(got, err)
 	}
 }
