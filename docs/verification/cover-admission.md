@@ -49,3 +49,13 @@ Windows・Go 1.26.9・CGO無効で、同一作品と選択枠の重複、選択�
 Issue #135の`internal/application/cover_storage_integration_test.go`は、公開APIだけで一時SQLiteのStoreと受付部品を結ぶ。設定・解除それぞれに正常Commit、別接続の読取TxによるCommitのSQLITE_BUSY、入力拒否の6経路を用意する。テストの呼び出し元がStoreの実エラーを次段階開始・票完了より前に通知し、結果不明の印と元原因、新規画像受付・次段階の拒否、既存段階中の操作完了・終了拒否、読取完了待ち、再接続後の作品全項目を確認する。正常と入力拒否では誤停止しない。
 
 これは代表経路のテスト内接続であり、本番の呼び出し元を追加したものではない。テスト自身が通知順序を守っているため、順序を守らない本番経路の不存在を証明しない。段階票の完了はOS資源の解放成功の証明ではない。DB接続の安全性判定・隔離・DB待機処理の拒否、実OS故障、UI、全経路の競合は未検証で、ADR-0013はPendingを維持する。
+
+### 統合テストの期限（Issue #510、2026-11-08）
+
+PR #509の[CI初回](https://github.com/asam-masa/manga-update-manager/actions/runs/42442543761/attempts/1)では、input-rejection/remove=falseが30.37秒かかり、準備のReserveManagedCoverでcontext deadline exceededとなった。headは`8f4d34048b4a2e21c206567f8ee3b0268b356b27`。テストへの今回の差分はなく、ローカル20回と同じheadの[Windows再実行](https://github.com/asam-masa/manga-update-manager/actions/runs/42442543761/attempts/2)は成功した。遅延の原因と再現条件は未確定で、画像集約変更との因果は断定しない。
+
+旧テストはsubtest先頭の30秒期限を、DB接続・作品作成・管理画像の予約/確定から本検証・再接続確認まで共用していた。#510では準備の各DB操作にそれぞれ30秒のcontextを作り、準備完了後に本検証用の30秒contextを作る。再接続と最終読取にも別の期限を使う。テスト用contextは取消を登録し、製品の期限や共通helperを変更しない。
+
+busy用observer Txの開始・読取と検証対象の変更操作は、同じ本検証用contextを共有する。CommitのSQLITE_BUSY確認・エラー通知・受付/段階/終了の確認から明示Rollbackまで、そのcontextを途中で取り消さない。入力拒否、正常値、結果不明と元のBUSY原因、再接続後の全作品情報の確認内容は維持する。
+
+対象6ケースの反復、application全体と全Go試験・静的解析・ビルド、Windows CIで確認し、具体的なコマンド・対象版・結果はIssue #510とPRへ記録する。合成SQLiteだけを使用する。CIの遅延自体の解消を証明するものではなく、各準備操作や本検証の区間が30秒を超える場合の失敗は残る。この修正で画像操作の本番接続範囲やADRの検証状態を変更しない。
