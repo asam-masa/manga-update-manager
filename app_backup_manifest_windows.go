@@ -27,6 +27,16 @@ func (a *App) prepareBackupManifest(ctx context.Context, createdAt time.Time, ap
 func (a *App) runBackupManifest(ctx context.Context, createdAt time.Time, appVersion string,
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	load func(context.Context, string) ([]string, error),
+) (backupManifestRunResult, error) {
+	return a.useBackupManifest(ctx, createdAt, appVersion, create, load, func(context.Context, io.ReaderAt, string, []byte) error { return nil })
+}
+
+// use borrows the copy synchronously, before DB checks, cleanup and finish.
+// It must not publish a final backup or retain the reader after returning.
+func (a *App) useBackupManifest(ctx context.Context, createdAt time.Time, appVersion string,
+	create func(context.Context, string) (application.BackupDatabaseWork, error),
+	load func(context.Context, string) ([]string, error),
+	use func(context.Context, io.ReaderAt, string, []byte) error,
 ) (result backupManifestRunResult, err error) {
 	result.backupImagesRunResult, err = a.useBackupImages(ctx, create, application.InspectBackupCopyCovers,
 		func(ctx context.Context, reader io.ReaderAt, size int64, copyPath string, covers application.BackupCoverInventory) error {
@@ -37,7 +47,10 @@ func (a *App) runBackupManifest(ctx context.Context, createdAt time.Time, appVer
 			result.Manifest, err = application.BuildBackupManifest(ctx, reader, size, application.BackupManifestMetadata{
 				CreatedAt: createdAt, AppVersion: appVersion, Migrations: versions, Covers: covers,
 			})
-			return err
+			if err != nil {
+				return err
+			}
+			return use(ctx, reader, copyPath, result.Manifest)
 		})
 	if err != nil {
 		// Successful encoding is insufficient if later DB checks/cleanup/finish
