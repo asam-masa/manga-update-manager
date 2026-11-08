@@ -24,15 +24,28 @@ func (a *App) inspectBackupImages(ctx context.Context) (backupImagesRunResult, e
 func (a *App) runBackupImages(ctx context.Context,
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	inspect func(context.Context, string, string, *application.CoverOperations) (application.BackupCoverInventory, error),
+) (backupImagesRunResult, error) {
+	return a.useBackupImages(ctx, create, inspect, func(context.Context, io.ReaderAt, int64, string, application.BackupCoverInventory) error { return nil })
+}
+
+// use must be synchronous, borrow only, and never publish a completed backup.
+// Admission and DB work ownership outlive use, including all cleanup attempts.
+func (a *App) useBackupImages(ctx context.Context,
+	create func(context.Context, string) (application.BackupDatabaseWork, error),
+	inspect func(context.Context, string, string, *application.CoverOperations) (application.BackupCoverInventory, error),
+	use func(context.Context, io.ReaderAt, int64, string, application.BackupCoverInventory) error,
 ) (result backupImagesRunResult, err error) {
 	var copyPath, directory string
 	result.backupDatabaseRunResult, err = a.runBackupDatabase(ctx,
-		func(ctx context.Context, _ io.ReaderAt, _ int64) error {
+		func(ctx context.Context, reader io.ReaderAt, size int64) error {
 			// runBackupDatabase owns and validates the copy before calling use,
 			// and retains it and normal admission through image release/cleanup.
 			var err error
 			result.Covers, err = inspect(ctx, copyPath, directory, &a.coverOperations)
-			return err
+			if err != nil {
+				return err
+			}
+			return use(ctx, reader, size, copyPath, result.Covers)
 		},
 		func(ctx context.Context, root string) (application.BackupDatabaseWork, error) {
 			work, err := create(ctx, root)
