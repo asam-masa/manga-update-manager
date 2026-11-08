@@ -37,6 +37,13 @@ func PrepareCoverDirectory(ctx context.Context, directory string) (result io.Clo
 	return holdCoverDirectory(ctx, directory, true)
 }
 
+// HoldExistingCoverDirectory verifies and retains existing parents and covers,
+// including for an empty inventory. It never creates or repairs directories and
+// does not authorize image reads or replace application reference exclusion.
+func HoldExistingCoverDirectory(ctx context.Context, directory string) (io.Closer, error) {
+	return holdCoverDirectory(ctx, directory, false)
+}
+
 // Reads must not create a missing covers directory.
 func holdCoverDirectory(ctx context.Context, directory string, create bool) (result io.Closer, err error) {
 	if err := ctx.Err(); err != nil {
