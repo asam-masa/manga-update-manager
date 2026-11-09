@@ -26,6 +26,19 @@ func (a *App) runBackupArchive(ctx context.Context, dst io.Writer, createdAt tim
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	load func(context.Context, string) ([]storage.ManagedCover, error),
 ) (backupManifestRunResult, error) {
+	return a.useBackupArchive(ctx, createdAt, appVersion, create, load,
+		func(ctx context.Context, manifest []byte, reader io.ReaderAt, root string, records []storage.ManagedCover) error {
+			return application.WriteBackupArchiveWithOperations(ctx, dst, manifest, reader, root, records, &a.coverOperations)
+		})
+}
+
+// use is synchronous and runs before DB rechecks, cleanup and admission finish.
+// It may prepare output, but must not publish or retain the borrowed DB reader.
+func (a *App) useBackupArchive(ctx context.Context, createdAt time.Time, appVersion string,
+	create func(context.Context, string) (application.BackupDatabaseWork, error),
+	load func(context.Context, string) ([]storage.ManagedCover, error),
+	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
+) (backupManifestRunResult, error) {
 	return a.useBackupManifest(ctx, createdAt, appVersion, create, storage.DatabaseCopyMigrations,
 		func(ctx context.Context, reader io.ReaderAt, copyPath string, manifest []byte) error {
 			// SQL readers are closed before ZIP I/O. Preserve any SQL release mark
@@ -37,6 +50,6 @@ func (a *App) runBackupArchive(ctx context.Context, dst io.Writer, createdAt tim
 			a.mu.RLock()
 			root := a.dataDirectoryPath // Pinned at startup, never resolve again.
 			a.mu.RUnlock()
-			return application.WriteBackupArchiveWithOperations(ctx, dst, manifest, reader, root, records, &a.coverOperations)
+			return use(ctx, manifest, reader, root, records)
 		})
 }
