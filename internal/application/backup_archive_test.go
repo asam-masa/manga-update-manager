@@ -168,3 +168,40 @@ func TestPrepareBackupArchiveRejectsNonemptyAndEarlyCancellation(t *testing.T) {
 		}
 	}
 }
+
+func TestPrepareBackupArchiveOutputValidatesProducerResult(t *testing.T) {
+	manifest, data := backupPrepareFixture(t)
+	for _, mode := range []string{"valid", "invalid", "error"} {
+		t.Run(mode, func(t *testing.T) {
+			f := &backupPrepareMemory{}
+			cause := errors.New("synthetic producer failure")
+			calls := 0
+			m, err := PrepareBackupArchiveOutput(context.Background(), f, func(dst io.Writer) error {
+				calls++
+				if mode == "error" {
+					return cause
+				}
+				if mode == "invalid" {
+					_, err := dst.Write([]byte("not a ZIP"))
+					return err
+				}
+				return backup.WriteArchive(context.Background(), dst, manifest, func(string) (io.ReadCloser, error) {
+					return io.NopCloser(bytes.NewReader(data)), nil
+				})
+			})
+			if calls != 1 {
+				t.Fatal("producer repeated", calls)
+			}
+			if mode == "valid" {
+				if err != nil || m.Database.Size != int64(len(data)) {
+					t.Fatal(m, err)
+				}
+			} else if !errors.Is(err, ErrBackupPrepare) || !reflect.DeepEqual(m, backup.Manifest{}) {
+				t.Fatal("invalid output accepted", m, err)
+			}
+			if mode == "error" && (!errors.Is(err, cause) || !reflect.DeepEqual(f.log, []string{"identity", "size"})) {
+				t.Fatal("producer error lost or continued", f.log, err)
+			}
+		})
+	}
+}
