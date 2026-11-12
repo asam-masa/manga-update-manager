@@ -27,6 +27,16 @@ func (a *App) useBackupDatabase(ctx context.Context, use func(context.Context, i
 }
 
 func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error, create func(context.Context, string) (application.BackupDatabaseWork, error)) (result backupDatabaseRunResult, err error) {
+	return a.runBackupDatabaseFinalized(ctx, use, create, nil)
+}
+
+// finalize runs after all DB rechecks/cleanup, before releasing admission. It
+// must preserve the incoming error and report release of its own output handles.
+type backupDatabaseFinalizer func(error) (bool, error)
+
+func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error,
+	create func(context.Context, string) (application.BackupDatabaseWork, error), finalize backupDatabaseFinalizer,
+) (result backupDatabaseRunResult, err error) {
 	var op *application.BackupOperation
 	op, result.Warnings, err = a.beginBackup(ctx)
 	if err != nil {
@@ -36,6 +46,14 @@ func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, i
 	// confirmation even if it returns no owner. Never infer it from cancellation.
 	released := true
 	defer func() {
+		if finalize != nil {
+			if !released {
+				err = errors.Join(err, errBackupReleaseUnverified)
+			}
+			outputReleased, finalErr := finalize(errors.Join(err, ctx.Err()))
+			released = released && outputReleased
+			err = finalErr
+		}
 		result.FinishError = a.finishBackup(op, released)
 		// Cleanup does not rewrite the completed DB stage's outcome. Still pass
 		// cancellation observed during cleanup to this outer caller.

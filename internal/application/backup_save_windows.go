@@ -29,8 +29,17 @@ type BackupSaveResult struct {
 // A cleanup success never erases the original failure/cancellation. Unknown
 // publication is preserved; late cancellation never removes a published file.
 func SaveBackupArchive(ctx context.Context, file backupSaveFile, manifest []byte, open func(string) (io.ReadCloser, error)) (BackupSaveResult, error) {
-	r := BackupSaveResult{Publication: platform.BackupPublication{TemporaryPath: file.Path()}}
 	_, err := PrepareBackupArchive(ctx, file, manifest, open)
+	return FinishBackupArchive(ctx, file, err)
+}
+
+// FinishBackupArchive consumes the retained file after preparation and all source
+// rechecks/cleanup. A preparation error prevents publication but still requires
+// owned cleanup/release. The caller retains admission through this entire call.
+// Passing nil requires successful preparation of this same exclusively held file.
+func FinishBackupArchive(ctx context.Context, file backupSaveFile, preparationErr error) (BackupSaveResult, error) {
+	r := BackupSaveResult{Publication: platform.BackupPublication{TemporaryPath: file.Path()}}
+	err := preparationErr
 	if err == nil {
 		r.Publication, err = CompleteBackupArchive(ctx, file)
 		if r.Publication.State == platform.BackupPublishConfirmed {
