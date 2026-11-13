@@ -54,6 +54,7 @@ Codexの完了報告では、適した題材がある場合に学習ポイント
 ## 一覧
 
 - [JSONを読めることと、形式を検証できることを分ける](./backup-manifest.md)
+- [取消要求と処理完了を分ける](./backup-cancellation-order.md)
 - [見た目・操作・マージ条件を分ける](./browser-check-boundaries.md)
 - [Wailsアプリの画面とブラウザーの境界](./wails-runtime.md)
 - [作品モデルとSQLite保存を分離する](./sqlite-storage.md)
