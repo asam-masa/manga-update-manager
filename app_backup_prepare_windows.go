@@ -40,5 +40,5 @@ func (a *App) runBackupPrepare(ctx context.Context, file backupPrepareFile, crea
 				return application.WriteBackupArchiveWithOperations(ctx, dst, manifest, reader, root, records, &a.coverOperations)
 			})
 			return err
-		})
+		}, nil)
 }

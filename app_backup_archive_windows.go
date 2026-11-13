@@ -29,7 +29,7 @@ func (a *App) runBackupArchive(ctx context.Context, dst io.Writer, createdAt tim
 	return a.useBackupArchive(ctx, createdAt, appVersion, create, load,
 		func(ctx context.Context, manifest []byte, reader io.ReaderAt, root string, records []storage.ManagedCover) error {
 			return application.WriteBackupArchiveWithOperations(ctx, dst, manifest, reader, root, records, &a.coverOperations)
-		})
+		}, nil)
 }
 
 // use is synchronous and runs before DB rechecks, cleanup and admission finish.
@@ -38,6 +38,7 @@ func (a *App) useBackupArchive(ctx context.Context, createdAt time.Time, appVers
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	load func(context.Context, string) ([]storage.ManagedCover, error),
 	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
+	finalize backupDatabaseFinalizer,
 ) (backupManifestRunResult, error) {
 	return a.useBackupManifest(ctx, createdAt, appVersion, create, storage.DatabaseCopyMigrations,
 		func(ctx context.Context, reader io.ReaderAt, copyPath string, manifest []byte) error {
@@ -51,5 +52,5 @@ func (a *App) useBackupArchive(ctx context.Context, createdAt time.Time, appVers
 			root := a.dataDirectoryPath // Pinned at startup, never resolve again.
 			a.mu.RUnlock()
 			return use(ctx, manifest, reader, root, records)
-		})
+		}, finalize)
 }

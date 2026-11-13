@@ -28,7 +28,7 @@ func (a *App) runBackupManifest(ctx context.Context, createdAt time.Time, appVer
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	load func(context.Context, string) ([]string, error),
 ) (backupManifestRunResult, error) {
-	return a.useBackupManifest(ctx, createdAt, appVersion, create, load, func(context.Context, io.ReaderAt, string, []byte) error { return nil })
+	return a.useBackupManifest(ctx, createdAt, appVersion, create, load, func(context.Context, io.ReaderAt, string, []byte) error { return nil }, nil)
 }
 
 // use borrows the copy synchronously, before DB checks, cleanup and finish.
@@ -37,6 +37,7 @@ func (a *App) useBackupManifest(ctx context.Context, createdAt time.Time, appVer
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	load func(context.Context, string) ([]string, error),
 	use func(context.Context, io.ReaderAt, string, []byte) error,
+	finalize backupDatabaseFinalizer,
 ) (result backupManifestRunResult, err error) {
 	result.backupImagesRunResult, err = a.useBackupImages(ctx, create, application.InspectBackupCopyCovers,
 		func(ctx context.Context, reader io.ReaderAt, size int64, copyPath string, covers application.BackupCoverInventory) error {
@@ -51,7 +52,7 @@ func (a *App) useBackupManifest(ctx context.Context, createdAt time.Time, appVer
 				return err
 			}
 			return use(ctx, reader, copyPath, result.Manifest)
-		})
+		}, finalize)
 	if err != nil {
 		// Successful encoding is insufficient if later DB checks/cleanup/finish
 		// fail. The image path likewise clears its inventory on any outer error.
