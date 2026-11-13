@@ -48,7 +48,11 @@ Codexは初回の6基準画像を実際に開いて確認する。以後の通�
 
 ## 基盤の実行手順（#359）
 
-Playwright Test 1.64.1（Apache-2.0）を開発用依存として固定する。ブラウザー操作・アサーション・ブラウザー管理を揃えて使えるため採用した。Node.js要件は20以上で、プロジェクトのNode.js 24で満たす。取得元は[公式npmパッケージ](https://www.npmjs.com/package/@playwright/test/v/1.64.1)。
+Playwright Test 1.65.0（Apache-2.0）を開発用依存として固定する。ブラウザー操作・アサーション・ブラウザー管理を揃えて使えるため採用した。プロジェクトの実行環境はNode.js 24とし、固定版のCLIで対応Chromiumを取得する。取得元は[公式npmパッケージ](https://www.npmjs.com/package/@playwright/test/v/1.65.0)。#359の初回採用は1.64.1で、下記の日付付き検証結果は当時の記録として残す。
+
+2026-11-13、PR #534の更新版1.65.0と同梱Chromium 158.0.8127.18を確認した。固定head `853bb0a4bd7c95822c2c6d701c76f500fe32819b`の[Windows CI 43100816297](https://github.com/asam-masa/manga-update-manager/actions/runs/43100816297)は初回成功し、ブラウザー13試験を各3回、計39試験（6画面の画像比較を含む）が成功した。基準画像・比較条件は変更していない。CI同梱の基準画像の代表例と、差分なしの比較結果を確認した。これは実WebView2の検証ではない。
+
+ローカルWindows/Node.js 24.22.1でも`npm ci`、Vitest 439件、製品ビルド、`npm --prefix frontend run test:browser -- --grep-invert '配置と画像' --repeat-each=3`の代表操作21件が成功した。ローカルの画像比較は実施せず、画像比較はWindows CIの結果として区別する。[公式リリースノート](https://github.com/microsoft/playwright/releases/tag/v1.65.0)のclass field・inert待機・アクセシブル名等の変更を既存利用と照合し、テストや閾値を緩和せず確認した範囲である。更新後も実Wails・IME・ネイティブダイアログ等の未検証境界を手動確認から外さない。
 
 ```powershell
 npm --prefix frontend ci
