@@ -23,6 +23,7 @@ type backupSaveFile interface {
 type backupSaveRunResult struct {
 	backupManifestRunResult
 	Save                   application.BackupSaveResult
+	Omissions              backupOmissionObservation
 	OutputCreationError    error
 	OutputReleaseConfirmed bool
 }
@@ -42,9 +43,17 @@ func (a *App) runBackupSave(ctx context.Context, destination string, createdAt t
 	createWork func(context.Context, string) (application.BackupDatabaseWork, error),
 	createOutput func(context.Context, string) (backupSaveFile, error),
 ) (result backupSaveRunResult, err error) {
+	return a.runBackupSaveObserved(ctx, destination, createdAt, appVersion, createWork, createOutput, storage.DatabaseCopyCoverWorks)
+}
+
+func (a *App) runBackupSaveObserved(ctx context.Context, destination string, createdAt time.Time, appVersion string,
+	createWork func(context.Context, string) (application.BackupDatabaseWork, error),
+	createOutput func(context.Context, string) (backupSaveFile, error),
+	loadDetails func(context.Context, string, []string) ([]storage.CopyCoverWork, error),
+) (result backupSaveRunResult, err error) {
 	var file backupSaveFile
 	result.OutputReleaseConfirmed = true // No output handles acquired yet.
-	result.backupManifestRunResult, err = a.useBackupArchive(ctx, createdAt, appVersion, createWork,
+	result.backupManifestRunResult, err = a.useBackupArchiveObserved(ctx, createdAt, appVersion, createWork,
 		func(ctx context.Context, copyPath string) ([]storage.ManagedCover, error) {
 			return storage.DatabaseCopyCovers(ctx, copyPath, backup.MaxImages)
 		}, func(ctx context.Context, manifest []byte, reader io.ReaderAt, root string, records []storage.ManagedCover) error {
@@ -67,6 +76,10 @@ func (a *App) runBackupSave(ctx context.Context, destination string, createdAt t
 			}
 			result.OutputReleaseConfirmed = !errors.Is(err, platform.ErrBackupTempRelease) && !errors.Is(err, platform.ErrBackupDirectoryRelease)
 			return result.OutputReleaseConfirmed, err
+		}, func(ctx context.Context, copyPath string, manifest []byte) error {
+			var detailErr error
+			result.Omissions, detailErr = a.observeBackupOmissions(ctx, copyPath, manifest, loadDetails)
+			return detailErr
 		})
 	return result, err
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/asam-masa/manga-update-manager/internal/application"
 	"github.com/asam-masa/manga-update-manager/internal/backup"
 	"github.com/asam-masa/manga-update-manager/internal/platform"
+	"github.com/asam-masa/manga-update-manager/internal/storage"
 )
 
 func waitBackupRun(t *testing.T, done <-chan struct{}) {
@@ -46,6 +47,8 @@ func TestBackupRunRetainsOutcomes(t *testing.T) {
 			original.Manifest = []byte("synthetic-metadata")
 			original.Covers.Images = []backup.Image{{ID: "image", Path: "synthetic-image"}}
 			original.Covers.OmittedImages = []backup.OmittedImage{{ID: "omitted", Reason: "missing"}}
+			original.Omissions = backupOmissionObservation{Known: true, Images: []backup.OmittedImage{{ID: "shared", Reason: "corrupt"}},
+				WorkNamesState: backupWorkNamesAvailable, Works: []storage.CopyCoverWork{{CoverID: "shared", WorkID: 1, Title: "保存時1"}, {CoverID: "shared", WorkID: 2, Title: "保存時2"}}}
 			original.Database.OperationError, original.Database.CleanupError = cause, cause
 			original.CreationError, original.FinishError, original.OutputCreationError = cause, cause, cause
 			run, err := s.start(context.Background(), "chosen.zip", func(context.Context, application.BackupExecutionID) (backupSaveRunResult, error) {
@@ -65,6 +68,8 @@ func TestBackupRunRetainsOutcomes(t *testing.T) {
 			view.result.save.Covers.Images[0].Path = "changed"
 			view.result.save.Covers.OmittedImages[0].Reason = "changed"
 			view.result.save.Save.Cleanup.Absent = true
+			view.result.save.Omissions.Images[0].Reason = "changed"
+			view.result.save.Omissions.Works[0].Title = "changed"
 			if !reflect.DeepEqual(s.snapshot().result.save, original) {
 				t.Fatal("snapshot aliased retained metadata")
 			}
@@ -72,7 +77,8 @@ func TestBackupRunRetainsOutcomes(t *testing.T) {
 			original.Manifest[0], original.Warnings[0].Message = 'Y', "changed"
 			original.Covers.Images[0].Path, original.Covers.OmittedImages[0].Reason = "changed", "changed"
 			original.Save.Cleanup.Absent = true
-			if got := s.snapshot().result.save; string(got.Manifest) != "synthetic-metadata" || got.Warnings[0].Message != "retained" || got.Covers.Images[0].Path != "synthetic-image" || got.Covers.OmittedImages[0].Reason != "missing" || got.Save.Cleanup.Absent {
+			original.Omissions.Images[0].Reason, original.Omissions.Works[0].Title = "changed", "changed"
+			if got := s.snapshot().result.save; string(got.Manifest) != "synthetic-metadata" || got.Warnings[0].Message != "retained" || got.Covers.Images[0].Path != "synthetic-image" || got.Covers.OmittedImages[0].Reason != "missing" || got.Save.Cleanup.Absent || got.Omissions.Images[0].Reason != "corrupt" || got.Omissions.Works[0].Title != "保存時1" || got.Omissions.Works[1].Title != "保存時2" {
 				t.Fatal("worker metadata aliased retained result")
 			}
 		})

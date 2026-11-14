@@ -142,6 +142,8 @@ func cloneBackupSaveRunResult(result backupSaveRunResult) backupSaveRunResult {
 	result.Manifest = bytes.Clone(result.Manifest)
 	result.Covers.Images = slices.Clone(result.Covers.Images)
 	result.Covers.OmittedImages = slices.Clone(result.Covers.OmittedImages)
+	result.Omissions.Images = slices.Clone(result.Omissions.Images)
+	result.Omissions.Works = slices.Clone(result.Omissions.Works)
 	if result.Save.Cleanup != nil {
 		cleanup := *result.Save.Cleanup
 		result.Save.Cleanup = &cleanup
