@@ -27,7 +27,7 @@ func (a *App) useBackupDatabase(ctx context.Context, use func(context.Context, i
 }
 
 func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error, create func(context.Context, string) (application.BackupDatabaseWork, error)) (result backupDatabaseRunResult, err error) {
-	return a.runBackupDatabaseFinalized(ctx, use, create, nil)
+	return a.runBackupDatabaseFinalized(ctx, use, create, nil, nil)
 }
 
 // finalize runs after all DB rechecks/cleanup, before releasing admission. It
@@ -35,9 +35,10 @@ func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, i
 type backupDatabaseFinalizer func(error) (bool, error)
 
 func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error,
-	create func(context.Context, string) (application.BackupDatabaseWork, error), finalize backupDatabaseFinalizer,
+	create func(context.Context, string) (application.BackupDatabaseWork, error), finalize backupDatabaseFinalizer, report application.BackupProgress,
 ) (result backupDatabaseRunResult, err error) {
 	var op *application.BackupOperation
+	report.Notify(backupStageWaiting)
 	op, result.Warnings, err = a.beginBackup(ctx)
 	if err != nil {
 		return result, err
@@ -66,6 +67,7 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 		return result, unavailableError()
 	}
 	released = false
+	report.Notify(backupStagePreparing)
 	work, err := create(ctx, directory)
 	if err != nil {
 		result.CreationError = err
@@ -75,7 +77,7 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 		}
 		return result, err
 	}
-	result.Database, err = application.UseBackupDatabase(ctx, work, store, storage.ValidateDatabaseCopy, use)
+	result.Database, err = application.UseBackupDatabaseWithProgress(ctx, work, store, storage.ValidateDatabaseCopy, use, report)
 	// The work's Windows handles do not establish release of SQL readers opened
 	// while validating or consuming the copy. Keep ambiguous SQL cleanup stopped.
 	released = result.Database.Cleanup.ReleaseConfirmed() && !errors.Is(err, storage.ErrDatabaseCopyRelease)

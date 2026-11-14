@@ -37,8 +37,13 @@ type BackupDatabaseResult struct {
 // use is synchronous and must not retain the reader or publish a completed backup.
 // Stage observations do not mean publication or authorize resuming normal work.
 func UseBackupDatabase(ctx context.Context, work BackupDatabaseWork, copier backupDatabaseCopier, validate func(context.Context, string) error, use func(context.Context, io.ReaderAt, int64) error) (result BackupDatabaseResult, err error) {
+	return UseBackupDatabaseWithProgress(ctx, work, copier, validate, use, nil)
+}
+
+func UseBackupDatabaseWithProgress(ctx context.Context, work BackupDatabaseWork, copier backupDatabaseCopier, validate func(context.Context, string) error, use func(context.Context, io.ReaderAt, int64) error, report BackupProgress) (result BackupDatabaseResult, err error) {
 	defer func() {
 		result.OperationError = err
+		report.Notify(BackupStageCleanup)
 		result.Cleanup, result.CleanupError = work.Cleanup()
 		err = errors.Join(err, result.CleanupError)
 		if err != nil {
@@ -62,6 +67,7 @@ func UseBackupDatabase(ctx context.Context, work BackupDatabaseWork, copier back
 	if err = ctx.Err(); err != nil {
 		return result, err
 	}
+	report.Notify(BackupStageDatabase)
 	if err = copier.CopyDatabase(ctx, path); err != nil {
 		return result, err
 	}
@@ -82,6 +88,7 @@ func UseBackupDatabase(ctx context.Context, work BackupDatabaseWork, copier back
 	if err = ctx.Err(); err != nil {
 		return result, err
 	}
+	report.Notify(BackupStageDatabaseCheck)
 	if err = validate(ctx, path); err != nil {
 		return result, err
 	}
@@ -99,6 +106,7 @@ func UseBackupDatabase(ctx context.Context, work BackupDatabaseWork, copier back
 		return result, err
 	}
 	result.Consumed = true
+	report.Notify(BackupStageDatabaseCheck)
 	if err = verifyBackupDatabaseSize(work, size); err != nil {
 		return result, err
 	}

@@ -6,15 +6,18 @@ import (
 	"github.com/asam-masa/manga-update-manager/internal/application"
 )
 
-type backupStage string
+type backupStage = application.BackupStage
 
 const (
-	backupStageWaiting    backupStage = "waiting"
-	backupStageDatabase   backupStage = "database"
-	backupStageImages     backupStage = "images"
-	backupStageZIP        backupStage = "zip"
-	backupStagePublishing backupStage = "publishing"
-	backupStageCleanup    backupStage = "cleanup"
+	backupStageWaiting       = application.BackupStageWaiting
+	backupStagePreparing     = application.BackupStagePreparing
+	backupStageDatabase      = application.BackupStageDatabase
+	backupStageDatabaseCheck = application.BackupStageDatabaseCheck
+	backupStageImages        = application.BackupStageImages
+	backupStageMetadata      = application.BackupStageMetadata
+	backupStageZIP           = application.BackupStageZIP
+	backupStagePublishing    = application.BackupStagePublishing
+	backupStageCleanup       = application.BackupStageCleanup
 )
 
 // Empty Stage means no stage was observed, never completion or a frozen worker.
@@ -43,7 +46,7 @@ func backupElapsed(start, now time.Time) time.Duration {
 // reorder work or advance the execution gate to make the display look linear.
 func (s *backupRunState) reportStage(id application.BackupExecutionID, stage backupStage) bool {
 	switch stage {
-	case backupStageWaiting, backupStageDatabase, backupStageImages, backupStageZIP, backupStagePublishing, backupStageCleanup:
+	case backupStageWaiting, backupStagePreparing, backupStageDatabase, backupStageDatabaseCheck, backupStageImages, backupStageMetadata, backupStageZIP, backupStagePublishing, backupStageCleanup:
 	default:
 		return false
 	}
