@@ -6,6 +6,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/application"
 	"github.com/asam-masa/manga-update-manager/internal/platform"
@@ -29,6 +30,7 @@ type backupRunSnapshot struct {
 	execution   application.BackupExecutionSnapshot
 	destination string
 	result      *backupRunResult // Nil while running, including cancellation cleanup.
+	progress    backupRunProgress
 }
 
 // backupRunState retains one run in memory. Do not copy after use. The worker
@@ -41,6 +43,10 @@ type backupRunState struct {
 	destination string
 	result      *backupRunResult // Immutable after assignment; cloned outside mu.
 	closed      bool
+	now         func() time.Time // Fixed before use; never invoked under mu.
+	startedAt   time.Time
+	elapsed     time.Duration // Frozen only when result storage finishes.
+	stage       backupStage
 }
 
 // start is called only after destination selection and start admission. A caller
@@ -53,6 +59,7 @@ func (s *backupRunState) start(appContext context.Context, destination string,
 	if work == nil {
 		return backupRun{}, errBackupWorkerRequired
 	}
+	now := s.clockNow()
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -72,6 +79,7 @@ func (s *backupRunState) start(appContext context.Context, destination string,
 		return backupRun{}, err
 	}
 	s.destination, s.result = destination, nil
+	s.startedAt, s.elapsed, s.stage = now, 0, ""
 	s.mu.Unlock()
 	done := make(chan struct{})
 	go func() {
@@ -84,21 +92,30 @@ func (s *backupRunState) start(appContext context.Context, destination string,
 
 func (s *backupRunState) finish(id application.BackupExecutionID, result backupSaveRunResult, err error) {
 	owned := &backupRunResult{save: cloneBackupSaveRunResult(result), err: err}
+	now := s.clockNow()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.executions.Finish(id) && !s.closed {
 		// Snapshot cannot observe Finished without its matching result.
 		s.result = owned
+		s.elapsed = backupElapsed(s.startedAt, now)
 	}
 }
 
 func (s *backupRunState) snapshot() backupRunSnapshot {
+	now := s.clockNow()
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
 		return backupRunSnapshot{}
 	}
 	view := backupRunSnapshot{execution: s.executions.Snapshot(), destination: s.destination}
+	if view.execution.ID != 0 {
+		view.progress = backupRunProgress{Stage: s.stage, Elapsed: s.elapsed}
+		if view.execution.State != application.BackupExecutionFinished {
+			view.progress.Elapsed = backupElapsed(s.startedAt, now)
+		}
+	}
 	stored := s.result
 	s.mu.Unlock()
 	if stored != nil {
@@ -132,6 +149,7 @@ func (s *backupRunState) close() {
 	s.mu.Lock()
 	s.closed = true
 	s.result, s.destination = nil, ""
+	s.startedAt, s.elapsed, s.stage = time.Time{}, 0, ""
 	id := s.executions.Snapshot().ID
 	s.mu.Unlock()
 	s.executions.Cancel(id)

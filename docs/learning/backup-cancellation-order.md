@@ -36,6 +36,14 @@ Goの構造体をコピーしても、スライスの元配列やポインター
 
 `TestAppBackupRunCloseProtectsOutcomeStorage`は、この狭い隙間を実行速度に頼らず模型にして検証する。shutdown時は結果を消すだけでなく、後から届く完了が結果を復活させない条件も必要になる。実ファイルの公開入口との結合は、この寿命試験とは別に確認する。
 
+## 進捗の通知と実行制御を分ける（#565）
+
+`app_backup_progress_windows.go`の`reportStage`と、`BackupExecutions.BeginPublication`を比較する。「保存確定の段階を通知した」という値だけでは、取消と保存確定の先後を保証できない。画面の段階と取消可否は、別の役割を持つ情報として読む。
+
+`backupRunState`の`start`・`finish`・`snapshot`では、時計を取得してからロックを取る。試験用の時計も関数なので、ロック内で呼ぶと待機や再入の原因になり得る。`TestBackupProgressClockOutsideLock`で、時計が所有者のロックを取れることを確認する。取得時刻とロック取得には隙間があるため、厳密な時刻の保証ではない。
+
+`TestBackupProgressLifetime`は、取消後もworkerを待たせ、経過が増え続けることと、結果保持後に固定されることを合成時計で確認する。実時間のSleepに頼らず、この区別を再現できる理由を考えてみる。開始待ち以外の実処理通知と公開API/UIは後続である。
+
 ## 成果物と観測を別々に残す（#559）
 
 `app_backup_save_windows.go`から`observeBackupOmissions`、`cloneBackupSaveRunResult`の順に読む。保存に使える目録・画像一覧と、「除外を確認した」という事実は役割が異なる。公開後の同期で失敗すると、準備成果物は破棄しても、除外理由や保存時の作品名を診断用に残せる。

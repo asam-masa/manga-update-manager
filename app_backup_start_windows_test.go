@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/asam-masa/manga-update-manager/internal/application"
 	"github.com/asam-masa/manga-update-manager/internal/platform"
@@ -18,6 +19,7 @@ func syntheticBackupSuccess(context.Context, application.BackupExecutionID) (bac
 
 func TestAppBackupRunCancellationLifetime(t *testing.T) {
 	a := testApp(t, t.TempDir())
+	a.backupRuns.now = func() time.Time { return time.Time{} }
 	if _, err := a.LoadCoverWarnings(); err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +56,9 @@ func TestAppBackupRunCancellationLifetime(t *testing.T) {
 	waitBackupRun(t, entered)
 	assertBackupImagesPaused(t, a)
 	before := a.backupRuns.snapshot()
+	if before.progress.Stage != backupStageWaiting || before.progress.Elapsed != 0 {
+		t.Fatal("actual preflight was not reported", before)
+	}
 	if _, err := a.startBackupRun("duplicate.zip", syntheticBackupSuccess); !errors.Is(err, application.ErrBackupBusy) || !reflect.DeepEqual(before, a.backupRuns.snapshot()) {
 		t.Fatal("duplicate changed active run", err)
 	}
