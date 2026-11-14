@@ -11,7 +11,8 @@ var errBackupCleanupUnverified = errors.New("backup startup cleanup unverified")
 var errBackupReleaseUnverified = errors.New("backup resource release unverified")
 
 // prepareBackupCleanup does not reserve backup admission or permit acquisition.
-// The caller must subsequently reserve, drain, and check DB/image stop state.
+// The caller separately owns close exclusion, then drains normal operations and
+// checks DB/image stop state after cleanup returns.
 // Once cleanup starts, cancellation is observed after joining its resource release;
 // it never rolls back or abandons cleanup in a detached goroutine.
 func (a *App) prepareBackupCleanup(ctx context.Context) ([]CoverWarningDTO, error) {
@@ -36,12 +37,26 @@ func (a *App) prepareBackupCleanup(ctx context.Context) ([]CoverWarningDTO, erro
 // beginBackup holds the reservation through acquisition, saving and all resource
 // release by its caller. No public Wails API exposes this internal entry yet.
 func (a *App) beginBackup(ctx context.Context) (*application.BackupOperation, []CoverWarningDTO, error) {
+	// Before startup completes there is no accepted backup reservation. Preserve
+	// normal close as a possible release of the startup wait.
+	select {
+	case <-a.startupFinished:
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
+	}
+	op, err := a.operationGate.ReserveBackup(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Cleanup enters as a normal operation. Reserve close/duplicates first, but
+	// do not pause normal admission until cleanup and all of its releases return.
 	warnings, err := a.prepareBackupCleanup(ctx)
 	if err != nil {
+		op.End()
 		return nil, warnings, err
 	}
-	op, err := a.operationGate.BeginBackup(ctx)
-	if err != nil {
+	if err := op.PauseAndWait(ctx); err != nil {
+		op.End()
 		return nil, warnings, err
 	}
 	if err := a.checkBackupState(ctx); err != nil {
