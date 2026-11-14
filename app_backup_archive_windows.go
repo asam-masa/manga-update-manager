@@ -40,8 +40,25 @@ func (a *App) useBackupArchive(ctx context.Context, createdAt time.Time, appVers
 	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
 	finalize backupDatabaseFinalizer,
 ) (backupManifestRunResult, error) {
+	return a.useBackupArchiveObserved(ctx, createdAt, appVersion, create, load, use, finalize, nil)
+}
+
+func (a *App) useBackupArchiveObserved(ctx context.Context, createdAt time.Time, appVersion string,
+	create func(context.Context, string) (application.BackupDatabaseWork, error),
+	load func(context.Context, string) ([]storage.ManagedCover, error),
+	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
+	finalize backupDatabaseFinalizer,
+	observe func(context.Context, string, []byte) error,
+) (backupManifestRunResult, error) {
 	return a.useBackupManifest(ctx, createdAt, appVersion, create, storage.DatabaseCopyMigrations,
 		func(ctx context.Context, reader io.ReaderAt, copyPath string, manifest []byte) error {
+			// Capture confirmed observations before later metadata/output failures
+			// can invalidate prepared artifacts. Observation never permits saving.
+			if observe != nil {
+				if err := observe(ctx, copyPath, manifest); err != nil {
+					return err
+				}
+			}
 			// SQL readers are closed before ZIP I/O. Preserve any SQL release mark
 			// for runBackupDatabase's final admission decision.
 			records, err := load(ctx, copyPath)

@@ -36,13 +36,21 @@ Goの構造体をコピーしても、スライスの元配列やポインター
 
 `TestAppBackupRunCloseProtectsOutcomeStorage`は、この狭い隙間を実行速度に頼らず模型にして検証する。shutdown時は結果を消すだけでなく、後から届く完了が結果を復活させない条件も必要になる。実ファイルの公開入口との結合は、この寿命試験とは別に確認する。
 
+## 成果物と観測を別々に残す（#559）
+
+`app_backup_save_windows.go`から`observeBackupOmissions`、`cloneBackupSaveRunResult`の順に読む。保存に使える目録・画像一覧と、「除外を確認した」という事実は役割が異なる。公開後の同期で失敗すると、準備成果物は破棄しても、除外理由や保存時の作品名を診断用に残せる。
+
+`TestAppBackupOmissionOutcomes`では、作品名が読めない場合とSQL解放が未確認の場合を比較する。どちらも画面に作品名を出せないが、後者を警告だけにすると通常操作を安全に再開できる根拠まで失う。`DetailError`と外側へ返すエラーを分ける理由を説明してみる。
+
+保持時と取得時にスライスをコピーすることも確認する。値を観測用として分離しても、元配列を共有すると呼出し側から過去の結果を書き換えられる。この部品の検証だけで、公開APIや実行workerとの接続まで完了したとは扱わない。
+
 ## 本文を受け取る前に長さを調べる（#558）
 
 `internal/storage/database_copy_cover_works.go`の`copyCoverWorks`で、SQLの`CASE`から`rows.Scan`、合計サイズの検査へ読む。受信後に`len(title)`だけを検査すると、極端に長いタイトルは検査前にGoへ渡ってしまう。SQL側で長さに応じて本文をNULLにし、Goでは長さから上限超過を判別する。
 
 SQLiteの`length(TEXT)`は文字数を扱い、途中のNULにも注意が必要になる。ここでは`length(CAST(title AS BLOB))`でバイト数を扱う。CASEの遅延評価は[SQLite公式仕様](https://www.sqlite.org/lang_expr.html#the_case_expression)を参照する。これはGoへ渡す本文の制限であり、SQLite内部の全メモリ使用量を8MiB以内に保証する仕組みではない。
 
-`TestCopyCoverWorksByteBoundaries`と`TestCopyCoverWorksReadAndCleanupFaults`を比べ、「上限に達した」と「接続を解放できたか不明」を同じ警告にまとめてはいけない理由を説明してみる。現在は読取部品だけであり、保存続行の最終判断や画面表示は後続である。
+`TestCopyCoverWorksByteBoundaries`と`TestCopyCoverWorksReadAndCleanupFaults`を比べ、「上限に達した」と「接続を解放できたか不明」を同じ警告にまとめてはいけない理由を説明してみる。#558は読取部品の実装であり、上記#559で結果保持と内部保存経路の判断を追加した。実行workerとの接続・公開API・画面表示は後続である。
 
 ## 詳細が見えないことと、保存できないことを分ける（#557）
 
