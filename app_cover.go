@@ -201,6 +201,9 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	// Once claimed, normal close must not cancel or wait out the running cleanup.
 	var done <-chan struct{}
 	normalDone, err := a.operationGate.RequestClose(func() error {
+		if a.backupRuns.busy() {
+			return application.ErrBackupBusy
+		}
 		var closeErr error
 		done, closeErr = a.workOperations.RequestClose(func() (<-chan struct{}, error) {
 			if a.coverCleanupTicket != nil && a.coverCleanupPhase.CompareAndSwap(0, 2) {

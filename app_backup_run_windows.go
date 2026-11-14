@@ -8,9 +8,12 @@ import (
 	"sync"
 
 	"github.com/asam-masa/manga-update-manager/internal/application"
+	"github.com/asam-masa/manga-update-manager/internal/platform"
 )
 
 var errBackupWorkerRequired = errors.New("backup worker required")
+var errBackupRunsClosed = errors.New("backup execution owner closed")
+var errBackupRetryUnsafe = errors.New("backup publication must be checked before retry")
 
 type backupRun struct {
 	id   application.BackupExecutionID
@@ -31,12 +34,13 @@ type backupRunSnapshot struct {
 // backupRunState retains one run in memory. Do not copy after use. The worker
 // owns its I/O and must return only after all cleanup/release attempts. Errors
 // and their diagnostic chains are read-only; mutable result metadata is copied.
-// This is not wired into App, OperationGate, native publication or Wails yet.
+// App owns this state; native publication and Wails are not connected yet.
 type backupRunState struct {
 	mu          sync.Mutex
 	executions  application.BackupExecutions
 	destination string
 	result      *backupRunResult // Immutable after assignment; cloned outside mu.
+	closed      bool
 }
 
 // start is called only after destination selection and start admission. A caller
@@ -50,6 +54,18 @@ func (s *backupRunState) start(appContext context.Context, destination string,
 		return backupRun{}, errBackupWorkerRequired
 	}
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return backupRun{}, errBackupRunsClosed
+	}
+	if s.result != nil {
+		switch s.result.save.Save.Publication.State {
+		case platform.BackupPublishNotAttempted, platform.BackupPublishCollision, platform.BackupPublishConfirmed:
+		default:
+			s.mu.Unlock()
+			return backupRun{}, errBackupRetryUnsafe
+		}
+	}
 	id, ctx, err := s.executions.Begin(appContext)
 	if err != nil {
 		s.mu.Unlock()
@@ -70,7 +86,7 @@ func (s *backupRunState) finish(id application.BackupExecutionID, result backupS
 	owned := &backupRunResult{save: cloneBackupSaveRunResult(result), err: err}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.executions.Finish(id) {
+	if s.executions.Finish(id) && !s.closed {
 		// Snapshot cannot observe Finished without its matching result.
 		s.result = owned
 	}
@@ -78,6 +94,10 @@ func (s *backupRunState) finish(id application.BackupExecutionID, result backupS
 
 func (s *backupRunState) snapshot() backupRunSnapshot {
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return backupRunSnapshot{}
+	}
 	view := backupRunSnapshot{execution: s.executions.Snapshot(), destination: s.destination}
 	stored := s.result
 	s.mu.Unlock()
@@ -95,6 +115,26 @@ func (s *backupRunState) cancel(id application.BackupExecutionID) application.Ba
 // This component alone does not prevent an ungated native call.
 func (s *backupRunState) beginPublication(id application.BackupExecutionID) bool {
 	return s.executions.BeginPublication(id)
+}
+
+// busy is a short control check; do not clone outcome data in RequestClose.
+// It never acquires App or OperationGate locks.
+func (s *backupRunState) busy() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state := s.executions.Snapshot().State
+	return state != application.BackupExecutionIdle && state != application.BackupExecutionFinished
+}
+
+// Normal shutdown is admitted only after completion. If shutdown bypasses that
+// protocol, request cooperative cancellation but never revive a late result.
+func (s *backupRunState) close() {
+	s.mu.Lock()
+	s.closed = true
+	s.result, s.destination = nil, ""
+	id := s.executions.Snapshot().ID
+	s.mu.Unlock()
+	s.executions.Cancel(id)
 }
 
 func cloneBackupSaveRunResult(result backupSaveRunResult) backupSaveRunResult {

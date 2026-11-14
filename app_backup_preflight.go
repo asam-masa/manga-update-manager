@@ -48,22 +48,30 @@ func (a *App) beginBackup(ctx context.Context) (*application.BackupOperation, []
 	if err != nil {
 		return nil, nil, err
 	}
-	// Cleanup enters as a normal operation. Reserve close/duplicates first, but
-	// do not pause normal admission until cleanup and all of its releases return.
-	warnings, err := a.prepareBackupCleanup(ctx)
+	warnings, err := a.prepareReservedBackup(ctx, op)
 	if err != nil {
 		op.End()
 		return nil, warnings, err
 	}
+	return op, warnings, nil
+}
+
+// The caller owns op through this call and ends it on failure only after cleanup
+// has returned. This shared path does not start a second reservation.
+func (a *App) prepareReservedBackup(ctx context.Context, op *application.BackupOperation) ([]CoverWarningDTO, error) {
+	// Cleanup enters as a normal operation. Reserve close/duplicates first, but
+	// do not pause normal admission until cleanup and all of its releases return.
+	warnings, err := a.prepareBackupCleanup(ctx)
+	if err != nil {
+		return warnings, err
+	}
 	if err := op.PauseAndWait(ctx); err != nil {
-		op.End()
-		return nil, warnings, err
+		return warnings, err
 	}
 	if err := a.checkBackupState(ctx); err != nil {
-		op.End()
-		return nil, warnings, err
+		return warnings, err
 	}
-	return op, warnings, nil
+	return warnings, nil
 }
 
 func (a *App) checkBackupState(ctx context.Context) error {

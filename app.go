@@ -35,6 +35,7 @@ type App struct {
 	workOperations         application.WorkOperations
 	operationGate          application.OperationGate
 	coverProgress          coverProgressState
+	backupRuns             backupRunState
 	chooseCover            func(context.Context) (string, error)
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)
@@ -108,6 +109,7 @@ func (a *App) shutdown(_ context.Context) {
 	// Wails starts OnStartup asynchronously. A queued callback must never
 	// reopen storage after shutdown (and the production storage lock release).
 	a.stopped = true
+	a.backupRuns.close()
 	a.coverCleanupPhase.CompareAndSwap(0, 2)
 	a.startupFinishedOnce.Do(func() { close(a.startupFinished) })
 	if a.coverCleanupTicket != nil {
