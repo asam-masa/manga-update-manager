@@ -103,11 +103,21 @@ func (s *backupRunState) finish(id application.BackupExecutionID, result backupS
 }
 
 func (s *backupRunState) snapshot() backupRunSnapshot {
+	view, stored := s.inspect()
+	if stored != nil {
+		view.result = &backupRunResult{save: cloneBackupSaveRunResult(stored.save), err: stored.err}
+	}
+	return view
+}
+
+// inspect captures one generation without cloning its potentially large result.
+// stored is a private immutable borrow: never expose it in an observable view.
+func (s *backupRunState) inspect() (backupRunSnapshot, *backupRunResult) {
 	now := s.clockNow()
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return backupRunSnapshot{}
+		return backupRunSnapshot{}, nil
 	}
 	view := backupRunSnapshot{execution: s.executions.Snapshot(), destination: s.destination}
 	if view.execution.ID != 0 {
@@ -118,10 +128,7 @@ func (s *backupRunState) snapshot() backupRunSnapshot {
 	}
 	stored := s.result
 	s.mu.Unlock()
-	if stored != nil {
-		view.result = &backupRunResult{save: cloneBackupSaveRunResult(stored.save), err: stored.err}
-	}
-	return view
+	return view, stored
 }
 
 func (s *backupRunState) cancel(id application.BackupExecutionID) application.BackupCancelDecision {
