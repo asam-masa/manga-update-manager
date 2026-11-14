@@ -36,6 +36,7 @@ func (a *App) startBackupRun(destination string,
 	}
 	run, err := a.backupRuns.start(ctx, destination, func(ctx context.Context, id application.BackupExecutionID) (backupSaveRunResult, error) {
 		defer op.End() // Preflight failure; finished worker tickets are idempotent.
+		a.backupRuns.reportStage(id, backupStageWaiting)
 		warnings, err := a.prepareReservedBackup(ctx, op)
 		if err != nil {
 			var result backupSaveRunResult
