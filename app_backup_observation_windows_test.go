@@ -79,7 +79,7 @@ func TestAppBackupOmissionOutcomes(t *testing.T) {
 				cleaned := true
 				return &appSaveProbe{BackupTemp: f, a: a, t: t, mode: mode, cause: cause, cancel: cancel, dbCleaned: &cleaned}, nil
 			}
-			r, err := a.runBackupSaveObserved(ctx, filepath.Join(root, "result.zip"), time.Now(), "synthetic", createWork, createOutput, load)
+			r, err := a.runBackupSaveObserved(ctx, filepath.Join(root, "result.zip"), time.Now(), "synthetic", createWork, createOutput, load, nil)
 			canSave := mode == "success" || mode == "detail" || mode == "limit" || mode == "post-sync" || mode == "unknown"
 			if !loaded || outputCreated != canSave || !r.Omissions.Known || len(r.Omissions.Images) != 1 || r.Omissions.Images[0].Reason != "missing" {
 				t.Fatal("omission observation lost", r.Omissions, outputCreated, err)
@@ -142,7 +142,7 @@ func TestAppBackupOmissionsSurviveLaterMetadataFailure(t *testing.T) {
 			var err error
 			observation, err = a.observeBackupOmissions(ctx, path, manifest, storage.DatabaseCopyCoverWorks)
 			return err
-		})
+		}, nil)
 	if !errors.Is(err, storage.ErrDatabaseCopyRelease) || !errors.Is(r.FinishError, errBackupReleaseUnverified) || r.Manifest != nil || r.Covers.Images != nil || !observation.Known || observation.WorkNamesState != backupWorkNamesAvailable {
 		t.Fatal("confirmed observation lost with prepared artifacts", r, observation, err)
 	}

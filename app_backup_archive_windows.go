@@ -40,7 +40,7 @@ func (a *App) useBackupArchive(ctx context.Context, createdAt time.Time, appVers
 	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
 	finalize backupDatabaseFinalizer,
 ) (backupManifestRunResult, error) {
-	return a.useBackupArchiveObserved(ctx, createdAt, appVersion, create, load, use, finalize, nil)
+	return a.useBackupArchiveObserved(ctx, createdAt, appVersion, create, load, use, finalize, nil, nil)
 }
 
 func (a *App) useBackupArchiveObserved(ctx context.Context, createdAt time.Time, appVersion string,
@@ -49,6 +49,7 @@ func (a *App) useBackupArchiveObserved(ctx context.Context, createdAt time.Time,
 	use func(context.Context, []byte, io.ReaderAt, string, []storage.ManagedCover) error,
 	finalize backupDatabaseFinalizer,
 	observe func(context.Context, string, []byte) error,
+	report application.BackupProgress,
 ) (backupManifestRunResult, error) {
 	return a.useBackupManifest(ctx, createdAt, appVersion, create, storage.DatabaseCopyMigrations,
 		func(ctx context.Context, reader io.ReaderAt, copyPath string, manifest []byte) error {
@@ -69,5 +70,5 @@ func (a *App) useBackupArchiveObserved(ctx context.Context, createdAt time.Time,
 			root := a.dataDirectoryPath // Pinned at startup, never resolve again.
 			a.mu.RUnlock()
 			return use(ctx, manifest, reader, root, records)
-		}, finalize)
+		}, finalize, report)
 }
