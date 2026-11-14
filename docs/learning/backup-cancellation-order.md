@@ -36,6 +36,14 @@ Goの構造体をコピーしても、スライスの元配列やポインター
 
 `TestAppBackupRunCloseProtectsOutcomeStorage`は、この狭い隙間を実行速度に頼らず模型にして検証する。shutdown時は結果を消すだけでなく、後から届く完了が結果を復活させない条件も必要になる。実ファイルの公開入口との結合は、この寿命試験とは別に確認する。
 
+## 本文を受け取る前に長さを調べる（#558）
+
+`internal/storage/database_copy_cover_works.go`の`copyCoverWorks`で、SQLの`CASE`から`rows.Scan`、合計サイズの検査へ読む。受信後に`len(title)`だけを検査すると、極端に長いタイトルは検査前にGoへ渡ってしまう。SQL側で長さに応じて本文をNULLにし、Goでは長さから上限超過を判別する。
+
+SQLiteの`length(TEXT)`は文字数を扱い、途中のNULにも注意が必要になる。ここでは`length(CAST(title AS BLOB))`でバイト数を扱う。CASEの遅延評価は[SQLite公式仕様](https://www.sqlite.org/lang_expr.html#the_case_expression)を参照する。これはGoへ渡す本文の制限であり、SQLite内部の全メモリ使用量を8MiB以内に保証する仕組みではない。
+
+`TestCopyCoverWorksByteBoundaries`と`TestCopyCoverWorksReadAndCleanupFaults`を比べ、「上限に達した」と「接続を解放できたか不明」を同じ警告にまとめてはいけない理由を説明してみる。現在は読取部品だけであり、保存続行の最終判断や画面表示は後続である。
+
 ## 詳細が見えないことと、保存できないことを分ける（#557）
 
 除外画像の作品名は、保存後に対象を探すための付加情報である。作品名を表示できないだけなら、本体と資源の安全性を確認して退避を続けられる。一方、SQL接続を閉じられたか不明な場合は、付加情報の不足と同じ警告へまとめられない。失敗の場所だけでなく、何を確認できたかを読む必要がある。
