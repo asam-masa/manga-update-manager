@@ -1,6 +1,6 @@
 # バックアップの公開API
 
-#579で取消・除外詳細の3メソッド、#581で状況と結果の観測概要を公開する。保存先/残置場所・失敗時の案内、再実行可否の分類、保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
+#579で取消・除外詳細、#581で状況、#583で結果の案内と再実行可否を公開する。保存先/残置場所の表示、保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
 
 ## 識別子と観測
 
@@ -13,6 +13,7 @@
 | メソッド | 入力 | 応答 |
 | --- | --- | --- |
 | `GetBackupStatus` | なし | `BackupStatusDTO`: 同一実行の状態・経過と保持中の観測概要 |
+| `GetBackupResult` | `executionID: string` | `BackupResultDTO`: 保持中の結果案内と再実行可否 |
 | `CancelBackup` | `executionID: string` | `BackupCancelDTO`: `executionId`と`decision` |
 | `GetBackupOmittedImages` | `executionID: string, page: int` | `BackupOmittedImagesDTO`: ページ情報と除外画像 |
 | `GetBackupOmittedImageWorks` | `executionID: string, imageID: string, page: int` | `BackupOmittedWorksDTO`: ページ情報・`imageId`と対象作品 |
@@ -27,7 +28,25 @@
 
 保持中の`result`には`publication, hasWarnings, omittedImageCount, workNamesState, workCount`を返す。公開状態は`not_attempted, collision, confirmed, unknown`で、未対応値も`unknown`とする。公開確認と後処理・資源解放の成否は別であり、`confirmed`だけで再開・再実行を許可しない。警告フラグは処理失敗、除外画像、詳細利用不可など注意すべき観測も含み、原因や対処の完全な分類ではない。
 
-件数未観測は`null`、観測済み空は0である。作品名の可用性は`unobserved, available, unavailable`とし、利用不可も0件へ変換しない。Wails生成型ではnullable値がoptionalとして表れるため、画面接続ではnull/undefinedの両方を未取得として扱う。ここでは保存先や残置候補のパス、診断エラー、目録・全詳細を返さない。失敗時の案内と再実行可否、開始APIとの接続は後続とする。
+件数未観測は`null`、観測済み空は0である。作品名の可用性は`unobserved, available, unavailable`とし、利用不可も0件へ変換しない。Wails生成型ではnullable値がoptionalとして表れるため、画面接続ではnull/undefinedの両方を未取得として扱う。この状況APIでは保存先や残置候補のパス、診断エラー、目録・全詳細を返さない。結果の案内と再実行可否は下記`GetBackupResult`で返し、開始APIとの接続は後続とする。
+
+### 結果の案内と再実行可否（#583）
+
+`executionId, outcome, message, cancellationObserved, retryAllowed, notices`を返す。旧ID/結果未保持は既存の型付きエラーとし、観測に状態変更やDB I/Oを伴わない。保存先・残置候補のパスはまだ返さない。
+
+| outcome | 意味 |
+| --- | --- |
+| `saved` | 公開を確認し、保持した結果に警告がない |
+| `saved_with_warnings` | 公開は確認したが、除外・詳細不足・後処理/最終安全性などに注意がある |
+| `not_saved` | 公開を開始していない。取消や処理失敗と警告を確認する |
+| `collision` | 同名ファイルを上書きせず中止した |
+| `unknown` | 公開の成否不明または未対応状態。候補を保全し、再保存しない |
+
+`cancellationObserved`は取消を含む原因を検出した観測であり、利用者の取消受付や片付け成功の証明ではない。取消と別の失敗が混ざった場合も`not_saved`と注意事項を残し、単純な取消成功へ置き換えない。`notices`は固定した安全なcode/messageの配列で、処理未完了、公開後の警告、取消検出、開始前の警告、画像除外、作品名利用不可、片付け警告、再実行停止を区別する。任意の内部エラー本文や警告文字列は公開しない。
+
+処理の所有者は最終再開判定時に、資源解放と既存の停止状態を確認できたかを`RetrySafetyConfirmed`として保持する。worker開始前の取消では新しいworker資源を持たないことを踏まえ、開始前整理の未確認/警告と既存停止を除外して確認する。エラーがnilというだけでは確認済みにせず、未観測はfalseを既定とする。
+
+`retryAllowed`は公開状態が対応済みで、上の確認があり、最終判定エラーがない場合だけtrueとする。成否不明・未対応状態では全解放確認済みでもfalse。これは「前回結果が新しいバックアップを妨げない」という記録時の判断であり、現在の開始可能性や通常操作の再開権限ではない。開始時にはApp寿命・既存受付/停止・保存先の安全条件を必ず再確認する。公開確認後の警告や残置だけで、全解放確認済みの再実行まで一律に止めない。再起動だけで成否不明が解消するとは案内しない。
 
 ### 取消
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -163,6 +164,10 @@ func TestManagedBackupSaveOutcomes(t *testing.T) {
 			}
 			end, admissionErr := a.operationGate.BeginNormal()
 			stopped := mode == "db-unconfirmed" || mode == "close"
+			apiResult, apiErr := a.GetBackupResult(strconv.FormatUint(uint64(view.execution.ID), 10))
+			if apiErr != nil || apiResult.RetryAllowed != (!stopped && mode != "unknown") {
+				t.Fatal("wrong retained retry policy", apiResult, apiErr)
+			}
 			if stopped {
 				if !errors.Is(admissionErr, application.ErrOperationsStopped) || !errors.Is(r.FinishError, errBackupReleaseUnverified) {
 					t.Fatal(r, admissionErr)
