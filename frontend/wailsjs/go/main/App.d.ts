@@ -16,6 +16,8 @@ export function GetBackupOmittedImageWorks(arg1:string,arg2:string,arg3:number):
 
 export function GetBackupOmittedImages(arg1:string,arg2:number):Promise<main.BackupOmittedImagesDTO>;
 
+export function GetBackupStatus():Promise<main.BackupStatusDTO>;
+
 export function ListWorks():Promise<Array<main.WorkDTO>>;
 
 export function LoadCoverProgress():Promise<Array<main.CoverProgressDTO>>;
