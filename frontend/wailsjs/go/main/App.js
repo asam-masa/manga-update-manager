@@ -106,6 +106,10 @@ export function RenameTag(arg1, arg2) {
   return window['go']['main']['App']['RenameTag'](arg1, arg2);
 }
 
+export function SelectAndStartBackup() {
+  return window['go']['main']['App']['SelectAndStartBackup']();
+}
+
 export function SelectWorkCover(arg1) {
   return window['go']['main']['App']['SelectWorkCover'](arg1);
 }

@@ -54,6 +54,8 @@ export function RemoveWorkCoverWithOperation(arg1:number,arg2:string):Promise<ma
 
 export function RenameTag(arg1:main.TagDTO,arg2:string):Promise<main.TagChangeResult>;
 
+export function SelectAndStartBackup():Promise<main.BackupStartDTO>;
+
 export function SelectWorkCover(arg1:number):Promise<main.SelectWorkCoverResult>;
 
 export function SelectWorkCoverWithOperation(arg1:number,arg2:string):Promise<main.SelectWorkCoverResult>;
