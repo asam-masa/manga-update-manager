@@ -1,6 +1,6 @@
 # バックアップの公開API
 
-#579で取消・除外詳細、#581で状況、#583で結果の案内と再実行可否、#586で保存先と残置候補を公開する。保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
+#579で取消・除外詳細、#581で状況、#583で結果の案内と再実行可否、#586で保存先と残置候補、#588で保存先選択と開始を公開する。実Wailsでの結合確認は#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
 
 ## 識別子と観測
 
@@ -12,6 +12,7 @@
 
 | メソッド | 入力 | 応答 |
 | --- | --- | --- |
+| `SelectAndStartBackup` | なし | `BackupStartDTO`: 選択取消または開始受付した実行ID |
 | `GetBackupStatus` | なし | `BackupStatusDTO`: 同一実行の状態・経過と保持中の観測概要 |
 | `GetBackupResult` | `executionID: string` | `BackupResultDTO`: 保持中の結果案内と再実行可否 |
 | `GetBackupLocations` | `executionID: string` | `BackupLocationsDTO`: 保存先・公開確認先・残置候補 |
@@ -19,7 +20,17 @@
 | `GetBackupOmittedImages` | `executionID: string, page: int` | `BackupOmittedImagesDTO`: ページ情報と除外画像 |
 | `GetBackupOmittedImageWorks` | `executionID: string, imageID: string, page: int` | `BackupOmittedWorksDTO`: ページ情報・`imageId`と対象作品 |
 
-取消・取得は通常操作ticketやDB読込を使わず、保存による受付停止中や資源解放未確認による停止後も利用できる。取消だけが状態を変え、取得では開始・取消・結果消去を行わない。取得失敗や応答欠落を処理完了と扱わない。
+取消・取得は通常操作ticketやDB読込を使わず、保存による受付停止中や資源解放未確認による停止後も利用できる。制御では開始と取消が状態を変え、取得では開始・取消・結果消去を行わない。取得失敗や応答欠落を処理完了と扱わない。
+
+### 保存先選択と開始（#588）
+
+`SelectAndStartBackup`はパスを引数に取らず、標準保存ダイアログで日本時間の`manga-update-manager-YYYYMMDD-HHMMSS.zip`を初期表示する。タイトルで既存ファイルへ保存できない旨を案内する。OSの上書き確認に肯定しても、アプリは既存の非上書き処理を維持する。選択パスは補正せず、通常絶対パス・ローカルNTFS・リンク拒否・親保持の既存検証へ渡す。
+
+応答は`cancelled, executionId`。選択取消は`true, ""`で保存を開始せず前回結果を保つ。開始受付は`false, 正規10進ID`で、保存成功ではない。選択中は終了・二重開始と画像選択との競合を防ぎ、通常受付を止めない。選択後も同じ予約を保持し、通常操作の完了待ち・画像整理・実保存へ進む。受付後の失敗・取消・同名競合は状況/結果APIで確認する。応答が届かなかった場合も自動再開始せず、状況を取り直す。
+
+workerはApp寿命で実行し、リクエストや画面の寿命へ結び付けない。作成時刻は呼出し時の現在時刻、目録のアプリ版はGoビルド情報のmain versionを使い、開発ビルドは`development`と記録する。公開版の配布・版管理の整備は別工程である。
+
+受付前の失敗は`backup_start_failed`、別選択中は`file_selection_busy`、二重開始は`backup_in_progress`、前回の公開結果不明は`backup_retry_blocked`とする。既存のDB/画像停止案内も維持し、診断エラー・内部パスを返さない。保存先・残置候補は保持後に専用取得APIで確認する。合成保存先の試験とbinding生成までを検証し、標準ダイアログの実Wails操作は#573で確認する。
 
 ### 状況と結果の観測概要（#581）
 

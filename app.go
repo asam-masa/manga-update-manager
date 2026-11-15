@@ -38,6 +38,7 @@ type App struct {
 	backupRuns             backupRunState
 	fileSelections         fileSelectionGate
 	chooseCover            func(context.Context) (string, error)
+	chooseBackup           func(context.Context, string) (string, error) // Set before startup; nil uses the native save picker.
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)
 	workBusyNotice         func(context.Context)

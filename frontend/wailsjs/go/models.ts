@@ -250,6 +250,20 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class BackupStartDTO {
+	    cancelled: boolean;
+	    executionId: string;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupStartDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cancelled = source["cancelled"];
+	        this.executionId = source["executionId"];
+	    }
+	}
 	export class BackupStatusDTO {
 	    executionId: string;
 	    state: string;
