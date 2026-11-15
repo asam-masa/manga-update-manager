@@ -1,5 +1,129 @@
 export namespace main {
 
+	export class BackupCancelDTO {
+	    executionId: string;
+	    decision: string;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupCancelDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.executionId = source["executionId"];
+	        this.decision = source["decision"];
+	    }
+	}
+	export class BackupOmittedImageDTO {
+	    imageId: string;
+	    reason: string;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupOmittedImageDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.imageId = source["imageId"];
+	        this.reason = source["reason"];
+	    }
+	}
+	export class BackupOmittedImagesDTO {
+	    executionId: string;
+	    page: number;
+	    pageSize: number;
+	    pages: number;
+	    total: number;
+	    items: BackupOmittedImageDTO[];
+
+	    static createFrom(source: any = {}) {
+	        return new BackupOmittedImagesDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.executionId = source["executionId"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	        this.pages = source["pages"];
+	        this.total = source["total"];
+	        this.items = this.convertValues(source["items"], BackupOmittedImageDTO);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BackupOmittedWorkDTO {
+	    workId: string;
+	    title: string;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupOmittedWorkDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workId = source["workId"];
+	        this.title = source["title"];
+	    }
+	}
+	export class BackupOmittedWorksDTO {
+	    executionId: string;
+	    imageId: string;
+	    page: number;
+	    pageSize: number;
+	    pages: number;
+	    total: number;
+	    items: BackupOmittedWorkDTO[];
+
+	    static createFrom(source: any = {}) {
+	        return new BackupOmittedWorksDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.executionId = source["executionId"];
+	        this.imageId = source["imageId"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	        this.pages = source["pages"];
+	        this.total = source["total"];
+	        this.items = this.convertValues(source["items"], BackupOmittedWorkDTO);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CoverProgressDTO {
 	    operationID: string;
 	    workID: number;
