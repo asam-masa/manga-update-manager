@@ -43,9 +43,30 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 	if err != nil {
 		return result, err
 	}
+	// Only this outer owner may finish admission. Fail closed if the borrowed
+	// worker does not return its release observation (for example on panic).
+	released := false
+	defer func() {
+		result.FinishError = a.finishBackup(op, released)
+		err = errors.Join(err, result.FinishError, ctx.Err())
+	}()
+	warnings := result.Warnings
+	result, released, err = a.runReservedBackupDatabase(ctx, use, create, finalize, report)
+	result.Warnings = warnings
+	return result, err
+}
+
+// runReservedBackupDatabase borrows already prepared, paused admission from its
+// caller. It never reserves, ends or resumes admission. The caller must retain
+// the reservation through this return and finish using the release observation,
+// including DB/SQL and output-finalizer resources, not merely err == nil.
+// No reader may escape use. This is not a public Wails entry point.
+func (a *App) runReservedBackupDatabase(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error,
+	create func(context.Context, string) (application.BackupDatabaseWork, error), finalize backupDatabaseFinalizer, report application.BackupProgress,
+) (result backupDatabaseRunResult, released bool, err error) {
 	// No owned work exists yet. Once creation starts, require explicit release
 	// confirmation even if it returns no owner. Never infer it from cancellation.
-	released := true
+	released = true
 	defer func() {
 		if finalize != nil {
 			if !released {
@@ -55,16 +76,15 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 			released = released && outputReleased
 			err = finalErr
 		}
-		result.FinishError = a.finishBackup(op, released)
 		// Cleanup does not rewrite the completed DB stage's outcome. Still pass
 		// cancellation observed during cleanup to this outer caller.
-		err = errors.Join(err, result.FinishError, ctx.Err())
+		err = errors.Join(err, ctx.Err())
 	}()
 	a.mu.RLock()
 	directory, store := a.dataDirectoryPath, a.store
 	a.mu.RUnlock()
 	if directory == "" {
-		return result, unavailableError()
+		return result, released, unavailableError()
 	}
 	released = false
 	report.Notify(backupStagePreparing)
@@ -75,11 +95,11 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 		if errors.As(err, &detail) {
 			released = detail.ReleaseConfirmed()
 		}
-		return result, err
+		return result, released, err
 	}
 	result.Database, err = application.UseBackupDatabaseWithProgress(ctx, work, store, storage.ValidateDatabaseCopy, use, report)
 	// The work's Windows handles do not establish release of SQL readers opened
 	// while validating or consuming the copy. Keep ambiguous SQL cleanup stopped.
 	released = result.Database.Cleanup.ReleaseConfirmed() && !errors.Is(err, storage.ErrDatabaseCopyRelease)
-	return result, err
+	return result, released, err
 }
