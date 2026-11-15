@@ -1,12 +1,12 @@
 # バックアップの公開API
 
-#579で取消・除外詳細、#581で状況、#583で結果の案内と再実行可否を公開する。保存先/残置場所の表示、保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
+#579で取消・除外詳細、#581で状況、#583で結果の案内と再実行可否、#586で保存先と残置候補を公開する。保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
 
 ## 識別子と観測
 
 `executionId`は0以外のuint64を正規10進文字列で渡す。JavaScriptの数値へ変換しない。符号・空白・先頭0・小数・指数表記・範囲外を受け付けない。実行IDはアプリ起動中に再利用せず、応答のIDと表示対象のIDを照合する。次回開始や終了で保持されなくなった結果の詳細は再取得できない。
 
-関連作品の`workId`も文字列で返す。タイトルはバックアップ時に確認・保持した名前で、現在の作品一覧を再検索した値ではない。診断エラー、DB/一時ファイルのパス、除外画像の内部相対パスはこのAPIへ含めない。
+関連作品の`workId`も文字列で返す。タイトルはバックアップ時に確認・保持した名前で、現在の作品一覧を再検索した値ではない。診断エラーと除外画像の内部相対パスは公開しない。作業物の場所は専用の`GetBackupLocations`だけで返し、取消・状況・結果案内・除外詳細のAPIへは含めない。
 
 ## メソッド
 
@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | `GetBackupStatus` | なし | `BackupStatusDTO`: 同一実行の状態・経過と保持中の観測概要 |
 | `GetBackupResult` | `executionID: string` | `BackupResultDTO`: 保持中の結果案内と再実行可否 |
+| `GetBackupLocations` | `executionID: string` | `BackupLocationsDTO`: 保存先・公開確認先・残置候補 |
 | `CancelBackup` | `executionID: string` | `BackupCancelDTO`: `executionId`と`decision` |
 | `GetBackupOmittedImages` | `executionID: string, page: int` | `BackupOmittedImagesDTO`: ページ情報と除外画像 |
 | `GetBackupOmittedImageWorks` | `executionID: string, imageID: string, page: int` | `BackupOmittedWorksDTO`: ページ情報・`imageId`と対象作品 |
@@ -47,6 +48,14 @@
 処理の所有者は最終再開判定時に、資源解放と既存の停止状態を確認できたかを`RetrySafetyConfirmed`として保持する。worker開始前の取消では新しいworker資源を持たないことを踏まえ、開始前整理の未確認/警告と既存停止を除外して確認する。エラーがnilというだけでは確認済みにせず、未観測はfalseを既定とする。
 
 `retryAllowed`は公開状態が対応済みで、上の確認があり、最終判定エラーがない場合だけtrueとする。成否不明・未対応状態では全解放確認済みでもfalse。これは「前回結果が新しいバックアップを妨げない」という記録時の判断であり、現在の開始可能性や通常操作の再開権限ではない。開始時にはApp寿命・既存受付/停止・保存先の安全条件を必ず再確認する。公開確認後の警告や残置だけで、全解放確認済みの再実行まで一律に止めない。再起動だけで成否不明が解消するとは案内しない。
+
+### 保存先と残置候補（#586）
+
+`GetBackupLocations`は結果保持後に、同一世代の`executionId, destination, publication, confirmedPath, candidates`を返す。`destination`は開始時の選択先で、保存成功の証明ではない。`publication`は状況APIと同じ4種類とし、`confirmedPath`は公開確認済みの完成名だけを返し、それ以外は空文字にする。
+
+`candidates`は`kind, path`の配列で、ZIP一時物（`temporary_zip`）、成否不明の公開先（`publication_target`）、DBコピー（`database_copy`）、作業フォルダー（`work_directory`）を区別する。不在確認済みの物と公開確認後の元一時名は含めない。削除指定だけでは不在と判断しない。作成失敗時は型付きの場所観測を使い、作成成功未確認の場所も候補として残す。同じ種類・同じ文字列の重複はまとめ、未観測の場所を推測しない。空配列は記録された候補がない意味であり、残置物の不存在を保証しない。
+
+場所は処理時点の記録であり、現在の存在・同一性・削除権限を保証しない。取得ではファイル/DBの読込、開く操作、削除、再実行、受付状態の変更を行わない。診断本文・元DBパス・画像内部パスを連結せず、この専用APIだけで目的に必要な場所を返す。旧ID・未完了は結果APIと同じエラーにする。製品画面と保存先選択/開始・実Wails結合は引き続き#573の後続である。
 
 ### 取消
 
