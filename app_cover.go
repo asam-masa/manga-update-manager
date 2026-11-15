@@ -169,6 +169,9 @@ func coverWarnings(codes []string, prefix string) []CoverWarningDTO {
 }
 
 func coverAPIError(err error) error {
+	if errors.Is(err, errFileSelectionBusy) {
+		return &APIError{Code: "file_selection_busy", Message: "別の選択画面を閉じてから、もう一度操作してください。"}
+	}
 	if errors.Is(err, storage.ErrWorkCoverOutcomeUnknown) {
 		return &APIError{Code: "cover_outcome_unknown", Message: "画像の変更結果を確認できませんでした。画像は削除せず保持しています。アプリを再起動して状態を確認してください。"}
 	}
@@ -236,7 +239,7 @@ func (a *App) beforeClose(ctx context.Context) bool {
 }
 
 func backupBusyNotice(ctx context.Context) {
-	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "バックアップを処理中です", Message: "バックアップの開始待ち・処理中は終了できません。保存または取消の結果を確認してから、もう一度閉じてください。"})
+	_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{Type: runtime.InfoDialog, Title: "バックアップの操作中です", Message: "保存先を選択中の場合は、選択画面を閉じてから終了してください。開始待ち・処理中の場合は、保存または取消の結果を確認してから、もう一度閉じてください。"})
 }
 
 func workBusyNotice(ctx context.Context) {

@@ -30,6 +30,14 @@ func (a *App) startBackupRun(destination string,
 	if err != nil {
 		return backupRun{}, err
 	}
+	return a.startReservedBackupRun(ctx, op, destination, work)
+}
+
+// startReservedBackupRun consumes the existing reservation on every path.
+// Selection must not release/reacquire it between the picker and acceptance.
+func (a *App) startReservedBackupRun(ctx context.Context, op *application.BackupOperation, destination string,
+	work func(context.Context, application.BackupExecutionID) (backupSaveRunResult, bool, error),
+) (backupRun, error) {
 	if err := a.checkBackupStart(ctx); err != nil {
 		op.End()
 		return backupRun{}, err // Rejection must not erase the previous result.
