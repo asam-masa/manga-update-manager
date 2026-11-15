@@ -221,7 +221,12 @@ func (a *App) beforeClose(ctx context.Context) bool {
 		if errors.Is(err, application.ErrOperationsClosing) {
 			return true // The first close decision owns both drain waits.
 		} else if errors.Is(err, application.ErrBackupBusy) {
-			a.backupBusyNotice(ctx)
+			// Do not stack a message dialog over a native file picker. Reserve
+			// the same gate through the notice, so a picker cannot race it open.
+			_, _ = a.fileSelections.choose(ctx, func(ctx context.Context) (string, error) {
+				a.backupBusyNotice(ctx)
+				return "", nil
+			})
 		} else if errors.Is(err, application.ErrWorkDeleting) {
 			a.deleteBusyNotice(ctx)
 		} else if errors.Is(err, application.ErrTagBusy) {

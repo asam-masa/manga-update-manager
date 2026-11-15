@@ -8,7 +8,7 @@ import (
 
 var errFileSelectionBusy = errors.New("another file selection is open")
 
-// fileSelectionGate covers only the native picker, never subsequent file I/O.
+// fileSelectionGate covers native pickers and backup close notices, never file I/O.
 // No callback or wait runs under mu. Requests are rejected, not queued.
 type fileSelectionGate struct {
 	mu   sync.Mutex
