@@ -12,6 +12,8 @@ export function DeleteWork(arg1:number,arg2:main.DeleteWorkInput):Promise<main.D
 
 export function EditWork(arg1:number,arg2:main.EditWorkInput):Promise<main.EditWorkResult>;
 
+export function GetBackupLocations(arg1:string):Promise<main.BackupLocationsDTO>;
+
 export function GetBackupOmittedImageWorks(arg1:string,arg2:string,arg3:number):Promise<main.BackupOmittedWorksDTO>;
 
 export function GetBackupOmittedImages(arg1:string,arg2:number):Promise<main.BackupOmittedImagesDTO>;
