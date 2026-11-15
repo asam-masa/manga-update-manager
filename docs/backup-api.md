@@ -1,6 +1,6 @@
 # バックアップの公開API
 
-#579で取消・除外詳細の3メソッドを公開する。状況/結果概要、保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
+#579で取消・除外詳細の3メソッド、#581で状況と結果の観測概要を公開する。保存先/残置場所・失敗時の案内、再実行可否の分類、保存先選択/開始APIは#573の後続であり、製品画面は未接続である。保存と安全条件の正本は[バックアップ設計](./backup-restore.md)、判断は[ADR-0022](./adr/0022-manual-backup-and-replacement-restore.md)を参照する。
 
 ## 識別子と観測
 
@@ -12,11 +12,22 @@
 
 | メソッド | 入力 | 応答 |
 | --- | --- | --- |
+| `GetBackupStatus` | なし | `BackupStatusDTO`: 同一実行の状態・経過と保持中の観測概要 |
 | `CancelBackup` | `executionID: string` | `BackupCancelDTO`: `executionId`と`decision` |
 | `GetBackupOmittedImages` | `executionID: string, page: int` | `BackupOmittedImagesDTO`: ページ情報と除外画像 |
 | `GetBackupOmittedImageWorks` | `executionID: string, imageID: string, page: int` | `BackupOmittedWorksDTO`: ページ情報・`imageId`と対象作品 |
 
 取消・取得は通常操作ticketやDB読込を使わず、保存による受付停止中や資源解放未確認による停止後も利用できる。取消だけが状態を変え、取得では開始・取消・結果消去を行わない。取得失敗や応答欠落を処理完了と扱わない。
+
+### 状況と結果の観測概要（#581）
+
+`executionId, state, stage, elapsedSeconds, canCancel, result`を返す。未開始・保持終了後はIDが空文字、`state: idle`、`stage: unobserved`、`result: null`とする。idleは保存開始可能という保証ではない。通常は`running, cancelling, publishing, finished`の状態を返し、未対応状態は`unknown`として取消を有効にしない。
+
+段階は最後に観測した作業であり、`publishing`という段階表示だけでは取消不可にならない。`canCancel`は実行制御の観測を使う。段階未観測は`unobserved`で、完了やフリーズとは判断しない。経過秒は開始受付からの時間を非負の整数秒へ切り捨て、完了後は保持時の値を固定する。I/Oの残り時間や正確な進捗率ではない。
+
+保持中の`result`には`publication, hasWarnings, omittedImageCount, workNamesState, workCount`を返す。公開状態は`not_attempted, collision, confirmed, unknown`で、未対応値も`unknown`とする。公開確認と後処理・資源解放の成否は別であり、`confirmed`だけで再開・再実行を許可しない。警告フラグは処理失敗、除外画像、詳細利用不可など注意すべき観測も含み、原因や対処の完全な分類ではない。
+
+件数未観測は`null`、観測済み空は0である。作品名の可用性は`unobserved, available, unavailable`とし、利用不可も0件へ変換しない。Wails生成型ではnullable値がoptionalとして表れるため、画面接続ではnull/undefinedの両方を未取得として扱う。ここでは保存先や残置候補のパス、診断エラー、目録・全詳細を返さない。失敗時の案内と再実行可否、開始APIとの接続は後続とする。
 
 ### 取消
 
@@ -44,4 +55,4 @@
 
 ## 検証範囲
 
-合成実行でIDの精度境界/不正表記、取消状態と旧ID、停止中の利用、ページ/可用性、JSONの空配列・非公開情報、返却値の所有分離を検証する。生成bindingとWindowsビルドを確認するが、実Wailsからの呼出し・保存ダイアログ・製品画面との結合は#573へ残す。これだけで画面再読込から状況全体を復元できるとは扱わず、ADR-0022はPendingを維持する。
+合成実行でIDの精度境界/不正表記、取消状態と旧ID、停止中の利用、ページ/可用性、JSONの空配列・非公開情報、返却値の所有分離を検証する。#581では合成時計で経過・完了後固定・次回開始/保持終了と件数の可用性を確認する。生成bindingとWindowsビルドを確認するが、実Wailsからの呼出し・保存ダイアログ・製品画面との結合は#573へ残す。保存先選択/開始と案内の接続が未完了のため、画面再読込から操作全体を復元できるとは扱わず、ADR-0022はPendingを維持する。

@@ -30,6 +30,10 @@ export function GetBackupOmittedImages(arg1, arg2) {
   return window['go']['main']['App']['GetBackupOmittedImages'](arg1, arg2);
 }
 
+export function GetBackupStatus() {
+  return window['go']['main']['App']['GetBackupStatus']();
+}
+
 export function ListWorks() {
   return window['go']['main']['App']['ListWorks']();
 }

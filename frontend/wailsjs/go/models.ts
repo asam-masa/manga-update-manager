@@ -14,6 +14,26 @@ export namespace main {
 	        this.decision = source["decision"];
 	    }
 	}
+	export class BackupObservedResultDTO {
+	    publication: string;
+	    hasWarnings: boolean;
+	    omittedImageCount?: number;
+	    workNamesState: string;
+	    workCount?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupObservedResultDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.publication = source["publication"];
+	        this.hasWarnings = source["hasWarnings"];
+	        this.omittedImageCount = source["omittedImageCount"];
+	        this.workNamesState = source["workNamesState"];
+	        this.workCount = source["workCount"];
+	    }
+	}
 	export class BackupOmittedImageDTO {
 	    imageId: string;
 	    reason: string;
@@ -104,6 +124,46 @@ export namespace main {
 	        this.pages = source["pages"];
 	        this.total = source["total"];
 	        this.items = this.convertValues(source["items"], BackupOmittedWorkDTO);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BackupStatusDTO {
+	    executionId: string;
+	    state: string;
+	    stage: string;
+	    elapsedSeconds: number;
+	    canCancel: boolean;
+	    result?: BackupObservedResultDTO;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupStatusDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.executionId = source["executionId"];
+	        this.state = source["state"];
+	        this.stage = source["stage"];
+	        this.elapsedSeconds = source["elapsedSeconds"];
+	        this.canCancel = source["canCancel"];
+	        this.result = this.convertValues(source["result"], BackupObservedResultDTO);
 	    }
 
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
