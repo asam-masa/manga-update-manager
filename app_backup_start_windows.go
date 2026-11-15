@@ -43,18 +43,23 @@ func (a *App) startReservedBackupRun(ctx context.Context, op *application.Backup
 		op.End()
 		return backupRun{}, err // Rejection must not erase the previous result.
 	}
-	run, err := a.backupRuns.start(ctx, destination, func(ctx context.Context, id application.BackupExecutionID) (backupSaveRunResult, error) {
+	appContext := ctx
+	run, err := a.backupRuns.start(appContext, destination, func(ctx context.Context, id application.BackupExecutionID) (backupSaveRunResult, error) {
 		defer op.End() // Preflight failure; finished worker tickets are idempotent.
 		a.backupRuns.reportStage(id, backupStageWaiting)
 		warnings, err := a.prepareReservedBackup(ctx, op)
 		if err != nil {
 			var result backupSaveRunResult
 			result.Warnings = warnings
+			// No worker resources were acquired. Cancellation of this wait is not
+			// itself a safety stop; cleanup uncertainty and existing stops are.
+			result.RetrySafetyConfirmed = len(warnings) == 0 && !errors.Is(err, errBackupCleanupUnverified) && a.checkBackupStart(appContext) == nil
 			return result, err
 		}
 		result, released, err := work(ctx, id)
 		result.Warnings = append(slices.Clone(warnings), result.Warnings...)
 		result.FinishError = errors.Join(result.FinishError, a.finishBackup(op, released))
+		result.RetrySafetyConfirmed = result.FinishError == nil && a.checkBackupStart(appContext) == nil
 		return result, errors.Join(err, result.FinishError)
 	})
 	if err != nil {

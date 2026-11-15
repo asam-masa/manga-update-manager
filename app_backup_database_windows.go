@@ -15,6 +15,9 @@ type backupDatabaseRunResult struct {
 	Warnings      []CoverWarningDTO
 	CreationError error
 	FinishError   error
+	// Final resource/source observation only; publication and fresh start checks
+	// remain separate. False is the safe default when no owner confirmed it.
+	RetrySafetyConfirmed bool
 }
 
 // useBackupDatabase holds admission through creation, synchronous reading, cleanup
@@ -54,6 +57,7 @@ func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.C
 	released := false
 	defer func() {
 		result.FinishError = a.finishBackup(op, released)
+		result.RetrySafetyConfirmed = result.FinishError == nil
 		err = errors.Join(err, result.FinishError, ctx.Err())
 	}()
 	warnings := result.Warnings

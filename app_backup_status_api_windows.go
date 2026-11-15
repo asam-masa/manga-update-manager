@@ -66,10 +66,15 @@ func (a *App) GetBackupStatus() BackupStatusDTO {
 	case backupWorkNamesAvailable:
 		result.WorkNamesState = "available"
 	}
-	result.HasWarnings = r.Err != nil || r.DetailError != nil || r.CreationError != nil ||
-		r.FinishError != nil || r.OutputCreationError != nil || len(r.Warnings) != 0 ||
-		result.Publication == "unknown" || result.WorkNamesState == "unavailable" ||
-		(r.OmittedImageCount != nil && *r.OmittedImageCount > 0)
+	result.HasWarnings = hasBackupResultWarnings(r)
 	out.Result = result
 	return out
+}
+
+func hasBackupResultWarnings(r *backupResultOverview) bool {
+	return r.Err != nil || r.DetailError != nil || r.CreationError != nil ||
+		r.FinishError != nil || r.OutputCreationError != nil || len(r.Warnings) != 0 ||
+		(r.Save.Publication.State != platform.BackupPublishNotAttempted && r.Save.Publication.State != platform.BackupPublishCollision && r.Save.Publication.State != platform.BackupPublishConfirmed) ||
+		(r.WorkNamesState != backupWorkNamesUnobserved && r.WorkNamesState != backupWorkNamesAvailable) ||
+		(r.OmittedImageCount != nil && *r.OmittedImageCount > 0)
 }
