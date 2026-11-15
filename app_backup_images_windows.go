@@ -25,7 +25,7 @@ func (a *App) runBackupImages(ctx context.Context,
 	create func(context.Context, string) (application.BackupDatabaseWork, error),
 	inspect func(context.Context, string, string, *application.CoverOperations) (application.BackupCoverInventory, error),
 ) (backupImagesRunResult, error) {
-	return a.useBackupImages(ctx, create, inspect, func(context.Context, io.ReaderAt, int64, string, application.BackupCoverInventory) error { return nil }, nil, nil)
+	return a.useBackupImages(ctx, create, inspect, func(context.Context, io.ReaderAt, int64, string, application.BackupCoverInventory) error { return nil }, nil, nil, a.runBackupDatabaseFinalized)
 }
 
 // use must be synchronous, borrow only, and never publish a completed backup.
@@ -36,9 +36,10 @@ func (a *App) useBackupImages(ctx context.Context,
 	use func(context.Context, io.ReaderAt, int64, string, application.BackupCoverInventory) error,
 	finalize backupDatabaseFinalizer,
 	report application.BackupProgress,
+	database backupDatabaseRunner,
 ) (result backupImagesRunResult, err error) {
 	var copyPath, directory string
-	result.backupDatabaseRunResult, err = a.runBackupDatabaseFinalized(ctx,
+	result.backupDatabaseRunResult, err = database(ctx,
 		func(ctx context.Context, reader io.ReaderAt, size int64) error {
 			// runBackupDatabase owns and validates the copy before calling use,
 			// and retains it and normal admission through image release/cleanup.

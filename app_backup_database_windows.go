@@ -34,6 +34,12 @@ func (a *App) runBackupDatabase(ctx context.Context, use func(context.Context, i
 // must preserve the incoming error and report release of its own output handles.
 type backupDatabaseFinalizer func(error) (bool, error)
 
+// The selected runner either owns admission or borrows the caller's reservation.
+// Choose it at the save entry point; never infer ownership from context values.
+type backupDatabaseRunner func(context.Context, func(context.Context, io.ReaderAt, int64) error,
+	func(context.Context, string) (application.BackupDatabaseWork, error), backupDatabaseFinalizer, application.BackupProgress,
+) (backupDatabaseRunResult, error)
+
 func (a *App) runBackupDatabaseFinalized(ctx context.Context, use func(context.Context, io.ReaderAt, int64) error,
 	create func(context.Context, string) (application.BackupDatabaseWork, error), finalize backupDatabaseFinalizer, report application.BackupProgress,
 ) (result backupDatabaseRunResult, err error) {

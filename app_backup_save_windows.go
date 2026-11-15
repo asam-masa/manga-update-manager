@@ -35,7 +35,8 @@ func (a *App) saveBackupArchive(ctx context.Context, destination string, created
 }
 
 // report is bound to one run by the caller; no global current run is inferred.
-// Connecting this save worker to execution/publication control remains separate.
+// The synchronous entry owns admission; managed execution selects a borrowing
+// runner through runBackupSaveWithDatabase and gates the actual publication.
 func (a *App) saveBackupArchiveWithProgress(ctx context.Context, destination string, createdAt time.Time, appVersion string, report application.BackupProgress) (backupSaveRunResult, error) {
 	return a.runBackupSaveObserved(ctx, destination, createdAt, appVersion,
 		func(ctx context.Context, root string) (application.BackupDatabaseWork, error) {
@@ -57,6 +58,15 @@ func (a *App) runBackupSaveObserved(ctx context.Context, destination string, cre
 	createOutput func(context.Context, string) (backupSaveFile, error),
 	loadDetails func(context.Context, string, []string) ([]storage.CopyCoverWork, error),
 	report application.BackupProgress,
+) (result backupSaveRunResult, err error) {
+	return a.runBackupSaveWithDatabase(ctx, destination, createdAt, appVersion, createWork, createOutput, loadDetails, report, a.runBackupDatabaseFinalized)
+}
+
+func (a *App) runBackupSaveWithDatabase(ctx context.Context, destination string, createdAt time.Time, appVersion string,
+	createWork func(context.Context, string) (application.BackupDatabaseWork, error),
+	createOutput func(context.Context, string) (backupSaveFile, error),
+	loadDetails func(context.Context, string, []string) ([]storage.CopyCoverWork, error),
+	report application.BackupProgress, database backupDatabaseRunner,
 ) (result backupSaveRunResult, err error) {
 	var file backupSaveFile
 	result.OutputReleaseConfirmed = true // No output handles acquired yet.
@@ -88,7 +98,7 @@ func (a *App) runBackupSaveObserved(ctx context.Context, destination string, cre
 			var detailErr error
 			result.Omissions, detailErr = a.observeBackupOmissions(ctx, copyPath, manifest, loadDetails)
 			return detailErr
-		}, report)
+		}, report, database)
 	return result, err
 }
 
