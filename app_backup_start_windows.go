@@ -12,7 +12,8 @@ import (
 // worker borrows admission, owns its resources, and must return after cleanup.
 // released reports all worker-owned releases, never merely err == nil. App
 // combines it with existing DB/image stop checks before resuming normal work.
-// Real saving/publication, destination selection and Wails remain unconnected.
+// startBackupSave supplies the real save worker. Native selection/Wails remain
+// separate from this internal approved-destination entry.
 func (a *App) startBackupRun(destination string,
 	work func(context.Context, application.BackupExecutionID) (result backupSaveRunResult, released bool, err error),
 ) (backupRun, error) {

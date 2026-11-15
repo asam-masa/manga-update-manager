@@ -36,7 +36,8 @@ type backupRunSnapshot struct {
 // backupRunState retains one run in memory. Do not copy after use. The worker
 // owns its I/O and must return only after all cleanup/release attempts. Errors
 // and their diagnostic chains are read-only; mutable result metadata is copied.
-// App owns this state; native publication and Wails are not connected yet.
+// App owns this state; backupExecutionFile gates managed native publication.
+// Public Wails APIs remain separate.
 type backupRunState struct {
 	mu          sync.Mutex
 	executions  application.BackupExecutions
@@ -135,8 +136,8 @@ func (s *backupRunState) cancel(id application.BackupExecutionID) application.Ba
 	return s.executions.Cancel(id)
 }
 
-// The eventual save worker must call this immediately before native publication.
-// This component alone does not prevent an ungated native call.
+// backupExecutionFile calls this immediately before native publication. This
+// component alone does not prevent unrelated ungated synchronous calls.
 func (s *backupRunState) beginPublication(id application.BackupExecutionID) bool {
 	return s.executions.BeginPublication(id)
 }

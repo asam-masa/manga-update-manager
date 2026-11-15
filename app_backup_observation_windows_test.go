@@ -142,7 +142,7 @@ func TestAppBackupOmissionsSurviveLaterMetadataFailure(t *testing.T) {
 			var err error
 			observation, err = a.observeBackupOmissions(ctx, path, manifest, storage.DatabaseCopyCoverWorks)
 			return err
-		}, nil)
+		}, nil, a.runBackupDatabaseFinalized)
 	if !errors.Is(err, storage.ErrDatabaseCopyRelease) || !errors.Is(r.FinishError, errBackupReleaseUnverified) || r.Manifest != nil || r.Covers.Images != nil || !observation.Known || observation.WorkNamesState != backupWorkNamesAvailable {
 		t.Fatal("confirmed observation lost with prepared artifacts", r, observation, err)
 	}
