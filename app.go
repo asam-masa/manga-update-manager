@@ -36,6 +36,7 @@ type App struct {
 	operationGate          application.OperationGate
 	coverProgress          coverProgressState
 	backupRuns             backupRunState
+	fileSelections         fileSelectionGate
 	chooseCover            func(context.Context) (string, error)
 	coverSelectionFinished func(context.Context, int64, string)
 	coverBusyNotice        func(context.Context)
@@ -94,7 +95,7 @@ func (a *App) startup(ctx context.Context) {
 	a.editor = application.NewWorkEditor(store, time.Now)
 	a.display = application.NewDisplaySettings(store)
 	a.opener = application.NewWorkOpener(store, a.openURL, time.Now)
-	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.chooseCover, time.Now)
+	a.covers = application.NewCoverImporter(store, &a.coverOperations, directory, a.selectCoverFile, time.Now)
 	a.deleter = application.NewWorkDeleter(store, a.covers)
 	a.coverReader = application.NewCoverReader(store, &a.coverOperations, directory)
 	a.coverCleanupTicket, err = a.coverOperations.BeginCleanup()
