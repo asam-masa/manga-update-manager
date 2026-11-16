@@ -48,7 +48,7 @@ Codexは初回の6基準画像を実際に開いて確認する。以後の通�
 
 ## 基盤の実行手順（#359）
 
-Playwright Test 1.65.0（Apache-2.0）を開発用依存として固定する。ブラウザー操作・アサーション・ブラウザー管理を揃えて使えるため採用した。プロジェクトの実行環境はNode.js 24とし、固定版のCLIで対応Chromiumを取得する。取得元は[公式npmパッケージ](https://www.npmjs.com/package/@playwright/test/v/1.65.0)。#359の初回採用は1.64.1で、下記の日付付き検証結果は当時の記録として残す。
+Playwright Test 1.65.1（Apache-2.0）を開発用依存として固定する。ブラウザー操作・アサーション・ブラウザー管理を揃えて使えるため採用した。プロジェクトの実行環境はNode.js 24とし、固定版のCLIで対応Chromiumを取得する。取得元は[公式npmパッケージ](https://www.npmjs.com/package/@playwright/test/v/1.65.1)。#359の初回採用は1.64.1で、下記の日付付き検証結果は当時の記録として残す。
 
 2026-11-13、PR #534の更新版1.65.0と同梱Chromium 158.0.8127.18を確認した。固定head `853bb0a4bd7c95822c2c6d701c76f500fe32819b`の[Windows CI 43100816297](https://github.com/asam-masa/manga-update-manager/actions/runs/43100816297)は初回成功し、ブラウザー13試験を各3回、計39試験（6画面の画像比較を含む）が成功した。基準画像・比較条件は変更していない。CI同梱の基準画像の代表例と、差分なしの比較結果を確認した。これは実WebView2の検証ではない。
 
@@ -69,6 +69,10 @@ Playwrightが`127.0.0.1:4179`でVite previewを起動し、終了時に起動し
 `e2e/fixture.ts`がページのスクリプト実行前に`window.go.main.App`と起動時のイベント購読境界を注入する。未対応APIは成功を返さず試験を失敗させる。イベントは現在のスモークに必要な購読・解除だけの代替で、画像選択完了イベントの実配信を検証したことにはしない。日時は2026-11-02 09:00（日本時間）に固定し、画面のタイマーは進める。登録フォームの表示変更はそのページ内の合成状態だけへ保存する。
 
 成功時もスモーク画面をHTMLレポートへ添付する。失敗時は撮影画像とトレースも残る。`frontend/playwright-report/index.html`を確認し、必要なら`npm --prefix frontend exec -- playwright show-report frontend/playwright-report`でレポートを開く（GUI起動は環境の承認に従う）。レポートと`frontend/test-results/`はGitへ追加しない。これは画像比較の基準画像ではない。
+
+2026-11-16、[PR #593](https://github.com/asam-masa/manga-update-manager/pull/593)で1.65.1へ更新した。固定head `aa39b55b5155e96213ff28492c6fac79713a2050`の[CI 43736469207](https://github.com/asam-masa/manga-update-manager/actions/runs/43736469207)でWindows・ブラウザーの両チェックが成功し、マージコミットは`81b4af5263b747d5171912e2427c76e6fe53cd14`となった。続くuser-event更新の[PR #594](https://github.com/asam-masa/manga-update-manager/pull/594)でも、統合後head `bba755166ba182b7154a480446890c13f23537bd`の[CI 43852740746](https://github.com/asam-masa/manga-update-manager/actions/runs/43852740746)で両チェックが成功した。画像比較の成功は、これらの基準環境の結果である。基準PNG・比較条件は変更していない。
+
+各更新版と統合後のローカルWindows/Node.js 24.22.1では、`npm --prefix frontend ci`、Vitest 439件、製品ビルド、`npm --prefix frontend run test:browser -- --ignore-snapshots`の操作・配置13件が成功した。画像比較はこの13件の成功に含めない。ローカルの通常比較では更新後の6画面が字体差で不一致となり、代表のcompact 1200pxは311pixelの差だった。更新前1.65.0でも同じ代表画面が311pixelの差となることを対照確認した。[環境差の記録](verification/browser-visual-comparison.md)と区別して扱い、ローカル画像比較を成功とは記録しない。実WebView2・IME・ネイティブダイアログは、この依存更新の検証対象外である。
 
 ## 基盤の検証結果（2026-11-02）
 
