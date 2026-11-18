@@ -11,6 +11,8 @@ import type {CoverProgressTarget} from './CoverProgressNotice';
 import {EditWorkDialog} from './EditWorkDialog';
 import {DeleteWorkDialog} from './DeleteWorkDialog';
 import {TagManagementDialog} from './TagManagementDialog';
+import {BackupDialog} from './BackupDialog';
+import {useBackupSession} from './use-backup-session';
 import {TagManagementNotices} from './TagManagementNotices';
 import type {TagNotice} from './TagManagementNotices';
 import {WorkNotices} from './WorkNotices';
@@ -69,6 +71,11 @@ function App() {
     const [tagManagementStopped, setTagManagementStopped] = useState(false);
     const [tagNotices, setTagNotices] = useState<Record<string, TagNotice>>({});
     const tagManagementButton = useRef<HTMLButtonElement>(null);
+    const backup = useBackupSession();
+    const [backupOpen, setBackupOpen] = useState(false);
+    const backupButton = useRef<HTMLButtonElement>(null);
+    const backupBusy = backup.selecting || backup.cancelling || backup.reconciling
+        || (backup.status !== null && backup.status.state !== 'idle' && backup.status.state !== 'finished');
     // SQLite can reuse IDs. Tombstones identify the deleted registration, not
     // every future work that receives the same numeric ID.
     const removedWorks = useRef(new Set<string>());
@@ -321,6 +328,24 @@ function App() {
         setTagFilterOpen(false);
         modal.current = true; setTagManagementOpen(true);
     }
+    function openBackup() {
+        if (modal.current) return;
+        ++navigationRevision.current; setTagFilterOpen(false);
+        modal.current = true; setBackupOpen(true);
+    }
+    function closeBackup() {
+        if (backupBusy) return;
+        modal.current = false; setBackupOpen(false);
+        requestAnimationFrame(() => {
+            const button = backupButton.current;
+            if (modal.current || (document.activeElement !== document.body && document.activeElement !== button)) return;
+            button?.focus({preventScroll: true});
+        });
+    }
+    useEffect(() => {
+        // Reconnect after a renderer reload without starting another backup.
+        if (backup.status && backup.status.state !== 'idle' && backup.status.state !== 'finished' && !backupOpen) openBackup();
+    }, [backup.status, backupOpen]);
     function closeTagManagement() {
         modal.current = false; setTagManagementOpen(false);
         requestAnimationFrame(() => {
@@ -422,6 +447,16 @@ function App() {
 
     return (
         <main className="app-shell">
+            {!backupOpen && backup.result && backup.result.notices.length > 0 &&
+                <section className="message error-message" aria-label="バックアップのお知らせ" role="alert">
+                    <h2>バックアップのお知らせ</h2><p>{backup.result.message}</p>
+                    {backup.result.notices.map((notice, index) => <p key={`${notice.code}-${index}`}>{notice.message}</p>)}
+                    <p>バックアップを開くと、直近の結果概要を確認できます。</p>
+                </section>}
+            {backupOpen && <BackupDialog status={backup.status} result={backup.result} fresh={backup.fresh && !backup.reconciling}
+                selecting={backup.selecting} cancelling={backup.cancelling} confirming={backup.reconciling}
+                error={backup.commandError || backup.error} onStart={() => {void backup.start();}}
+                onCancel={() => {void backup.cancel();}} onReload={backup.reload} onClose={closeBackup} />}
             <TagManagementNotices notices={Object.values(tagNotices)} />
             {tagManagementStopped && <p className="message error-message" role="alert">タグ操作でDB停止または結果不明を検出しました。アプリを再起動して状態を確認してください。</p>}
             {tagManagementOpen && <TagManagementDialog stopped={tagManagementStopped || editStopped || deleteStopped || listStopped}
@@ -486,6 +521,7 @@ function App() {
                     </div>
                     <div className="search-controls">
                         <button ref={tagManagementButton} type="button" className="secondary-button" aria-haspopup="dialog" onClick={openTagManagement}>タグ管理</button>
+                        <button ref={backupButton} type="button" className="secondary-button" aria-haspopup="dialog" onClick={openBackup}>バックアップ</button>
                         <label htmlFor="title-search" className="visually-hidden">漫画名で検索</label>
                         <input ref={searchElement} id="title-search" type="search" placeholder="漫画名で検索" value={searchInput}
                             onCompositionStart={() => { composingSearch.current = true; }}
