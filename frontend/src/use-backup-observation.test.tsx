@@ -127,3 +127,15 @@ it('StrictModeの古い応答を無視し、現行のタイマーだけ維持す
     expect(result.current.status?.executionId).toBe('2'); expect(resultAPI).not.toHaveBeenCalled();
     await tick(); expect(status).toHaveBeenCalledTimes(3);
 });
+
+it.each(['success', 'failure'])('明示無効化後の古い%sを採用せず、次の取得世代で確認する', async (mode) => {
+    const old = deferred(), next = deferred();
+    const status = vi.fn().mockReturnValueOnce(old.promise).mockReturnValue(next.promise), resultAPI = vi.fn();
+    const {result} = renderHook(() => useBackupObservation(status, resultAPI));
+    let revision = 0; act(() => {revision = result.current.reload();});
+    await act(async () => {if (mode === 'success') old.resolve(finished()); else old.reject(new Error('古い診断'));});
+    expect(resultAPI).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({status: null, fresh: false, error: ''});
+    await act(async () => {next.resolve(running('2'));});
+    expect(result.current).toMatchObject({revision, fresh: true, status: {executionId: '2'}});
+});
