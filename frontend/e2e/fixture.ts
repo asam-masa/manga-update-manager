@@ -64,6 +64,11 @@ export const test = base.extend<{scenario: 'smoke' | 'visual' | 'operations'}>({
             let mode = 'cards';
             let order = 'registration_asc';
             const calls: string[] = [];
+            const backup = JSON.parse(sessionStorage.getItem('synthetic-backup') ?? 'null') ?? {
+                state: 'idle', hold: false, selectionCancelled: false, unknown: false,
+            };
+            const saveBackup = () => sessionStorage.setItem('synthetic-backup', JSON.stringify(backup));
+            (window as unknown as {__backupTest: typeof backup}).__backupTest = backup;
             const currentTag = (expected: {id: string; name: string}) => {
                 const tag = data.tags.find((tag) => tag.id === expected.id);
                 if (!tag || tag.name !== expected.name) throw new Error('Synthetic tag confirmation mismatch');
@@ -75,6 +80,27 @@ export const test = base.extend<{scenario: 'smoke' | 'visual' | 'operations'}>({
                     .map(({id, createdAt, title}) => ({id, createdAt, title})),
             });
             const api: Record<string, (...args: unknown[]) => Promise<unknown>> = {
+                GetBackupStatus: async () => ({executionId: backup.state === 'idle' ? '' : '1', state: backup.state,
+                    stage: backup.state === 'idle' ? 'unobserved' : backup.state === 'running' ? 'database' : 'cleanup',
+                    elapsedSeconds: backup.state === 'idle' ? 0 : 12, canCancel: backup.state === 'running',
+                    result: backup.state !== 'finished' ? null : {publication: backup.unknown ? 'unknown' : 'confirmed',
+                        hasWarnings: true, omittedImageCount: 1, workNamesState: 'available', workCount: 1}}),
+                GetBackupResult: async (id) => {
+                    if (id !== '1' || backup.state !== 'finished') throw new Error('Synthetic result not retained');
+                    return {executionId: '1', outcome: backup.unknown ? 'unknown' : 'saved_with_warnings',
+                        message: backup.unknown ? '保存の成否を確認できません。' : 'バックアップは保存されています。',
+                        cancellationObserved: false, retryAllowed: !backup.unknown,
+                        notices: [{code: 'images_omitted', message: '一部の画像を除外しています。'}]};
+                },
+                SelectAndStartBackup: async () => {
+                    if (backup.selectionCancelled) return {cancelled: true, executionId: ''};
+                    backup.state = backup.hold ? 'running' : 'finished'; saveBackup();
+                    return {cancelled: false, executionId: '1'};
+                },
+                CancelBackup: async (id) => {
+                    if (id !== '1' || backup.state !== 'running') throw new Error('Synthetic cancellation mismatch');
+                    backup.state = 'cancelling'; saveBackup(); return {executionId: '1', decision: 'accepted'};
+                },
                 LoadLibrarySnapshot: async () => structuredClone(data),
                 LoadDisplaySettings: async () => ({registrationFormVisible: formVisible}),
                 LoadWorkListMode: async () => mode,

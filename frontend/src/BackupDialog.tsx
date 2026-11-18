@@ -1,10 +1,11 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useLayoutEffect, useRef} from 'react';
 import type {BackupResult, BackupStatus} from './backup-response';
 import './BackupDialog.css';
 
 export type BackupDialogProps = {
     status: BackupStatus | null; result: BackupResult | null; fresh: boolean;
     selecting: boolean; cancelling: boolean; error: string;
+    confirming?: boolean;
     onStart: () => void; onCancel: () => void; onReload: () => void; onClose: () => void;
 };
 const stageNames: Record<BackupStatus['stage'], string> = {
@@ -20,17 +21,21 @@ export function BackupDialog(props: BackupDialogProps) {
     const dialog = useRef<HTMLDialogElement>(null);
     const heading = useRef<HTMLHeadingElement>(null);
     const result = status?.state === 'finished' && props.result?.executionId === status.executionId ? props.result : null;
-    const busy = selecting || cancelling || (status !== null && status.state !== 'idle' && status.state !== 'finished');
+    const busy = selecting || cancelling || props.confirming === true || (status !== null && status.state !== 'idle' && status.state !== 'finished');
     const canClose = !busy;
     const canStart = fresh && !busy && (status?.state === 'idle'
         || (status?.state === 'finished' && result?.retryAllowed === true && result.outcome !== 'unknown'));
-    const canCancel = fresh && !selecting && !cancelling && status?.state === 'running' && status.canCancel;
+    const canCancel = fresh && !selecting && !cancelling && !props.confirming && status?.state === 'running' && status.canCancel;
 
     useEffect(() => {
         const node = dialog.current!;
         node.showModal(); heading.current?.focus();
         return () => node.close();
     }, []);
+    useLayoutEffect(() => {
+        // A focused action can disappear after cancellation or completion.
+        if (dialog.current?.open && document.activeElement === document.body) heading.current?.focus();
+    });
 
     return <dialog ref={dialog} className="edit-dialog backup-dialog" aria-labelledby="backup-dialog-title"
         onCancel={(event) => {event.preventDefault(); if (canClose) onClose();}}>
@@ -45,6 +50,7 @@ export function BackupDialog(props: BackupDialogProps) {
             {!fresh && <p className="warning-message" role="status">最新情報は未確認です。保存を開始せず、状態を確認してください。</p>}
             {error && <p className="error-message" role="alert">{error}</p>}
             {selecting && <p role="status">保存先を選択中です。選択画面でキャンセルすると元の画面に戻ります。</p>}
+            {props.confirming && <p role="status">操作後の状況を確認しています。再操作せずお待ちください。</p>}
             {status && status.state !== 'idle' && <section aria-label="バックアップの状況">
                 <p>処理段階：{stageNames[status.stage]}</p>
                 <p>経過時間：{status.elapsedSeconds}秒</p>

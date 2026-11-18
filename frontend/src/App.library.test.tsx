@@ -5,7 +5,8 @@ import App from './App';
 import {CreateWork, DeleteWork, EditWork, LoadLibrarySnapshot, LoadTagUsage, OpenWork, RenameTag} from '../wailsjs/go/main/App';
 import {main} from '../wailsjs/go/models';
 
-vi.mock('../wailsjs/go/main/App', () => ({
+vi.mock('../wailsjs/go/main/App', async () => ({
+    ...(await import('./test-library-api')).idleBackupAPI,
     LoadLibrarySnapshot: vi.fn(), ListWorks: () => { throw new Error('Legacy reader must not be used'); },
     CreateWork: vi.fn(), EditWork: vi.fn(), DeleteWork: vi.fn(), OpenWork: vi.fn(),
     LoadTagUsage: vi.fn(), RenameTag: vi.fn(),

@@ -7,7 +7,8 @@ import {main} from '../wailsjs/go/models';
 
 vi.mock('./use-japan-today', () => ({useJapanToday: () => '2028-02-29'}));
 
-vi.mock('../wailsjs/go/main/App', () => ({
+vi.mock('../wailsjs/go/main/App', async () => ({
+    ...(await import('./test-library-api')).idleBackupAPI,
     LoadLibrarySnapshot: vi.fn(), CreateWork: vi.fn(), OpenWork: vi.fn(), RenameTag: vi.fn(), DeleteTag: vi.fn(), LoadTagUsage: vi.fn(), LoadTagDeletePreview: vi.fn(),
     LoadTags: async () => [], LoadWorkTags: async () => [], LoadCoverWarnings: async () => [], LoadCoverProgress: async () => [],
     LoadDisplaySettings: async () => ({registrationFormVisible: false}), SetRegistrationFormVisible: async () => {},
