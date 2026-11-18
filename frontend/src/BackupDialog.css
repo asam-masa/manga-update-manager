@@ -1,0 +1,13 @@
+.edit-dialog.backup-dialog { box-sizing: border-box; width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: hidden; }
+.backup-dialog[open] { display: flex; flex-direction: column; }
+.backup-dialog header, .backup-dialog-footer { flex-shrink: 0; }
+.backup-dialog header h2 { margin: 0 0 16px; }
+.backup-dialog-body { min-height: 0; overflow: auto; overflow-wrap: anywhere; }
+.backup-dialog-body p { line-height: 1.7; }
+.backup-dialog-body ul { padding-left: 24px; line-height: 1.7; }
+.backup-dialog-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; border-top: 1px solid #dfe3e8; margin-top: 16px; padding-top: 16px; }
+.backup-dialog-footer button { width: auto; max-width: 100%; white-space: normal; }
+@media (max-width: 480px) {
+    .edit-dialog.backup-dialog { padding: 16px; width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+    .backup-dialog-footer { gap: 8px; }
+}
