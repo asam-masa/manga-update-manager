@@ -13,6 +13,7 @@ import {DeleteWorkDialog} from './DeleteWorkDialog';
 import {TagManagementDialog} from './TagManagementDialog';
 import {BackupDialog} from './BackupDialog';
 import {useBackupSession} from './use-backup-session';
+import {useBackupLocations} from './use-backup-locations';
 import {TagManagementNotices} from './TagManagementNotices';
 import type {TagNotice} from './TagManagementNotices';
 import {WorkNotices} from './WorkNotices';
@@ -72,6 +73,8 @@ function App() {
     const [tagNotices, setTagNotices] = useState<Record<string, TagNotice>>({});
     const tagManagementButton = useRef<HTMLButtonElement>(null);
     const backup = useBackupSession();
+    const backupLocations = useBackupLocations(backup.status?.state === 'finished'
+        && backup.result?.executionId === backup.status.executionId ? backup.status.executionId : null);
     const [backupOpen, setBackupOpen] = useState(false);
     const backupButton = useRef<HTMLButtonElement>(null);
     const backupBusy = backup.selecting || backup.cancelling || backup.reconciling
@@ -455,7 +458,7 @@ function App() {
                 </section>}
             {backupOpen && <BackupDialog status={backup.status} result={backup.result} fresh={backup.fresh && !backup.reconciling}
                 selecting={backup.selecting} cancelling={backup.cancelling} confirming={backup.reconciling}
-                error={backup.commandError || backup.error} onStart={() => {void backup.start();}}
+                locations={backupLocations} error={backup.commandError || backup.error} onStart={() => {void backup.start();}}
                 onCancel={() => {void backup.cancel();}} onReload={backup.reload} onClose={closeBackup} />}
             <TagManagementNotices notices={Object.values(tagNotices)} />
             {tagManagementStopped && <p className="message error-message" role="alert">タグ操作でDB停止または結果不明を検出しました。アプリを再起動して状態を確認してください。</p>}

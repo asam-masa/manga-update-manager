@@ -1,11 +1,14 @@
 import {useEffect, useLayoutEffect, useRef} from 'react';
 import type {BackupResult, BackupStatus} from './backup-response';
 import './BackupDialog.css';
+import {BackupLocationsPanel} from './BackupLocationsPanel';
+import type {useBackupLocations} from './use-backup-locations';
 
 export type BackupDialogProps = {
     status: BackupStatus | null; result: BackupResult | null; fresh: boolean;
     selecting: boolean; cancelling: boolean; error: string;
     confirming?: boolean;
+    locations?: ReturnType<typeof useBackupLocations>;
     onStart: () => void; onCancel: () => void; onReload: () => void; onClose: () => void;
 };
 const stageNames: Record<BackupStatus['stage'], string> = {
@@ -64,6 +67,7 @@ export function BackupDialog(props: BackupDialogProps) {
                 <p role="status">{result.message}</p>
                 {result.notices.map((notice, index) => <p className="warning-message" key={`${notice.code}-${index}`}>{notice.message}</p>)}
                 <p>除外した画像：{status?.result?.omittedImageCount == null ? '未確認' : `${status.result.omittedImageCount}件`}</p>
+                {props.locations && props.locations.id === result.executionId && <BackupLocationsPanel view={props.locations} />}
                 {!result.retryAllowed && <p className="warning-message">再保存せず、保存先や保全対象を確認してください。再起動だけで保存の成否は確定しません。</p>}
             </section>}
         </div>

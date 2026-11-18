@@ -92,6 +92,14 @@ export const test = base.extend<{scenario: 'smoke' | 'visual' | 'operations'}>({
                         cancellationObserved: false, retryAllowed: !backup.unknown,
                         notices: [{code: 'images_omitted', message: '一部の画像を除外しています。'}]};
                 },
+                GetBackupLocations: async (id) => {
+                    if (id !== '1' || backup.state !== 'finished' || backup.locationsFailed) throw new Error('Synthetic locations unavailable');
+                    const path = 'H:\\合成バックアップ\\' + '長いフォルダー'.repeat(15) + '\\saved.zip';
+                    return {executionId: '1', destination: path, publication: backup.unknown ? 'unknown' : 'confirmed',
+                        confirmedPath: backup.unknown ? '' : path,
+                        candidates: backup.unknown ? [{kind: 'temporary_zip', path: path + '.partial'}, {kind: 'publication_target', path},
+                            {kind: 'database_copy', path: 'H:\\合成作業\\copy.sqlite'}, {kind: 'work_directory', path: 'H:\\合成作業'}] : []};
+                },
                 SelectAndStartBackup: async () => {
                     if (backup.selectionCancelled) return {cancelled: true, executionId: ''};
                     backup.state = backup.hold ? 'running' : 'finished'; saveBackup();
