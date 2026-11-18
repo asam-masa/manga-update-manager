@@ -7,6 +7,7 @@
 .backup-dialog-body ul { padding-left: 24px; line-height: 1.7; }
 .backup-dialog-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; border-top: 1px solid #dfe3e8; margin-top: 16px; padding-top: 16px; }
 .backup-dialog-footer button { width: auto; max-width: 100%; white-space: normal; }
+.backup-locations dd { margin: 4px 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 480px) {
     .edit-dialog.backup-dialog { padding: 16px; width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
     .backup-dialog-footer { gap: 8px; }

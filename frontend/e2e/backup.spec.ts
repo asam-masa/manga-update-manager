@@ -14,6 +14,7 @@ test('バックアップの保存・選択取消・結果保持・入口への�
     await expect(dialog.getByRole('heading', {name: 'バックアップ', exact: true})).toBeFocused();
     await dialog.getByRole('button', {name: '保存先を選んで開始'}).click();
     await expect(dialog.getByText('バックアップは保存されています。')).toBeVisible();
+    await expect(dialog.getByRole('region', {name: '保存先と保全候補'})).toContainText('選んだ保存先');
     await control(page, {selectionCancelled: true});
     await dialog.getByRole('button', {name: '保存先を選び直す'}).click();
     await expect(dialog.getByText('バックアップは保存されています。')).toBeVisible();
@@ -46,8 +47,24 @@ test('狭い幅の結果不明は再保存を出さず概要を保持する', as
     await dialog.getByRole('button', {name: '保存先を選んで開始'}).click();
     await expect(dialog.getByRole('heading', {name: '保存の成否は不明です'})).toBeVisible();
     await expect(dialog.getByRole('button', {name: '保存先を選び直す'})).toHaveCount(0);
+    const locations = dialog.getByRole('region', {name: '保存先と保全候補'});
+    await expect(locations).toContainText('成否不明の保存先');
+    await expect(locations).toContainText('DBコピー');
+    await expect(locations).toContainText('作業フォルダー');
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await dialog.locator('.backup-dialog-body').evaluate((el) => el.scrollTop = el.scrollHeight);
     await expect(dialog.getByRole('button', {name: '閉じる', exact: true})).toBeInViewport();
     await page.screenshot({path: info.outputPath('backup-unknown-narrow.png')});
+});
+
+test('場所取得の失敗を保存失敗にせず、詳細だけを再取得する', async ({page}) => {
+    await page.goto('/'); await control(page, {locationsFailed: true}); const dialog = await open(page);
+    await dialog.getByRole('button', {name: '保存先を選んで開始'}).click();
+    await expect(dialog.getByText('バックアップは保存されています。')).toBeVisible();
+    await expect(dialog.getByRole('alert')).toContainText('保存先・保全候補を取得できません');
+    const starts = () => page.evaluate(() => (window as unknown as {__browserTestCalls: string[]}).__browserTestCalls.filter(x => x === 'SelectAndStartBackup').length);
+    expect(await starts()).toBe(1); await control(page, {locationsFailed: false});
+    await dialog.getByRole('button', {name: '場所の詳細を再読み込み'}).click();
+    await expect(dialog.getByRole('region', {name: '保存先と保全候補'})).toContainText('saved.zip');
+    expect(await starts()).toBe(1); await expect(dialog.getByText('バックアップは保存されています。')).toBeVisible();
 });

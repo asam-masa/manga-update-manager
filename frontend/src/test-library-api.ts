@@ -1,6 +1,7 @@
 import type {WorkView} from './work-display';
 
 export const idleBackupAPI = {
+    GetBackupLocations: async () => {throw new Error('Unexpected backup locations request');},
     GetBackupStatus: async () => ({executionId: '', state: 'idle', stage: 'unobserved', elapsedSeconds: 0, canCancel: false}),
     GetBackupResult: async () => {throw new Error('Unexpected backup result request');},
     SelectAndStartBackup: async () => {throw new Error('Unexpected backup start');},
