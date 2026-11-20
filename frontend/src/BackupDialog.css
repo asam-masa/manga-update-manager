@@ -8,6 +8,10 @@
 .backup-dialog-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; border-top: 1px solid #dfe3e8; margin-top: 16px; padding-top: 16px; }
 .backup-dialog-footer button { width: auto; max-width: 100%; white-space: normal; }
 .backup-locations dd { margin: 4px 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.backup-omission-list { padding-left: 28px; }
+.backup-omission-list li { padding: 8px 4px; overflow-wrap: anywhere; }
+.backup-omission-list li:nth-child(even) { background: #f4f7fa; }
+.backup-omission-list button { margin-left: 12px; }
 @media (max-width: 480px) {
     .edit-dialog.backup-dialog { padding: 16px; width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
     .backup-dialog-footer { gap: 8px; }
