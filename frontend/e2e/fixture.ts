@@ -84,7 +84,21 @@ export const test = base.extend<{scenario: 'smoke' | 'visual' | 'operations'}>({
                     stage: backup.state === 'idle' ? 'unobserved' : backup.state === 'running' ? 'database' : 'cleanup',
                     elapsedSeconds: backup.state === 'idle' ? 0 : 12, canCancel: backup.state === 'running',
                     result: backup.state !== 'finished' ? null : {publication: backup.unknown ? 'unknown' : 'confirmed',
-                        hasWarnings: true, omittedImageCount: 1, workNamesState: 'available', workCount: 1}}),
+                        hasWarnings: true, omittedImageCount: backup.imageTotal ?? 1, workNamesState: 'available', workCount: backup.workTotal ?? 1}}),
+                GetBackupOmittedImages: async (id, value) => {
+                    if (id !== '1' || backup.state !== 'finished' || backup.detailsFailed) throw new Error('Synthetic details unavailable');
+                    const page = Number(value), total = backup.imageTotal ?? 1;
+                    return {executionId: id, page, pageSize: 50, pages: Math.max(1, Math.ceil(total / 50)), total,
+                        items: Array.from({length: Math.min(50, total - (page - 1) * 50)}, (_, i) => ({
+                            imageId: ((page - 1) * 50 + i + 1).toString(16).padStart(32, '0'), reason: 'missing'}))};
+                },
+                GetBackupOmittedImageWorks: async (id, imageId, value) => {
+                    if (id !== '1' || backup.state !== 'finished' || backup.detailsFailed) throw new Error('Synthetic details unavailable');
+                    const page = Number(value), total = backup.workTotal ?? 1;
+                    return {executionId: id, imageId, page, pageSize: 50, pages: Math.max(1, Math.ceil(total / 50)), total,
+                        items: Array.from({length: Math.min(50, total - (page - 1) * 50)}, (_, i) => ({
+                            workId: String((page - 1) * 50 + i + 1), title: `対象作品${(page - 1) * 50 + i + 1}・${'長い作品名'.repeat(8)}`}))};
+                },
                 GetBackupResult: async (id) => {
                     if (id !== '1' || backup.state !== 'finished') throw new Error('Synthetic result not retained');
                     return {executionId: '1', outcome: backup.unknown ? 'unknown' : 'saved_with_warnings',

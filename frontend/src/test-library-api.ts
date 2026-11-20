@@ -1,6 +1,8 @@
 import type {WorkView} from './work-display';
 
 export const idleBackupAPI = {
+    GetBackupOmittedImages: async () => {throw new Error('Unexpected omitted images request');},
+    GetBackupOmittedImageWorks: async () => {throw new Error('Unexpected omitted works request');},
     GetBackupLocations: async () => {throw new Error('Unexpected backup locations request');},
     GetBackupStatus: async () => ({executionId: '', state: 'idle', stage: 'unobserved', elapsedSeconds: 0, canCancel: false}),
     GetBackupResult: async () => {throw new Error('Unexpected backup result request');},

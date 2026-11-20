@@ -4,8 +4,12 @@ import {beforeEach, afterEach, expect, it, vi} from 'vitest';
 import {BackupDialog} from './BackupDialog';
 import type {BackupDialogProps} from './BackupDialog';
 import {readBackupResult, readBackupStatus} from './backup-response';
+import {GetBackupOmittedImages, GetBackupOmittedImageWorks} from '../wailsjs/go/main/App';
+
+vi.mock('../wailsjs/go/main/App', () => ({GetBackupOmittedImages: vi.fn(), GetBackupOmittedImageWorks: vi.fn()}));
 
 beforeEach(() => {
+    vi.resetAllMocks();
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {configurable: true, value: function(this: HTMLDialogElement) {this.open = true;}});
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {configurable: true, value: function(this: HTMLDialogElement) {this.open = false;}});
 });
@@ -79,6 +83,38 @@ it('結果と画像除外を分け、閉じるまで残す', () => {
 it.each([null, 0])('未取得と0件を区別する: %s', (count) => {
     render(<BackupDialog {...props({status: finished(count), result: saved()})} />);
     expect(screen.getByText(count === null ? '除外した画像：未確認' : '除外した画像：0件')).toBeTruthy();
+    expect((screen.getByRole('button', {name: '除外画像の詳細'}) as HTMLButtonElement).disabled).toBe(true);
+    expect(GetBackupOmittedImages).not.toHaveBeenCalled();
+});
+
+it('詳細は開いたときだけ取得し、作品名が利用不可なら0作品と表示しない', async () => {
+    vi.mocked(GetBackupOmittedImages).mockResolvedValue({executionId: '1', page: 1, pageSize: 50, pages: 1, total: 1,
+        items: [{imageId: 'a'.repeat(32), reason: 'missing'}]} as Awaited<ReturnType<typeof GetBackupOmittedImages>>);
+    const status = finished(1); status.result!.workNamesState = 'unavailable'; status.result!.workCount = null;
+    render(<BackupDialog {...props({status, result: saved()})} />);
+    expect(GetBackupOmittedImages).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', {name: '除外画像の詳細'}));
+    expect(await screen.findByText('対象作品名の詳細は未確認または利用不可です。')).toBeTruthy();
+    const button = await screen.findByRole('button', {name: '除外画像1の対象作品'});
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(GetBackupOmittedImageWorks).not.toHaveBeenCalled();
+    expect(screen.queryByText(/全0作品/)).toBeNull();
+});
+
+it('別実行へ変わったら詳細を閉じ、遅れて届いた旧実行の応答を表示しない', async () => {
+    let resolve!: (value: never) => void;
+    vi.mocked(GetBackupOmittedImages).mockReturnValue(new Promise(done => {resolve = done;}));
+    const p = props({status: finished(1), result: saved()});
+    const view = render(<BackupDialog {...p} />);
+    fireEvent.click(screen.getByRole('button', {name: '除外画像の詳細'}));
+    expect(GetBackupOmittedImages).toHaveBeenCalledWith('1', 1);
+    const status = finished(0); status.executionId = '2';
+    view.rerender(<BackupDialog {...p} status={status} result={saved('saved', true, '2')} />);
+    resolve({executionId: '1', page: 1, pageSize: 50, pages: 1, total: 1, items: [{imageId: 'a'.repeat(32), reason: 'missing'}]} as never);
+    expect(await screen.findByText('除外した画像：0件')).toBeTruthy();
+    expect(screen.queryByRole('heading', {name: '除外画像の一覧'})).toBeNull();
+    expect(screen.queryByRole('button', {name: '戻る'})).toBeNull();
+    expect(GetBackupOmittedImages).toHaveBeenCalledTimes(1);
 });
 
 it.each(['unknown', 'saved_with_warnings', 'not_saved', 'collision'])('再実行不可の結果 %s から再開始させない', (outcome) => {
