@@ -10,6 +10,7 @@ import (
 var ErrRestorePreparationDiscard = errors.New("restore preparation cleanup failed")
 var ErrRestorePreparationDiscardUnsafe = errors.New("restore preparation cleanup not authorized")
 var ErrRestorePreparationDiscardAttempted = errors.New("restore preparation cleanup already attempted")
+var ErrRestorePreparationParentUnconfirmed = errors.New("restore preparation parent not confirmed")
 
 // Observations about this retained child only, not a later same-named object.
 type RestorePreparationDiscardResult struct {
@@ -47,18 +48,21 @@ func (f *RestorePreparationFile) discard(ops backupDiscardOps) (RestorePreparati
 		return r, errors.Join(ErrRestorePreparationDiscard, err)
 	}
 	if f.release.CloseAttempted || f.file == nil || work.closed || work.file == nil {
+		if work.closed || work.file == nil {
+			return fail(errors.Join(ErrRestorePreparationParentUnconfirmed, os.ErrClosed))
+		}
 		return fail(os.ErrClosed)
 	}
 	id, err := identifyBackupWorkDirectory(work.file)
 	if err != nil {
-		return fail(err)
+		return fail(errors.Join(ErrRestorePreparationParentUnconfirmed, err))
 	}
 	name, err := backupHandleName(work.file)
 	if err != nil {
-		return fail(err)
+		return fail(errors.Join(ErrRestorePreparationParentUnconfirmed, err))
 	}
 	if id != work.identity || !strings.EqualFold(name, work.path) || !strings.EqualFold(filepath.Dir(f.path), work.path) {
-		return fail(ErrRestorePreparationDiscardUnsafe)
+		return fail(errors.Join(ErrRestorePreparationParentUnconfirmed, ErrRestorePreparationDiscardUnsafe))
 	}
 	childID, err := ops.identity(f.file)
 	if err != nil {
