@@ -11,7 +11,7 @@ func (f *RestorePreparationFile) Write(p []byte) (int, error) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.release.CloseAttempted || f.file == nil {
+	if f.release.CloseAttempted || f.discardAttempted || f.file == nil {
 		return 0, os.ErrClosed
 	}
 	return f.file.Write(p)
@@ -24,7 +24,7 @@ func (f *RestorePreparationFile) ReadAt(p []byte, offset int64) (int, error) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.release.CloseAttempted || f.file == nil {
+	if f.release.CloseAttempted || f.discardAttempted || f.file == nil {
 		return 0, os.ErrClosed
 	}
 	return f.file.ReadAt(p, offset)
@@ -37,7 +37,7 @@ func (f *RestorePreparationFile) Sync() error {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.release.CloseAttempted || f.file == nil {
+	if f.release.CloseAttempted || f.discardAttempted || f.file == nil {
 		return os.ErrClosed
 	}
 	return f.file.Sync()
@@ -49,7 +49,7 @@ func (f *RestorePreparationFile) Size() (int64, error) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.release.CloseAttempted || f.file == nil {
+	if f.release.CloseAttempted || f.discardAttempted || f.file == nil {
 		return 0, os.ErrClosed
 	}
 	info, err := f.file.Stat()

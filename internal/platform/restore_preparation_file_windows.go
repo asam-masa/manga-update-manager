@@ -44,15 +44,19 @@ func (e *RestorePreparationFileError) Error() string {
 func (e *RestorePreparationFileError) Unwrap() error { return e.Err }
 
 // Do not copy. The caller keeps work and all its parents alive until children
-// finish. Close never deletes or releases work. No raw handle is exported.
+// finish. Close never initiates deletion or releases work. No raw handle is exported.
 type RestorePreparationFile struct {
-	mu        sync.Mutex
-	file      *os.File
-	path      string
-	identity  BackupTempIdentity
-	closeFile func() error
-	release   RestorePreparationFileRelease
-	closeErr  error
+	mu               sync.Mutex
+	file             *os.File
+	path             string
+	identity         BackupTempIdentity
+	closeFile        func() error
+	release          RestorePreparationFileRelease
+	closeErr         error
+	work             *BackupWorkDirectory // Borrowed; caller retains it through child cleanup.
+	discardAttempted bool
+	discardResult    RestorePreparationDiscardResult
+	discardErr       error
 }
 
 func (f *RestorePreparationFile) Path() string                 { return f.path }
@@ -60,6 +64,9 @@ func (f *RestorePreparationFile) Identity() BackupTempIdentity { return f.identi
 func (f *RestorePreparationFile) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.closeLocked()
+}
+func (f *RestorePreparationFile) closeLocked() error {
 	if !f.release.CloseAttempted {
 		f.release.CloseAttempted = true
 		if f.closeFile != nil {
@@ -134,6 +141,7 @@ func createRestorePreparationFile(ctx context.Context, work *BackupWorkDirectory
 	if id != work.identity || !strings.EqualFold(name, work.path) {
 		return nil, ErrBackupWorkDirectoryIdentity
 	}
+	f.work = work
 	f.path = filepath.Join(work.path, ".manga-update-restore-"+hex.EncodeToString(token[:])+".partial")
 	if err = ctx.Err(); err != nil {
 		return nil, err
