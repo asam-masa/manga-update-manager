@@ -3,6 +3,7 @@ package backup
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -57,6 +58,27 @@ func rejectArchive(t *testing.T, data []byte, cause error) {
 	m, err := ValidateArchive(bytes.NewReader(data), int64(len(data)))
 	if !errors.Is(err, ErrArchive) || !reflect.DeepEqual(m, Manifest{}) || (cause != nil && !errors.Is(err, cause)) {
 		t.Fatalf("partial result or error mismatch: %+v %v", m, err)
+	}
+	// Run the same malformed-container corpus through extraction. If metadata
+	// is readable, use its manifest so mismatching caller metadata cannot mask
+	// payload CRC/size/hash rejection.
+	expected := fixture()
+	if z, e := zip.NewReader(bytes.NewReader(data), int64(len(data))); e == nil {
+		for _, f := range z.File {
+			if f.Name == "manifest.json" {
+				if r, e := f.Open(); e == nil {
+					if parsed, e := DecodeManifest(r); e == nil {
+						expected = parsed
+					}
+					_ = r.Close()
+				}
+				break
+			}
+		}
+	}
+	err = ExtractArchive(context.Background(), bytes.NewReader(data), int64(len(data)), expected, func(File) (io.Writer, error) { return io.Discard, nil })
+	if !errors.Is(err, ErrArchiveExtract) || (cause != nil && !errors.Is(err, cause)) {
+		t.Fatal("extraction accepted malformed input or lost cause", err)
 	}
 }
 

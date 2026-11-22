@@ -25,14 +25,14 @@ var ErrArchive = errors.New("invalid backup archive")
 // contents or image validity. It never creates files and returns no partial
 // manifest. The caller owns r and must keep its contents stable during the call.
 func ValidateArchive(r io.ReaderAt, size int64) (Manifest, error) {
-	m, err := validateArchive(r, size)
+	m, err := validateArchive(r, size, nil)
 	if err != nil {
 		return Manifest{}, fmt.Errorf("%w: %w", ErrArchive, err)
 	}
 	return m, nil
 }
 
-func validateArchive(r io.ReaderAt, size int64) (Manifest, error) {
+func validateArchive(r io.ReaderAt, size int64, extraction *archiveExtraction) (Manifest, error) {
 	if size < 22 || size > MaxArchiveBytes {
 		return Manifest{}, ErrArchive
 	}
@@ -85,12 +85,26 @@ func validateArchive(r io.ReaderAt, size int64) (Manifest, error) {
 			return Manifest{}, ErrArchive
 		}
 	}
+	if extraction != nil && !sameManifest(m, extraction.expected) {
+		return Manifest{}, ErrManifest
+	}
+	consume := func(file File) error {
+		var dst io.Writer = io.Discard
+		if extraction != nil {
+			var err error
+			dst, err = extraction.destination(file)
+			if err != nil {
+				return err
+			}
+		}
+		return verifyFile(files[file.Path], file.Size, file.SHA256, dst)
+	}
 	// Only expected paths are accessed. Omitted images have no ZIP payload.
-	if err := verifyFile(files[m.Database.Path], m.Database.Size, m.Database.SHA256); err != nil {
+	if err := consume(m.Database); err != nil {
 		return Manifest{}, err
 	}
 	for _, im := range m.Images {
-		if err := verifyFile(files[im.Path], im.Size, im.SHA256); err != nil {
+		if err := consume(File{Path: im.Path, Size: im.Size, SHA256: im.SHA256}); err != nil {
 			return Manifest{}, err
 		}
 	}
@@ -110,7 +124,7 @@ func entryLimit(name string) int64 {
 	return 0
 }
 
-func verifyFile(f *zip.File, size int64, digest string) error {
+func verifyFile(f *zip.File, size int64, digest string, dst io.Writer) error {
 	if f == nil || f.UncompressedSize64 != uint64(size) {
 		return ErrArchive
 	}
@@ -120,7 +134,7 @@ func verifyFile(f *zip.File, size int64, digest string) error {
 	}
 	h := sha256.New()
 	crc := crc32.NewIEEE()
-	n, readErr := io.CopyBuffer(io.MultiWriter(h, crc), io.LimitReader(r, size+1), make([]byte, 32<<10))
+	n, readErr := io.CopyBuffer(io.MultiWriter(dst, h, crc), io.LimitReader(r, size+1), make([]byte, 32<<10))
 	if err := errors.Join(readErr, r.Close()); err != nil {
 		return err
 	}
