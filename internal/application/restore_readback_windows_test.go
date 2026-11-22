@@ -4,15 +4,30 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/asam-masa/manga-update-manager/internal/platform"
+	"golang.org/x/sys/windows"
 )
 
 func TestRestoreReadbackHeldPreparationFile(t *testing.T) {
 	ctx := context.Background()
-	p, err := platform.CreateRestorePreparation(ctx, t.TempDir())
+	// Normalize only this synthetic fixture: CI TEMP may use an 8.3 alias.
+	// Production keeps rejecting names that differ from the retained handle.
+	dir, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pathBuf [32768]uint16
+	n, nameErr := windows.GetFinalPathNameByHandle(windows.Handle(dir.Fd()), &pathBuf[0], uint32(len(pathBuf)), 0)
+	if err := errors.Join(nameErr, dir.Close()); err != nil || n == 0 || n >= uint32(len(pathBuf)) {
+		t.Fatal(n, err)
+	}
+	root := strings.TrimPrefix(windows.UTF16ToString(pathBuf[:n]), `\\?\`)
+	p, err := platform.CreateRestorePreparation(ctx, root)
 	if err != nil {
 		t.Fatal(err)
 	}
