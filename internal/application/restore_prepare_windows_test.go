@@ -114,6 +114,20 @@ func TestPrepareRestoreNativeOwnership(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}
+	sqlUse, err := p.BeginSQLUse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Cleanup(nil); !errors.Is(err, ErrPreparedRestoreSQLInUse) {
+		t.Fatal(err)
+	}
+	got := make([]byte, len(f.bodies[f.manifest.Database.Path]))
+	if _, err := p.Files()[0].Reader.ReadAt(got, 0); err != nil || !bytes.Equal(got, f.bodies[f.manifest.Database.Path]) {
+		t.Fatal("SQL-use rejection changed retained database", err)
+	}
+	if err := sqlUse.End(true, nil); err != nil {
+		t.Fatal(err)
+	}
 	cleanup, err := p.Cleanup(nil)
 	if err != nil || !cleanup.Parent.Absent || !cleanup.ParentRelease.Confirmed() || len(cleanup.Children) != 2 {
 		t.Fatal(cleanup, err)
@@ -126,7 +140,8 @@ func TestPrepareRestoreNativeOwnership(t *testing.T) {
 	if _, err := p.Files()[0].Reader.ReadAt(make([]byte, 1), 0); !errors.Is(err, os.ErrClosed) {
 		t.Fatal(err)
 	}
-	if _, err := p.Cleanup(nil); !errors.Is(err, platform.ErrRestorePreparationCleanupAttempted) {
+	again, err := p.Cleanup(nil)
+	if !errors.Is(err, platform.ErrRestorePreparationCleanupAttempted) || !reflect.DeepEqual(again, cleanup) {
 		t.Fatal(err)
 	}
 	f.assertProtected(t)
