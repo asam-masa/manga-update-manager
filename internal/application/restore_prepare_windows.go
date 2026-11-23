@@ -46,6 +46,7 @@ type PreparedRestore struct {
 	mu             sync.Mutex
 	sqlUse         *PreparedRestoreSQLUse
 	sqlReleaseErr  error
+	retainedSQL    *restoreSQLSession
 	cleanupStarted bool
 	cleanup        func(error) (platform.RestorePreparationCleanupResult, error)
 }
