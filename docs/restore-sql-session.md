@@ -43,6 +43,8 @@ SQL使用中・解放未確認では、PreparedRestoreのCleanupからネイテ�
 
 ## 実装と検証の分割
 
+#657では準備DBの保持Readerから読取専用VFSを登録し、固定の内部SQLで一接続の読取経路を確認する。ドライバー接続とRowsを直接所有し、終了結果を個別に観測する。取得時のエラーに下位資源の解放結果が伴わない場合は解放未確認として記録し、準備物と必要な参照を保持する。
+
 1. [#656](https://github.com/asam-masa/manga-update-manager/issues/656)：準備物の使用状態とCleanupの排他。SQL使用中/解放未確認でネイティブ処理を始めず、全解放確認時だけ借用を終了できる条件と競合を試験する。
 2. [#657](https://github.com/asam-masa/manga-update-manager/issues/657)：有界な読取専用FS/viewとSQLセッション。部分取得、原因と取消の併発、SQL成功/Go原因あり、Rows/DB/VFS/viewの終了失敗、Cleanupとの接続を試験する。必要なら部品ごとに分割する。
 

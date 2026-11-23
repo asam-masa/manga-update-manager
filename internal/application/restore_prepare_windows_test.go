@@ -27,6 +27,10 @@ type restoreFixture struct {
 }
 
 func newRestoreFixture(t *testing.T) restoreFixture {
+	return newRestoreFixtureWithDB(t, []byte("synthetic database"))
+}
+
+func newRestoreFixtureWithDB(t *testing.T, db []byte) restoreFixture {
 	t.Helper()
 	dir, err := os.Open(t.TempDir())
 	if err != nil {
@@ -38,7 +42,7 @@ func newRestoreFixture(t *testing.T) restoreFixture {
 		t.Fatal(n, err)
 	}
 	root := strings.TrimPrefix(windows.UTF16ToString(pathBuf[:n]), `\\?\`)
-	db, im := []byte("synthetic database"), []byte("synthetic image")
+	im := []byte("synthetic image")
 	hash := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 	id := strings.Repeat("1", 32)
 	omitted := strings.Repeat("2", 32)
