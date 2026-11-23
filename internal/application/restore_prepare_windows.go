@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"sync"
 
 	"github.com/asam-masa/manga-update-manager/internal/backup"
 	"github.com/asam-masa/manga-update-manager/internal/platform"
@@ -41,6 +42,12 @@ type PreparedRestore struct {
 	preparation *platform.RestorePreparation
 	manifest    backup.Manifest
 	files       []PreparedRestoreFile
+
+	mu             sync.Mutex
+	sqlUse         *PreparedRestoreSQLUse
+	sqlReleaseErr  error
+	cleanupStarted bool
+	cleanup        func(error) (platform.RestorePreparationCleanupResult, error)
 }
 
 func (p *PreparedRestore) Manifest() backup.Manifest {
@@ -52,7 +59,19 @@ func (p *PreparedRestore) Manifest() backup.Manifest {
 }
 func (p *PreparedRestore) Files() []PreparedRestoreFile { return slices.Clone(p.files) }
 func (p *PreparedRestore) Cleanup(originalErr error) (platform.RestorePreparationCleanupResult, error) {
-	return p.preparation.Cleanup(originalErr)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.sqlUse != nil {
+		return platform.RestorePreparationCleanupResult{}, ErrPreparedRestoreSQLInUse
+	}
+	if p.sqlReleaseErr != nil {
+		return platform.RestorePreparationCleanupResult{}, errors.Join(ErrPreparedRestoreSQLReleaseUnconfirmed, p.sqlReleaseErr)
+	}
+	if p.cleanupStarted {
+		return p.cleanup(originalErr)
+	}
+	p.cleanupStarted = true
+	return p.cleanup(originalErr)
 }
 
 type restorePrepareOps struct {
@@ -207,7 +226,14 @@ func prepareRestore(ctx context.Context, sourcePath, directory string, ops resto
 	if err := ops.verify(ctx, source); err != nil {
 		return nil, err
 	}
-	return &PreparedRestore{preparation: preparation, manifest: m, files: files}, nil
+	return &PreparedRestore{
+		preparation: preparation,
+		manifest:    m,
+		files:       files,
+		cleanup: func(originalErr error) (platform.RestorePreparationCleanupResult, error) {
+			return preparation.Cleanup(originalErr)
+		},
+	}, nil
 }
 
 // Expose only ReadAt when lending the output; not its Close/Write/Sync methods.
