@@ -51,6 +51,7 @@ func TestRestoreComparisonStopsAfterRowsCloseFailure(t *testing.T) {
 }
 
 func TestPreparedRestoreSchema(t *testing.T) {
+	const validWork = "INSERT INTO works(id,url,title,created_at,updated_at) VALUES (1,'https://example.test/work','Synthetic work','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"
 	ctx := context.Background()
 	versions, _, err := storage.CurrentRestoreSchema(ctx)
 	if err != nil {
@@ -61,6 +62,7 @@ func TestPreparedRestoreSchema(t *testing.T) {
 		want         error
 	}{
 		{name: "fresh"},
+		{name: "works tags and links", change: validWork + "; INSERT INTO tags(id,name) VALUES (1,'Synthetic tag'); INSERT INTO work_tags VALUES (1,1)"},
 		{name: "upgraded"},
 		{name: "missing index", change: "DROP INDEX work_tags_by_tag", want: errRestoreSchema},
 		{name: "extra object", change: "CREATE VIEW extra AS SELECT id FROM works", want: errRestoreSchema},
@@ -68,6 +70,8 @@ func TestPreparedRestoreSchema(t *testing.T) {
 		{name: "missing history", change: "DELETE FROM schema_migrations WHERE version='009_tags.sql'", want: errRestoreMigrationHistory},
 		{name: "manifest mismatch", want: errRestoreMigrationHistory},
 		{name: "orphan link", change: "PRAGMA foreign_keys=OFF; INSERT INTO work_tags(work_id,tag_id) VALUES (1,1)", want: errRestoreForeignKeys},
+		{name: "invalid work timestamp", change: validWork + "; UPDATE works SET created_at='bad',updated_at='bad'", want: errRestoreWorkRow},
+		{name: "noncanonical tag", change: "INSERT INTO tags(id,name) VALUES (1,' trailing ')", want: errRestoreTagRow},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
