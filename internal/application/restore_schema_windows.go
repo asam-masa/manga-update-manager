@@ -16,7 +16,7 @@ var (
 	errRestoreSchema           = errors.New("restore database structure does not match current version")
 )
 
-func checkPreparedRestoreSchema(ctx context.Context, p *PreparedRestore) (restoreSQLResult, error) {
+func checkPreparedRestoreDB(ctx context.Context, p *PreparedRestore) (restoreSQLResult, error) {
 	versions, objects, err := storage.CurrentRestoreSchema(ctx)
 	if err != nil {
 		return restoreSQLResult{OperationErr: err, ContextErr: ctx.Err()}, err
@@ -36,9 +36,6 @@ FROM main.schema_migrations ORDER BY version COLLATE BINARY LIMIT ?`
 		s.compareRows(ctx, r, historyQuery, historyArgs, len(versions), 1, errRestoreMigrationHistory, func(i int, row []driver.Value) bool {
 			return row[0] == versions[i]
 		})
-		if r.OperationErr != nil || r.ReleaseErr != nil || s.failure() != nil || ctx.Err() != nil {
-			return
-		}
 		s.compareRows(ctx, r, storage.RestoreSchemaQuery, nil, len(objects), 4, errRestoreSchema, func(i int, row []driver.Value) bool {
 			object := objects[i]
 			if row[0] != object.Type || row[1] != object.Name || row[2] != object.Table {
@@ -49,11 +46,15 @@ FROM main.schema_migrations ORDER BY version COLLATE BINARY LIMIT ?`
 			}
 			return row[3] == object.SQL.String
 		})
+		s.checkIntegrity(ctx, r)
 	}
 	return runRestoreSQL(ctx, p, ops)
 }
 
 func (s *restoreSQLSession) compareRows(ctx context.Context, r *restoreSQLResult, statement string, args []driver.NamedValue, count, columns int, mismatch error, matches func(int, []driver.Value) bool) {
+	if r.OperationErr != nil || r.ReleaseErr != nil || s.failure() != nil || ctx.Err() != nil {
+		return
+	}
 	if !s.query(ctx, r, statement, args...) {
 		return
 	}
