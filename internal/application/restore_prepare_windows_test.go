@@ -35,6 +35,10 @@ func newRestoreFixtureWithDB(t *testing.T, db []byte) restoreFixture {
 }
 
 func newRestoreFixtureWithMigrations(t *testing.T, db []byte, migrations []string) restoreFixture {
+	return newRestoreFixtureWithImages(t, db, migrations, []byte("synthetic image"), nil)
+}
+
+func newRestoreFixtureWithImages(t *testing.T, db []byte, migrations []string, im []byte, change func(*backup.Manifest)) restoreFixture {
 	t.Helper()
 	dir, err := os.Open(t.TempDir())
 	if err != nil {
@@ -46,13 +50,15 @@ func newRestoreFixtureWithMigrations(t *testing.T, db []byte, migrations []strin
 		t.Fatal(n, err)
 	}
 	root := strings.TrimPrefix(windows.UTF16ToString(pathBuf[:n]), `\\?\`)
-	im := []byte("synthetic image")
 	hash := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 	id := strings.Repeat("1", 32)
 	omitted := strings.Repeat("2", 32)
 	m := backup.Manifest{FormatVersion: 1, CreatedAt: "2026-11-22T00:00:00Z", AppVersion: "fixture", Migrations: []string{"001_create_works.sql"}, Database: backup.File{Path: "database.sqlite", Size: int64(len(db)), SHA256: hash(db)}, Images: []backup.Image{{ID: id, Path: "covers/" + id + ".png", Size: int64(len(im)), SHA256: hash(im)}}, OmittedImages: []backup.OmittedImage{{ID: omitted, Path: "covers/" + omitted + ".png", Reason: "missing"}}}
 	bodies := map[string][]byte{m.Database.Path: db, m.Images[0].Path: im}
 	m.Migrations = migrations
+	if change != nil {
+		change(&m)
+	}
 	metadata, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
