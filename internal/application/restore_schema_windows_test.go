@@ -67,6 +67,7 @@ func TestPreparedRestoreSchema(t *testing.T) {
 		{name: "future history", change: "UPDATE schema_migrations SET version='010_future.sql' WHERE version='009_tags.sql'", want: errRestoreMigrationHistory},
 		{name: "missing history", change: "DELETE FROM schema_migrations WHERE version='009_tags.sql'", want: errRestoreMigrationHistory},
 		{name: "manifest mismatch", want: errRestoreMigrationHistory},
+		{name: "orphan link", change: "PRAGMA foreign_keys=OFF; INSERT INTO work_tags(work_id,tag_id) VALUES (1,1)", want: errRestoreForeignKeys},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -132,7 +133,7 @@ func TestPreparedRestoreSchema(t *testing.T) {
 				}
 				fixture.assertProtected(t)
 			})
-			result, err := checkPreparedRestoreSchema(ctx, p)
+			result, err := checkPreparedRestoreDB(ctx, p)
 			if !errors.Is(err, tc.want) || result.ReleaseErr != nil {
 				t.Fatal(result, err)
 			}
