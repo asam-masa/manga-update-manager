@@ -58,9 +58,11 @@ func (s *Store) LoadLibrarySnapshot(ctx context.Context) (result LibrarySnapshot
 	return result, err
 }
 
+const LibraryWorksQuery = `SELECT id,url,title,site_name,thumbnail_path,notes,
+ created_at,updated_at,last_accessed_at,scheduled_date FROM main.works ORDER BY id`
+
 func readLibraryWorks(ctx context.Context, q rowQueryer) (result []manga.Work, err error) {
-	rows, err := q.QueryContext(ctx, `SELECT id,url,title,site_name,thumbnail_path,notes,
- created_at,updated_at,last_accessed_at,scheduled_date FROM works ORDER BY id`)
+	rows, err := q.QueryContext(ctx, LibraryWorksQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query library works: %w", err)
 	}
@@ -68,38 +70,45 @@ func readLibraryWorks(ctx context.Context, q rowQueryer) (result []manga.Work, e
 	result = make([]manga.Work, 0)
 	var previous int64
 	for rows.Next() {
-		var work manga.Work
-		var created, updated string
-		var accessed, scheduled sql.NullString
-		if err := rows.Scan(&work.ID, &work.URL, &work.Title, &work.SiteName, &work.ThumbnailPath,
-			&work.Notes, &created, &updated, &accessed, &scheduled); err != nil {
-			return nil, fmt.Errorf("scan library work: %w", err)
-		}
-		work.CreatedAt, err = parseTime(created)
+		work, err := DecodeLibraryWork(rows.Scan)
 		if err != nil {
 			return nil, err
 		}
-		work.UpdatedAt, err = parseTime(updated)
-		if err != nil {
-			return nil, err
-		}
-		work.LastAccessedAt, err = parseAccessTime(accessed)
-		if err != nil {
-			return nil, err
-		}
-		work.ScheduledDate, err = parseScheduledDate(scheduled)
-		if err != nil {
-			return nil, err
-		}
-		if work.ID <= previous || work.Validate() != nil ||
-			!utf8.ValidString(work.URL) || !utf8.ValidString(work.Title) ||
-			!utf8.ValidString(work.SiteName) || !utf8.ValidString(work.ThumbnailPath) || !utf8.ValidString(work.Notes) {
+		if work.ID <= previous {
 			return nil, errors.New("invalid stored library work")
 		}
 		previous = work.ID
 		result = append(result, work)
 	}
 	return result, nil
+}
+
+// DecodeLibraryWork applies the stored value rules shared by normal reads and restore.
+func DecodeLibraryWork(scan func(...any) error) (work manga.Work, err error) {
+	var created, updated string
+	var accessed, scheduled sql.NullString
+	if err := scan(&work.ID, &work.URL, &work.Title, &work.SiteName, &work.ThumbnailPath,
+		&work.Notes, &created, &updated, &accessed, &scheduled); err != nil {
+		return manga.Work{}, fmt.Errorf("scan library work: %w", err)
+	}
+	if work.CreatedAt, err = parseTime(created); err != nil {
+		return manga.Work{}, err
+	}
+	if work.UpdatedAt, err = parseTime(updated); err != nil {
+		return manga.Work{}, err
+	}
+	if work.LastAccessedAt, err = parseAccessTime(accessed); err != nil {
+		return manga.Work{}, err
+	}
+	if work.ScheduledDate, err = parseScheduledDate(scheduled); err != nil {
+		return manga.Work{}, err
+	}
+	if work.ID <= 0 || work.Validate() != nil ||
+		!utf8.ValidString(work.URL) || !utf8.ValidString(work.Title) ||
+		!utf8.ValidString(work.SiteName) || !utf8.ValidString(work.ThumbnailPath) || !utf8.ValidString(work.Notes) {
+		return manga.Work{}, errors.New("invalid stored library work")
+	}
+	return work, nil
 }
 
 func readLibraryLinks(ctx context.Context, q rowQueryer, works []manga.Work, tags []manga.Tag) (result []WorkTagLink, err error) {

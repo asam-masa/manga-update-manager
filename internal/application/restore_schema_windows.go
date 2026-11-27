@@ -47,6 +47,7 @@ FROM main.schema_migrations ORDER BY version COLLATE BINARY LIMIT ?`
 			return row[3] == object.SQL.String
 		})
 		s.checkIntegrity(ctx, r)
+		s.checkLibraryRows(ctx, r)
 	}
 	return runRestoreSQL(ctx, p, ops)
 }
@@ -78,7 +79,7 @@ func (s *restoreSQLSession) compareRows(ctx context.Context, r *restoreSQLResult
 			return
 		}
 		if err == io.EOF {
-			if i != count {
+			if count >= 0 && i != count {
 				r.OperationErr = mismatch
 			}
 			return
