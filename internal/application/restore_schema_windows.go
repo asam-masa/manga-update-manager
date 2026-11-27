@@ -17,6 +17,10 @@ var (
 )
 
 func checkPreparedRestoreDB(ctx context.Context, p *PreparedRestore) (restoreSQLResult, error) {
+	return checkPreparedRestore(ctx, p, false)
+}
+
+func checkPreparedRestore(ctx context.Context, p *PreparedRestore, checkImages bool) (restoreSQLResult, error) {
 	versions, objects, err := storage.CurrentRestoreSchema(ctx)
 	if err != nil {
 		return restoreSQLResult{OperationErr: err, ContextErr: ctx.Err()}, err
@@ -48,6 +52,9 @@ FROM main.schema_migrations ORDER BY version COLLATE BINARY LIMIT ?`
 		})
 		s.checkIntegrity(ctx, r)
 		s.checkLibraryRows(ctx, r)
+		if checkImages {
+			s.checkCoverReferences(ctx, r, p)
+		}
 	}
 	return runRestoreSQL(ctx, p, ops)
 }
