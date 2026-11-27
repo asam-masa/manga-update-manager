@@ -22,11 +22,12 @@ const (
 )
 
 type restoreSQLSession struct {
-	fs          *restoreSQLFS
-	vfs         io.Closer
-	db          driver.Conn
-	rows        driver.Rows
-	observation restoreSQLResult
+	fs                 *restoreSQLFS
+	vfs                io.Closer
+	db                 driver.Conn
+	rows               driver.Rows
+	rowsCloseAttempted bool
+	observation        restoreSQLResult
 }
 
 type restoreSQLResult struct {
@@ -42,12 +43,17 @@ func (r restoreSQLResult) err() error {
 type restoreSQLOps struct {
 	register func(*restoreSQLFS) (string, io.Closer, error)
 	connect  func(string) (driver.Conn, error)
+	check    func(context.Context, *restoreSQLSession, *restoreSQLResult)
 }
 
 // probePreparedRestoreSQL exercises the connection with a fixed internal query.
 // It makes no decision about whether the database is compatible for restore.
 func probePreparedRestoreSQL(ctx context.Context, p *PreparedRestore) (restoreSQLResult, error) {
-	return runRestoreSQL(ctx, p, restoreSQLOps{
+	return runRestoreSQL(ctx, p, preparedRestoreSQLOps())
+}
+
+func preparedRestoreSQLOps() restoreSQLOps {
+	return restoreSQLOps{
 		register: func(f *restoreSQLFS) (string, io.Closer, error) {
 			name, registration, err := vfs.New(f)
 			if registration == nil {
@@ -56,7 +62,7 @@ func probePreparedRestoreSQL(ctx context.Context, p *PreparedRestore) (restoreSQ
 			return name, registration, err
 		},
 		connect: (&sqlite.Driver{}).Open,
-	})
+	}
 }
 
 func runRestoreSQL(ctx context.Context, p *PreparedRestore, ops restoreSQLOps) (result restoreSQLResult, err error) {
@@ -123,18 +129,13 @@ func (s *restoreSQLSession) run(ctx context.Context, ops restoreSQLOps, result *
 	if s.failure() != nil || ctx.Err() != nil {
 		return
 	}
-	query, ok := s.db.(driver.QueryerContext)
-	if !ok {
-		result.OperationErr = errors.New("restore driver lacks contextual query support")
+	if ops.check != nil {
+		ops.check(ctx, s, result)
 		return
 	}
-	s.rows, err = query.QueryContext(ctx, "SELECT count(*) FROM sqlite_schema", nil)
-	if err != nil || s.rows == nil {
-		result.Rows = restoreSQLUnknown
-		result.OperationErr = errors.Join(errors.New("restore SQL query failed"), err)
+	if !s.query(ctx, result, "SELECT count(*) FROM sqlite_schema") {
 		return
 	}
-	result.Rows = restoreSQLAcquired
 	values := make([]driver.Value, 1)
 	if s.failure() == nil && ctx.Err() == nil {
 		if err := s.rows.Next(values); err != nil {
@@ -145,6 +146,24 @@ func (s *restoreSQLSession) run(ctx context.Context, ops restoreSQLOps, result *
 			}
 		}
 	}
+}
+
+func (s *restoreSQLSession) query(ctx context.Context, result *restoreSQLResult, statement string, args ...driver.NamedValue) bool {
+	query, ok := s.db.(driver.QueryerContext)
+	if !ok {
+		result.OperationErr = errors.New("restore driver lacks contextual query support")
+		return false
+	}
+	rows, err := query.QueryContext(ctx, statement, args)
+	s.rows = rows
+	s.rowsCloseAttempted = false
+	if err != nil || s.rows == nil {
+		result.Rows = restoreSQLUnknown
+		result.OperationErr = errors.Join(errors.New("restore SQL query failed"), err)
+		return false
+	}
+	result.Rows = restoreSQLAcquired
+	return true
 }
 
 func (s *restoreSQLSession) failure() error {
@@ -167,7 +186,9 @@ func (s *restoreSQLSession) release(r *restoreSQLResult) {
 			r.ReleaseErr = errors.Join(r.ReleaseErr, fmt.Errorf("restore %s release unconfirmed", name))
 		}
 	}
-	closeResource("rows", s.rows, &r.Rows)
+	if !s.rowsCloseAttempted {
+		closeResource("rows", s.rows, &r.Rows)
+	}
 	closeResource("DB", s.db, &r.DB)
 	if r.Rows == restoreSQLUnknown && r.DB == restoreSQLReleased {
 		// sqlite3_close_v2 can defer destruction while a statement is live.
