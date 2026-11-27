@@ -31,6 +31,10 @@ func newRestoreFixture(t *testing.T) restoreFixture {
 }
 
 func newRestoreFixtureWithDB(t *testing.T, db []byte) restoreFixture {
+	return newRestoreFixtureWithMigrations(t, db, []string{"001_create_works.sql"})
+}
+
+func newRestoreFixtureWithMigrations(t *testing.T, db []byte, migrations []string) restoreFixture {
 	t.Helper()
 	dir, err := os.Open(t.TempDir())
 	if err != nil {
@@ -48,6 +52,7 @@ func newRestoreFixtureWithDB(t *testing.T, db []byte) restoreFixture {
 	omitted := strings.Repeat("2", 32)
 	m := backup.Manifest{FormatVersion: 1, CreatedAt: "2026-11-22T00:00:00Z", AppVersion: "fixture", Migrations: []string{"001_create_works.sql"}, Database: backup.File{Path: "database.sqlite", Size: int64(len(db)), SHA256: hash(db)}, Images: []backup.Image{{ID: id, Path: "covers/" + id + ".png", Size: int64(len(im)), SHA256: hash(im)}}, OmittedImages: []backup.OmittedImage{{ID: omitted, Path: "covers/" + omitted + ".png", Reason: "missing"}}}
 	bodies := map[string][]byte{m.Database.Path: db, m.Images[0].Path: im}
+	m.Migrations = migrations
 	metadata, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
