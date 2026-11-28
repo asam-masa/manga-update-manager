@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -63,6 +64,16 @@ func readModelFile(root, name string) ([]byte, bool, error) {
 // decideRecovery models startup under an already acquired exclusive lock.
 // It reads all candidates before returning any moves and receives no checkpoint.
 func decideRecovery(root string) (string, []recoveryMove, error) {
+	records, err := os.ReadDir(filepath.Join(root, "records"))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", nil, errRecoveryStop
+	}
+	for _, entry := range records {
+		name := strings.ToLower(entry.Name())
+		if strings.HasPrefix(name, ".manga-update-backup-") && strings.HasSuffix(name, ".partial") {
+			return "", nil, errRecoveryStop
+		}
+	}
 	for _, name := range []string{planName + ".tmp", completeName + ".tmp"} {
 		if _, found, err := readModelFile(root, name); err != nil || found {
 			return "", nil, errRecoveryStop
