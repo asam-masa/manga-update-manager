@@ -104,8 +104,12 @@ func TestRecoveryProcessHelper(t *testing.T) {
 	}
 	content(t, root, recoveryProcessFixture, recoveryProcessFixture)
 	switch mode {
-	case "place-image":
-		plan, err := json.Marshal(recoveryFixturePlan)
+	case "place-image", "place-image-native":
+		model := recoveryFixturePlan
+		if mode == "place-image-native" {
+			model = nativeRecoveryFixturePlan(t, root)
+		}
+		plan, err := json.Marshal(model)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,6 +120,8 @@ func TestRecoveryProcessHelper(t *testing.T) {
 		pauseRecoveryFixture(t, "new-image-placed")
 	case "before-db-commit", "after-db-commit":
 		runInterruptedDatabaseFixture(t, root, mode)
+	case "recover-native", "recover-native-rejected":
+		runNativeRecoveryFixture(t, root, mode == "recover-native-rejected")
 	case "recover":
 		for i := 0; i <= 4; i++ {
 			outcome, moves, err := decideRecovery(root)
