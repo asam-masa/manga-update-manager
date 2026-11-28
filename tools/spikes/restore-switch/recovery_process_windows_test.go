@@ -24,7 +24,31 @@ func TestRecoveryAfterSwitchProcessKilled(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	switcher := recoveryProcessCommand(t, ctx, root, "place-image")
+	killRecoveryFixtureAtCheckpoint(t, ctx, root, "place-image", "new-image-placed")
+	content(t, root, liveImage, "new-image")
+	content(t, root, retiredDB, "old-db")
+	content(t, root, retiredImage, "old-image")
+	content(t, root, stagedDB, "new-db")
+	if _, err := os.Lstat(filepath.Join(root, liveDB)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("expected no live DB during partial switch", err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, completeName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("expected no completion record", err)
+	}
+
+	recovery := recoveryProcessCommand(t, ctx, root, "recover")
+	if output, err := recovery.CombinedOutput(); err != nil {
+		t.Fatal(string(output), err)
+	}
+	content(t, root, liveDB, "old-db")
+	content(t, root, liveImage, "old-image")
+	content(t, root, stagedDB, "new-db")
+	content(t, root, stagedImage, "new-image")
+}
+
+func killRecoveryFixtureAtCheckpoint(t *testing.T, ctx context.Context, root, mode, checkpoint string) {
+	t.Helper()
+	switcher := recoveryProcessCommand(t, ctx, root, mode)
 	output, err := switcher.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +69,7 @@ func TestRecoveryAfterSwitchProcessKilled(t *testing.T) {
 		}
 	}()
 	line, err := bufio.NewReader(output).ReadString('\n')
-	if err != nil || line != "new-image-placed\n" {
+	if err != nil || line != checkpoint+"\n" {
 		t.Fatal("switch child did not reach the checkpoint", line, err)
 	}
 	if err := switcher.Process.Kill(); err != nil {
@@ -55,25 +79,6 @@ func TestRecoveryAfterSwitchProcessKilled(t *testing.T) {
 	if err := switcher.Wait(); !errors.As(err, &exitErr) || exitErr.Success() || ctx.Err() != nil {
 		t.Fatal("expected forced child termination", err, ctx.Err())
 	}
-	content(t, root, liveImage, "new-image")
-	content(t, root, retiredDB, "old-db")
-	content(t, root, retiredImage, "old-image")
-	content(t, root, stagedDB, "new-db")
-	if _, err := os.Lstat(filepath.Join(root, liveDB)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("expected no live DB during partial switch", err)
-	}
-	if _, err := os.Lstat(filepath.Join(root, completeName)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("expected no completion record", err)
-	}
-
-	recovery := recoveryProcessCommand(t, ctx, root, "recover")
-	if output, err := recovery.CombinedOutput(); err != nil {
-		t.Fatal(string(output), err)
-	}
-	content(t, root, liveDB, "old-db")
-	content(t, root, liveImage, "old-image")
-	content(t, root, stagedDB, "new-db")
-	content(t, root, stagedImage, "new-image")
 }
 
 func recoveryProcessCommand(t *testing.T, ctx context.Context, root, mode string) *exec.Cmd {
@@ -108,11 +113,9 @@ func TestRecoveryProcessHelper(t *testing.T) {
 		move(t, root, liveDB, retiredDB)
 		move(t, root, liveImage, retiredImage)
 		move(t, root, stagedImage, liveImage)
-		if _, err := fmt.Fprintln(os.Stdout, "new-image-placed"); err != nil {
-			t.Fatal(err)
-		}
-		_, err = bufio.NewReader(os.Stdin).ReadByte()
-		t.Fatal("switch child was released instead of killed", err)
+		pauseRecoveryFixture(t, "new-image-placed")
+	case "before-db-commit", "after-db-commit":
+		runInterruptedDatabaseFixture(t, root, mode)
 	case "recover":
 		for i := 0; i <= 4; i++ {
 			outcome, moves, err := decideRecovery(root)
@@ -128,4 +131,13 @@ func TestRecoveryProcessHelper(t *testing.T) {
 	default:
 		t.Fatal("unknown recovery fixture mode")
 	}
+}
+
+func pauseRecoveryFixture(t *testing.T, checkpoint string) {
+	t.Helper()
+	if _, err := fmt.Fprintln(os.Stdout, checkpoint); err != nil {
+		t.Fatal(err)
+	}
+	_, err := bufio.NewReader(os.Stdin).ReadByte()
+	t.Fatal("switch child was released instead of killed", err)
 }
