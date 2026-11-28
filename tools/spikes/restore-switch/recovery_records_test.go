@@ -64,6 +64,13 @@ func readModelFile(root, name string) ([]byte, bool, error) {
 // decideRecovery models startup under an already acquired exclusive lock.
 // It reads all candidates before returning any moves and receives no checkpoint.
 func decideRecovery(root string) (string, []recoveryMove, error) {
+	return decideRecoveryWithIdentity(root, func(root, name string) (fixtureIdentity, bool, error) {
+		body, found, err := readModelFile(root, name)
+		return sha256.Sum256(body), found, err
+	})
+}
+
+func decideRecoveryWithIdentity(root string, observe func(string, string) (fixtureIdentity, bool, error)) (string, []recoveryMove, error) {
 	records, err := os.ReadDir(filepath.Join(root, "records"))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", nil, errRecoveryStop
@@ -126,13 +133,12 @@ func decideRecovery(root string) (string, []recoveryMove, error) {
 		{liveDB, stagedDB, retiredDB, p.OldDB, p.NewDB, p.UpdatedDB},
 		{liveImage, stagedImage, retiredImage, p.OldImage, p.NewImage, p.NewImage},
 	} {
-		live, hasLive, a := readModelFile(root, x.live)
-		staged, hasStaged, b := readModelFile(root, x.staged)
-		retired, hasRetired, c := readModelFile(root, x.retired)
+		liveID, hasLive, a := observe(root, x.live)
+		stagedID, hasStaged, b := observe(root, x.staged)
+		retiredID, hasRetired, c := observe(root, x.retired)
 		if errors.Join(a, b, c) != nil || x.old == x.new || x.old == x.updated {
 			return "", nil, errRecoveryStop
 		}
-		liveID, stagedID, retiredID := sha256.Sum256(live), sha256.Sum256(staged), sha256.Sum256(retired)
 		if doneFound {
 			if !hasLive || liveID != x.updated || hasStaged || !hasRetired || retiredID != x.old {
 				return "", nil, errRecoveryStop
