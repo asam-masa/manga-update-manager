@@ -109,8 +109,12 @@ func (t *BackupTemp) publishNoReplace(ctx context.Context, ops backupPublication
 // Use the normalized DOS spelling of the held file, not a guessed conversion of
 // the caller's path. Unsupported namespaces/failed lookup are rejected.
 func backupHandleName(file *os.File) (string, error) {
+	return backupHandlePath(windows.Handle(file.Fd()))
+}
+
+func backupHandlePath(handle windows.Handle) (string, error) {
 	buf := make([]uint16, 32768)
-	n, err := windows.GetFinalPathNameByHandle(windows.Handle(file.Fd()), &buf[0], uint32(len(buf)), 0)
+	n, err := windows.GetFinalPathNameByHandle(handle, &buf[0], uint32(len(buf)), 0)
 	if err != nil {
 		return "", err
 	}
